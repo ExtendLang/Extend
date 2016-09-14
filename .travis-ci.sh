@@ -7,4 +7,6 @@ else
   opam init -y
 fi
 
+eval `opam config env`
+
 opam install -y $OPAM_PKGS

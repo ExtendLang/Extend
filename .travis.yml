@@ -1,0 +1,17 @@
+language: c
+sudo: false
+addons:
+  apt:
+    packages:
+    - ocaml
+    - opam
+
+before_install: bash -ex .travis-ci.sh
+
+install: make
+
+script: ./test
+
+cache:
+  directories:
+  - $HOME/.opam

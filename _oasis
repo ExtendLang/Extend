@@ -1,0 +1,47 @@
+Name: PLT
+Version: 0.1
+Synopsis: PLT project
+Authors: Nigel Schuster
+License: MIT
+OASISFormat: 0.4
+BuildTools: ocamlbuild
+Plugins: META (0.4), DevFiles (0.4), StdFiles (0.4)
+
+XStdFilesAUTHORSFilename: AUTHORS
+XStdFilesINSTALLFileName: INSTALL
+XStdFilesREADMEFileName:  README
+
+AlphaFeatures: ocamlbuild_more_args
+Document "hello"
+  Type: ocamlbuild (0.4)
+  BuildTools: ocamldoc
+  Title: API reference for Hello World
+  XOCamlbuildPath: .
+  XOCamlbuildExtraArgs:
+    "-docflags '-colorize-code -short-functors -charset utf-8'"
+  XOCamlbuildLibraries: hello
+
+SourceRepository master
+  Type: git
+  Location: https://github.com/Neitsch/plt.git
+  Branch: master
+  Browser: https://github.com/Neitsch/plt
+
+Library hello
+  Path: src/hello
+  Modules: Hello
+
+Executable helloworld
+  CompiledObject: best
+  Path: src/main
+  MainIs: main.ml
+  BuildDepends: hello
+
+Executable test
+  BuildDepends: hello, oUnit
+  MainIs: test.ml
+  Path: tests
+
+Test test_hello
+  Type: Custom (0.0.1)
+  Command: $test

@@ -7,4 +7,4 @@ else
   opam init -y
 fi
 
-opam install $OPAM_PKGS
+opam install -y $OPAM_PKGS

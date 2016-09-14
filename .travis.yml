@@ -1,9 +1,15 @@
 language: c
 sudo: required
 
+addons:
+  apt:
+    sources:
+    - avsm
+    packages
+    - ocaml
+    - opam
+
 before_install: 
-- sudo apt-get -qq update
-- sudo apt-get install -y ocaml opam
 - bash -ex .travis-ci.sh
 
 install: make

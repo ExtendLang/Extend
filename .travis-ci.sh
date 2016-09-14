@@ -12,3 +12,5 @@ eval `opam config env`
 opam install -y $OPAM_PKGS
 
 ocaml setup.ml -configure --enable-tests
+ocaml setup.ml -build
+ocaml setup.ml -test

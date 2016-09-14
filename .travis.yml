@@ -10,13 +10,11 @@ addons:
     - ocaml-native-compilers
     - opam
 
-before_install: 
-- bash -ex .travis-ci.sh
-
-install: make
-
-script: ./test
+script: bash -ex .travis-ci.sh
 
 cache:
   directories:
   - $HOME/.opam
+
+notification:
+  email: false

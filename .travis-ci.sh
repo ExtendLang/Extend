@@ -1,4 +1,4 @@
-OPAM_PKGS="ocamlfind ounit"
+OPAM_PKGS="ocamlfind ounit base-bytes base-unix pcre expect fileutils ocamlify ocamlmod omake"
 
 if [ -f "$HOME/.opam/config"]; then
   opam update

@@ -7,6 +7,7 @@ addons:
     - avsm
     packages:
     - ocaml
+    - ocaml-native-compilers
     - opam
 
 before_install: 

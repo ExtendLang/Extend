@@ -2,9 +2,9 @@ language: c
 sudo: false
 
 before_install: 
-- bash -ex .travis-ci.sh
 - sudo apt-get -qq update
 - sudo apt-get install -y ocaml opam
+- bash -ex .travis-ci.sh
 
 install: make
 

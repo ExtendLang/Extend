@@ -4,7 +4,7 @@ if [ -f "$HOME/.opam/config"]; then
   opam update
   opam upgrade
 else
-  opam init
+  opam init -y
 fi
 
 opam install $OPAM_PKGS

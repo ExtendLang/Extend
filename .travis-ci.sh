@@ -1,4 +1,6 @@
-OPAM_PKGS="ocamlfind ounit base-bytes base-unix pcre expect fileutils ocamlify ocamlmod omake oasis"
+OPAM_PKGS="ocamlfind ounit oasis llvm.3.8"
+
+llvm-config --version
 
 if [ -f "$HOME/.opam/config"]; then
   opam update

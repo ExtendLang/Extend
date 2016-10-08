@@ -11,16 +11,6 @@ XStdFilesAUTHORSFilename: AUTHORS
 XStdFilesINSTALLFileName: INSTALL
 XStdFilesREADMEFileName:  README
 
-AlphaFeatures: ocamlbuild_more_args
-Document "hello"
-  Type: ocamlbuild (0.4)
-  BuildTools: ocamldoc
-  Title: API reference for Hello World
-  XOCamlbuildPath: .
-  XOCamlbuildExtraArgs:
-    "-docflags '-colorize-code -short-functors -charset utf-8'"
-  XOCamlbuildLibraries: hello
-
 SourceRepository master
   Type: git
   Location: https://github.com/Neitsch/plt.git
@@ -36,6 +26,11 @@ Executable helloworld
   Path: src/main
   MainIs: main.ml
   BuildDepends: hello
+
+Executable microc
+  BuildDepends: llvm, llvm.analysis
+  MainIs: microc.ml
+  Path: src/microc
 
 Executable test
   BuildDepends: hello, oUnit

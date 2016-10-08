@@ -1,2 +1,3 @@
-print_string(Hello.hello());;
-print_string(Hello.greet());;
+print_endline(Hello.hello());;
+print_endline(Hello.greet());;
+print_endline(Hello.jared());;

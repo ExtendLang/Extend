@@ -20,8 +20,8 @@ _build/
 setup.data
 setup.log
 
-LRM.aux
-LRM.log
-LRM.out
-LRM.synctex.gz
-LRM.toc
+*.aux
+*.log
+*.out
+*.synctex.gz
+*.toc

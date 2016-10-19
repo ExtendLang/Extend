@@ -1,0 +1,13 @@
+\section{Functions}
+Functions lie at Extend's core; however, they are not \textit{first class objects}. Since it can be verbose to write certain operations in Extend, the language will feature a comprehensive number of built-in and standard library function. An important built-in function will be I/O (see section \ref{IO}).
+\subsection{Format}
+Every function in Extend follows the same format, but allows some optional declarations. As in most programming languages the header of the function declares the parameters it accepts and the return type. The simplest function is this:
+\begin{lstlisting}
+[1,1] foo([1,1] arg) {
+  return arg;
+}
+\end{lstlisting}
+This function simply returns whatever value is passed into it. The leading \texttt{[1,1]} marks the return dimensions. \texttt{foo} is the function name. In parentheses the function arguments are declared, again with dimensions of the input. The body of the function follows, which in this case is only the return statement.
+\subsection{Dimension Assignment}
+\subsection{Application across Dimensions}
+\subsection{Dependencies Illustrated}

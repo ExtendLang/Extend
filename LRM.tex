@@ -32,25 +32,14 @@
 
 \usetikzlibrary{arrows}
 \usetikzlibrary{automata,positioning}
-\lstset{basicstyle=\ttfamily,
-  mathescape=true,
-  escapeinside=||,
-  autogobble}
   
 \title{Extend\\ Language Reference Manual}
-\author{Ishan Kolluri, Kevin Ye, Jared Samet, Nigel Schuster}
+\author{Ishaan Kolluri, Kevin Ye, Jared Samet, Nigel Schuster}
 \date{\today}
 \begin{document}
 \maketitle
 \tableofcontents
-\section{Introduction to Extend}
-\section{Types and Literals}
-\subsection{Primitive Data Types}
-\subsection{Ranges}
-\subsubsection{Range Slicing}
-\subsubsection{The Underscore Symbol}
-\subsection{Integers and Strings}
-\subsubsection{Unary Operations}
+\input{tex/Intro}
 \section{Expressions}
 \subsection{Operators}
 \subsubsection{Multiplication}
@@ -66,7 +55,7 @@
 \subsection{Application across Dimensions}
 \subsection{Dependencies Illustrated}
 \section{I/O}
-\subsection{File}
+\subsection{File I/O}
 \subsection{Input Arguments}
 \subsubsection{How to run a program}
 \subsubsection{Main function}

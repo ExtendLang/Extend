@@ -1,0 +1,60 @@
+\section{Introduction to Extend}
+	Extend is a domain-specific programming language used to designate ranges of cells as reusable functions. It abstracts dependencies between cells and models a dependency graph during compilation. In order to offer great performance for any size of datasets, Extend compiles down to LLVM.
+	\newline
+	Extend's syntax is meant to provide clear punctuation and easily understandable cell range access specifications, while maintaining the look of modern functional programming languages. Given Extend's functionality resonates well with spreadsheets, it borrows syntactical elements from programs such as Microsoft Excel.
+\section{Structure of an Extend Program}
+	Extend is predominantly composed of function declarations. In order to run the program, the \textbf{main} function will be executed. To illustrate the scope of the language, the OCaml grammar is attached below:
+\lstinputlisting{./src/main/parser.mly}
+\section{Types and Literals}
+	\subsection{Primitive Data Types}
+		Extend's basic primitives are \textit{integers}, \textit{floats}, \textit{char} literals, and \textit{string} literals. They are all internally represented as numbers or a range of numbers. They are as follows:
+		\newline
+		\underline{\textbf{Char}}\newline
+		A \textbf{char} literal is essentially a size 1 numerical range. At evaluation, the number in the range will be compared with its ASCII equivalent.
+  		\newline
+		\underline{\textbf{String}}\newline
+  		A \textbf{string} literal is a range of numbers of size \textit{n}, where \textit{n} is the length of the string. The string 'hello' can be represented internally as [104, 101, 108, 108, 111].
+		\newline
+		\underline{\textbf{Integer}}\newline
+		A \textbf{integer} can be represented as a size 1 numerical range as well. However, it retains its numerical value upon evaluation. 
+		\newline
+		\underline{\textbf{Float}}\newline
+		A \textbf{float}, like Javascript numbers, can be represented as 64 bit, where the fraction is stored in bits 52 to 62.
+		\newline
+		Below is a snippet illustrating programmatic declarations for each of the above types.
+  		\begin{lstlisting}
+/* Integer */
+num = 5;
+/* Char */
+chr = 'A'
+/* String */
+str = 'Hello'
+/* Float */
+num = 1.5;
+  		\end{lstlisting}
+	\subsection{Ranges}
+		Ranges are a data type unique to the Extend language. It borrows conceptually from spreadsheets; a range is a group of cells with dimensions represented as rows and columns. Each range is either one or two-dimensional. A range is composed of cells, and cells are comprised of functions that can have dependencies on the values of other cells. 
+		A range is written as follows:
+		\begin{lstlisting}
+/* This is a left-handed range, used to assign a value. */
+[1,2]foo; /*Range with 1 row and 2 columns */
+		\end{lstlisting}
+		\subsubsection{Range Slicing}
+			Extend somewhat mimics Python in its range slicing syntax; however, it offers the ability to slice a range in both absolute and relative terms.
+			\begin{lstlisting}
+foo[1,2] /* This evaluates to the cell value at row 1, column 2. */
+foo[1,] /* Evaluates to the range of cells in row 1. */
+foo[,2] /* Evaluates to the range of cells in column 2.*/
+foo[,[1]] /* The internal brackets denote RELATIVE notation. 
+In this case, 1 column right of the one currently being operated on. */ 
+foo[5:, 7:] /* 5th row down, and 7th column from the absolute origin.
+foo[[1:2], [5:7]] 
+/* Selects the rows between the 1st and 2nd row from current row */
+/* Selects the columns between 5th and 7th column from current column */
+			\end{lstlisting}
+		\subsubsection{The Underscore Symbol}
+			The underscore(\_) symbol allows the dimension of the range to have an unspecified size. For example, in function signatures, using the underscore allows the return value to have various possible dimensions. An example is illustrated below:
+			\begin{lstlisting}
+[1,_]foo; 
+/* A range with 1 row and an unknown, variable number of columns. */
+			\end{lstlisting}

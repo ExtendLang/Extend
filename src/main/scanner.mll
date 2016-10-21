@@ -25,7 +25,7 @@ rule token = parse
 | '*'             { TIMES }
 | '/'             { DIVIDE }
 | '%'             { MOD }
-| "empty"             { EMPTY }
+| "empty"         { EMPTY }
 | "switch"        { SWITCH }
 | "case"          { CASE }
 | "default"       { DEFAULT }

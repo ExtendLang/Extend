@@ -1,6 +1,7 @@
 { open Parser }
 
 let digit = ['0'-'9']
+let exp = 'e'('+'|'-')?['0'-'9']+
 let flt = '-'? (digit)+ ('.' (digit)* exp?|exp)
 let id = ['a'-'z' 'A'-'Z']['a'-'z' 'A'-'Z' '0'-'9' '_']*
 
@@ -24,7 +25,7 @@ rule token = parse
 | '*'             { TIMES }
 | '/'             { DIVIDE }
 | '%'             { MOD }
-| ' '             { EMPTY }
+| "empty"             { EMPTY }
 | "switch"        { SWITCH }
 | "case"          { CASE }
 | "default"       { DEFAULT }

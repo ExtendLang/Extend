@@ -32,4 +32,49 @@ Variable & bar & A variable identifier. To use this, the identifier must also be
 Underscore & \_ & This marker is unique, since it is a wildcard. While the other options aim to be specific, the underscore circumvents declaring the range size. \\ \hline
 \end{tabularx}
 \subsection{Application on Ranges}
+Extend gives the developer the power to easily apply operations in a functional style on ranges. As outlined in the section above, there are various ways to apply functions to ranges. A feature unique to Extend is the powerful operation on values and ranges. To apply a function on a per cell basis, the corresponding variable needs to be preceded by "\#". The following function applies cell wise addition:
+\begin{lstlisting}
+[m,n] foo([m,n] arg1, [m,n] arg2) {
+  [m,n] bar = #arg1 + #arg2;
+  return bar;
+}
+\end{lstlisting}
+If we want to apply a function to the whole range at once we drop the leading symbol. Thus matrix addition takes the following shape:
+\begin{lstlisting}
+[m,n] foo([m,n] arg1, [m,n] arg2) {
+  [m,n] bar = arg1 + arg2;
+  return bar;
+}
+\end{lstlisting}
+While both function above result in the same value, and only show the syntactical difference, more involved functions. If we wanted each cell to to be the square root divided by the sum of the input we have the following:
+\begin{lstlisting}
+[m] foo([m] arg) {
+  [m] bar = sqrt(#arg) / sum(arg);
+  return bar;
+}
+\end{lstlisting}
+Notice that \texttt{arg} is only once preceded by \texttt{\#}.
 \subsection{Dependencies Illustrated}
+The dependency resolution is another asset that sets Extend apart from other languages. Most languages compile ordinarily and execute the given commands sequentially. Extend builds a dependency graph. The advantage of this is that only relevant code segments will be executed. Given the function
+\begin{lstlisting}
+[m,n] foo([m,n] arg1, [m,n] arg2) {
+  [m,n] bar := #arg1 + 1;
+  [m,n] faz := #arg1 + 3;
+  [m,n] baz := bar + arg2;
+  return baz;
+}
+\end{lstlisting}
+The dependency graph will look like this: \newline
+\begin{tikzpicture}[->,>=stealth',shorten >=0pt,auto,node distance=3cm,
+        thick,main/.style={circle,draw,minimum size=0.6cm,inner sep=0pt]}]
+		\node [main] (1) at (0, 2) {arg1};
+		\node [main] (2) at (4, 2) {arg2};
+		\node [main] (3) at (0, 0) {bar = \#arg + 1};
+		\node [main] (4) at (0, -3) {baz = bar + arg2};
+		\node [main] (5) at (0, -6) {foo = baz};
+		\draw (1) to (3);
+		\draw (3) to (4);
+		\draw (4) to (5);
+		\draw (2) to (4);
+\end{tikzpicture} \newline
+Notice that \texttt{faz} does not appear in the graph, because it is not relevant for the return value. Ultimately this graph enables the Extend to find the leaves, evaluate code paths in the best configuration and even in parallel.

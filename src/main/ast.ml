@@ -16,7 +16,7 @@ type expr     = LitInt of int |
                 Switch of expr option * case list |
                 Call of string * expr list |
                 Selection of expr * sel
-and  index    = Abs of expr | Rel of expr
+and  index    = Abs of expr | Rel of expr | DimensionStart | DimensionEnd
 and  slice    = index option * index option
 and  sel      = slice option * slice option
 and  case     = (expr list) option * expr
@@ -104,6 +104,8 @@ and string_of_index = function
     None -> "null"
   | Some(Abs(e)) -> "{\"Absolute\": " ^ string_of_expr e ^ "}"
   | Some(Rel(e)) -> "{\"Relative\": " ^ string_of_expr e ^ "}"
+  | Some(DimensionStart) -> "{\"DimensionStart\": null}"
+  | Some(DimensionEnd) -> "{\"DimensionEnd\": null}"
 
 let string_of_dim (d1,d2) = "{\"d1\": " ^ (match d1 with None -> "null" | Some e -> string_of_expr e) ^ ", " ^
                              "\"d2\": " ^ (match d2 with None -> "null" | Some e -> string_of_expr e) ^ "}"
@@ -134,11 +136,10 @@ let string_of_range (d, e) = "{\"Dimensions\": " ^ string_of_dim d ^ ", " ^
                               "\"expr\": " ^ string_of_expr e ^ "}"
 
 let string_of_funcdecl fd =
-    "{\"Function\": {" ^
-         "\"Name\": \"" ^ fd.name (* TODO: Escape the string *) ^ "\"," ^
-         "\"Params\": [" ^ string_of_vars fd.params ^ "]," ^
-         "\"Stmts\": [" ^ string_of_stmts fd.body ^ "]," ^
-         "\"ReturnVal\": " ^ string_of_range fd.ret_val ^ "}}"
+    "{\"Name\": \"" ^ fd.name (* TODO: Escape the string *) ^ "\"," ^
+     "\"Params\": [" ^ string_of_vars fd.params ^ "]," ^
+     "\"Stmts\": [" ^ string_of_stmts fd.body ^ "]," ^
+     "\"ReturnVal\": " ^ string_of_range fd.ret_val ^ "}"
 
 let rec string_of_strs = function
     [] -> ""

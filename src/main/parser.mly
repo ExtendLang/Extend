@@ -186,23 +186,29 @@ arg_list:
   | arg_list COMMA expr {$3 :: $1}
 
 lhs_sel:
-    /* nothing */ { (None, None) }
-  | LSQBRACK lslice RSQBRACK { (Some $2, None) }
+    /* nothing */                         { (None, None) }
+  | LSQBRACK lslice RSQBRACK              { (Some $2, None) }
   | LSQBRACK lslice COMMA lslice RSQBRACK { (Some $2, Some $4) }
 
 rhs_sel:
-    LSQBRACK rslice RSQBRACK { (Some $2, None) }
+    LSQBRACK rslice RSQBRACK              { (Some $2, None) }
   | LSQBRACK rslice COMMA rslice RSQBRACK { (Some $2, Some $4) }
 
 lslice:
-    /* nothing */ { (None, None) }
-  | lslice_val { (Some $1, None) }
-  | lslice_val COLON lslice_val { (Some $1, Some $3) }
+    /* nothing */                         { (None, None) }
+  | lslice_val                            { (Some $1, None) }
+  | lslice_val COLON lslice_val           { (Some $1, Some $3) }
+  | lslice_val COLON                      { (Some $1, Some DimensionEnd) }
+  | COLON lslice_val                      { (Some DimensionStart, Some $2) }
+  | COLON                                 { (Some DimensionStart, Some DimensionEnd) }
 
 rslice:
-    /* nothing */ { (None, None) }
-  | rslice_val { (Some $1, None) }
-  | rslice_val COLON rslice_val { (Some $1, Some $3) }
+    /* nothing */                         { (None, None) }
+  | rslice_val                            { (Some $1, None) }
+  | rslice_val COLON rslice_val           { (Some $1, Some $3) }
+  | rslice_val COLON                      { (Some $1, Some DimensionEnd) }
+  | COLON rslice_val                      { (Some DimensionStart, Some $2) }
+  | COLON                                 { (Some DimensionStart, Some DimensionEnd) }
 
 lslice_val:
     expr { Abs($1) }

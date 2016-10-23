@@ -15,7 +15,8 @@ type expr     = LitInt of int |
                 Ternary of expr * expr * expr |
                 Switch of expr option * case list |
                 Call of string * expr list |
-                Selection of expr * sel
+                Selection of expr * sel |
+                Precedence of expr * expr
 and  index    = Abs of expr | Rel of expr | DimensionStart | DimensionEnd
 and  slice    = index option * index option
 and  sel      = slice option * slice option
@@ -72,7 +73,10 @@ let rec string_of_expr = function
                             "\"arguments\": [" ^ string_of_exprs arguments ^ "]}}"
   | Selection(e, s) ->    "{\"Selection\": {" ^
                             "\"expr\": " ^ string_of_expr e ^ ", " ^
-                            "\"slices\": " ^ string_of_sel s ^ "}}"
+                          "\"slices\": " ^ string_of_sel s ^ "}}"
+  | Precedence(e1, e2) -> "{\"Precedence\": { " ^
+                            "\"prior_expr\": " ^ string_of_expr e1 ^ ", " ^
+                            "\"dependent_expr\": " ^ string_of_expr e2 ^ "}}"
 
 (* TODO: Do this in more idiomatic OCaml *)
 and string_of_rowlist = function

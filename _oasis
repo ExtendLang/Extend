@@ -17,15 +17,14 @@ SourceRepository master
   Branch: master
   Browser: https://github.com/Neitsch/plt
 
-Library hello
-  Path: src/hello
-  Modules: Hello
+Library jsonify
+  Path: src/main
+  Modules: Jsonify
 
-Executable helloworld
-  CompiledObject: best
+Executable main
+  CompiledObject: byte
   Path: src/main
   MainIs: main.ml
-  BuildDepends: hello
 
 Executable microc
   BuildDepends: llvm, llvm.analysis
@@ -33,7 +32,7 @@ Executable microc
   Path: src/microc
 
 Executable test
-  BuildDepends: hello, oUnit
+  BuildDepends: oUnit, jsonify
   MainIs: test.ml
   Path: tests
 

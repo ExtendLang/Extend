@@ -1,10 +1,8 @@
 [_,2] computeSequenceAlignment([m,1] seq1, [n,1] seq2,
 matchReward, mismatchPenalty, gapPenalty) {
 
-  /*  ERRORS - grammar doesn't allow multiple variables to be declared:
   [m, n] scoreFromMatch, scoreFromLeft, scoreFromTop;
   [m, n] step, path;
-  */
 
 
   [1,n] seq2T := transpose(seq2);
@@ -17,8 +15,7 @@ matchReward, mismatchPenalty, gapPenalty) {
   score[1:,1:] = nmax(scoreFromMatch[[-1],[-1]],
       nmax(scoreFromLeft[[-1],[-1]], scoreFromTop[[-1],[-1]]));
 
-  scoreFromMatch = #score + (#seq1 == #seq2T) ?
-      matchReward : mismatchPenalty;
+  scoreFromMatch = #score + ((#seq1 == #seq2T) ? matchReward : mismatchPenalty);
   scoreFromLeft = score[[1],] + gapPenalty;
   scoreFromTop = score[,[1]] + gapPenalty;
 

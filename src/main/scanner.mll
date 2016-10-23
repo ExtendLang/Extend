@@ -19,6 +19,7 @@ rule token = parse
 | '='             { ASN }
 | ':'             { COLON }
 | ','             { COMMA }
+| "->"            { PRECEDES }
 | '?'             { QUESTION }
 | "=="            { EQ }
 | "!="            { NOTEQ }

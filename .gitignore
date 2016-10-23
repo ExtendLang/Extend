@@ -22,6 +22,7 @@ setup.log
 
 *.aux
 *.log
-*.out
+/*.out
+/tex/*.out
 *.synctex.gz
 *.toc

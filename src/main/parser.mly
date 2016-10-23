@@ -57,19 +57,17 @@ func_decls:
 func_decl:
     ID LPAREN func_param_list RPAREN LBRACE opt_stmt_list ret_stmt RBRACE
     { {
-      ret_val: ((ABS, 1), (ABS, 1));
-      name: $1;
-      params: $3;
-      body: $6;
-      ret_stmt: $7
+      name = $1;
+      params = $3;
+      body = $6;
+      ret_val = ((None, None), $7)
     } }
   | ret_dim ID LPAREN func_param_list RPAREN LBRACE opt_stmt_list ret_stmt RBRACE
     { {
-      ret_val: $1;
-      name: $2;
-      params: $4;
-      body: $7;
-      ret_stmt: $8;
+      name = $2;
+      params = $4;
+      body = $7;
+      ret_val = ($1, $8);
     } }
 
 opt_stmt_list:
@@ -87,90 +85,96 @@ ret_stmt:
     RETURN expr SEMI {$2}
 
 vardecl:
-    ID varassign SEMI {($1, $2)}
-  | dim ID varassign SEMI {($1, $2, $3)}
+    ID varassign SEMI { Vardecl(
+      ((None, None), $1), (* var *)
+      ($1, (None, None), $2) (* assign *)
+    )}
+  | dim ID varassign SEMI { Vardecl(
+      ($1, $2), (* var *)
+      ($2, (None, None), $3) (* assign *)
+    )}
 
 varassign:
-    /* nothing */ {}
-  | GETS expr {($2)}
+    /* nothing */ { None }
+  | GETS expr { Some $2 }
 
 assign:
-    ID lhs_sel ASN expr SEMI { ($1,$2,$4) }
+    ID lhs_sel ASN expr SEMI { Assign($1, $2, Some $4) }
 
 expr:
-    expr rhs_sel { ($1, $2) }
-  | HASH expr { ($2) }
-  | op_expr { $1 }
-  | ternary_expr { $1 }
-  | switch_expr { $1 }
-  | func_expr { $1 }
-  | range_expr { $1 }
-  | LPAREN expr RPAREN { $2 }
-  | ID { $1 }
-  | LIT_INT { $1 }
-  | LIT_FLOAT { $1 }
-  | LIT_STRING { $1 }
-  | EMPTY { Empty }
+    expr rhs_sel        { Selection($1, $2) }
+  | HASH expr           { Selection($2, (None, None)) }
+  | op_expr             { $1 }
+  | ternary_expr        { $1 }
+  | switch_expr         { $1 }
+  | func_expr           { $1 }
+  | range_expr          { $1 }
+  | LPAREN expr RPAREN  { $2 }
+  | ID                  { Id($1) }
+  | LIT_INT             { LitInt($1) }
+  | LIT_FLOAT           { LitFlt($1) }
+  | LIT_STRING          { LitString($1) }
+  | EMPTY               { Empty }
 
 op_expr:
-    expr PLUS expr { ($1, $3) }
-  | expr MINUS expr { ($1, $3) }
-  | expr TIMES expr { ($1, $3) }
-  | expr DIVIDE expr { ($1, $3) }
-  | expr MOD expr { ($1, $3) }
-  | expr POWER expr { ($1, $3) }
-  | expr LSHIFT expr { ($1, $3) }
-  | expr RSHIFT expr { ($1, $3) }
-  | expr LOGAND expr { ($1, $3) }
-  | expr LOGOR expr { ($1, $3) }
-  | expr BITXOR expr { ($1, $3) }
-  | expr BITAND expr { ($1, $3) }
-  | expr BITOR expr { ($1, $3) }
-  | expr EQ expr { ($1, $3) }
-  | expr NOTEQ expr { ($1, $3) }
-  | expr GT expr { ($1, $3) }
-  | expr LT expr { ($1, $3) }
-  | expr GTEQ expr { ($1, $3) }
-  | expr LTEQ expr { ($1, $3) }
-  | MINUS expr %prec NEG { ($2) }
-  | LOGNOT expr { ($2) }
-  | BITNOT expr { ($2) }
+    expr PLUS expr      { BinOp($1, Plus, $3) }
+  | expr MINUS expr     { BinOp($1, Minus, $3) }
+  | expr TIMES expr     { BinOp($1, Times, $3) }
+  | expr DIVIDE expr    { BinOp($1, Divide, $3) }
+  | expr MOD expr       { BinOp($1, Mod, $3) }
+  | expr POWER expr     { BinOp($1, Pow, $3) }
+  | expr LSHIFT expr    { BinOp($1, LShift, $3) }
+  | expr RSHIFT expr    { BinOp($1, RShift, $3) }
+  | expr LOGAND expr    { BinOp($1, LogAnd, $3) }
+  | expr LOGOR expr     { BinOp($1, LogOr, $3) }
+  | expr BITXOR expr    { BinOp($1, BitXor, $3) }
+  | expr BITAND expr    { BinOp($1, BitAnd, $3) }
+  | expr BITOR expr     { BinOp($1, BitOr, $3) }
+  | expr EQ expr        { BinOp($1, Eq, $3) }
+  | expr NOTEQ expr     { BinOp($1, NotEq, $3) }
+  | expr GT expr        { BinOp($1, Gt, $3) }
+  | expr LT expr        { BinOp($1, Lt, $3) }
+  | expr GTEQ expr      { BinOp($1, GtEq, $3) }
+  | expr LTEQ expr      { BinOp($1, LtEq, $3) }
+  | MINUS expr %prec NEG  { UnOp(Neg, $2) }
+  | LOGNOT expr           { UnOp(LogNot, $2) }
+  | BITNOT expr           { UnOp(BitNot, $2) }
 
 ternary_expr:
   /* commented out optional part for now */
-    expr QUESTION expr COLON expr %prec QUESTION { ($1, $3, $5) }
+    expr QUESTION expr COLON expr %prec QUESTION { Ternary($1, $3, $5) }
 
 switch_expr:
-    SWITCH LPAREN switch_cond RPAREN LBRACE case_list RBRACE { ($3, List.rev $6) }
+    SWITCH LPAREN switch_cond RPAREN LBRACE case_list RBRACE { Switch($3, List.rev $6) }
 
 switch_cond:
-    /* nothing */ { True }
-  | expr { $1 }
+    /* nothing */ { None }
+  | expr { Some $1 }
 
 case_list:
     case_stmt { [$1] }
   | case_list case_stmt { $2 :: $1 }
 
 case_stmt:
-    DEFAULT COLON expr SEMI { $3 }
-  | CASE case_expr_list COLON expr SEMI { (List.rev $2, $4) }
+    DEFAULT COLON expr SEMI { (None, $3) }
+  | CASE case_expr_list COLON expr SEMI { (Some (List.rev $2), $4) }
 
 case_expr_list:
     expr { [$1] }
   | case_expr_list COMMA expr { $3 :: $1 }
 
 func_expr:
-    ID LPAREN opt_arg_list RPAREN { $3 }
+    ID LPAREN opt_arg_list RPAREN { Call($1, $3) }
 
 range_expr:
-    LBRACE row_list RBRACE { List.rev $2 }
+    LBRACE row_list RBRACE { LitRange(List.rev $2) }
 
 row_list:
     col_list {[List.rev $1]}
   | row_list SEMI col_list {$3 :: $1}
 
 col_list:
-    expr {$1}
+    expr {[$1]}
   | col_list COMMA expr {$3 :: $1}
 
 opt_arg_list:
@@ -182,30 +186,36 @@ arg_list:
   | arg_list COMMA expr {$3 :: $1}
 
 lhs_sel:
-    /* nothing */ { [0,0] }
-  | LSQBRACK lslice COMMA lslice RSQBRACK { ($2,$4) }
-  | LSQBRACK lslice RSQBRACK { ($2) }
+    /* nothing */                         { (None, None) }
+  | LSQBRACK lslice RSQBRACK              { (Some $2, None) }
+  | LSQBRACK lslice COMMA lslice RSQBRACK { (Some $2, Some $4) }
 
 rhs_sel:
-    LSQBRACK rslice COMMA rslice RSQBRACK { ($2,$4) }
-  | LSQBRACK rslice RSQBRACK { ($2) }
+    LSQBRACK rslice RSQBRACK              { (Some $2, None) }
+  | LSQBRACK rslice COMMA rslice RSQBRACK { (Some $2, Some $4) }
 
 lslice:
-    /* nothing */ { 0 }
-  | lslice_val { $1 }
-  | lslice_val COLON lslice_val { ($1,$3) }
+    /* nothing */                         { (None, None) }
+  | lslice_val                            { (Some $1, None) }
+  | lslice_val COLON lslice_val           { (Some $1, Some $3) }
+  | lslice_val COLON                      { (Some $1, Some DimensionEnd) }
+  | COLON lslice_val                      { (Some DimensionStart, Some $2) }
+  | COLON                                 { (Some DimensionStart, Some DimensionEnd) }
 
 rslice:
-    /* nothing */ { 0 }
-  | rslice_val { $1 }
-  | rslice_val COLON rslice_val { ($1,$3) }
+    /* nothing */                         { (None, None) }
+  | rslice_val                            { (Some $1, None) }
+  | rslice_val COLON rslice_val           { (Some $1, Some $3) }
+  | rslice_val COLON                      { (Some $1, Some DimensionEnd) }
+  | COLON rslice_val                      { (Some DimensionStart, Some $2) }
+  | COLON                                 { (Some DimensionStart, Some DimensionEnd) }
 
 lslice_val:
-    expr { $1 }
+    expr { Abs($1) }
 
 rslice_val:
-    expr { $1 }
-  | LSQBRACK expr RSQBRACK { ($2) }
+    expr { Abs($1) }
+  | LSQBRACK expr RSQBRACK { Rel($2) }
 
 func_param_list:
     /* nothing */ { [] }
@@ -216,16 +226,16 @@ func_param_int_list:
   | func_param_int_list COMMA func_sin_param { $3 :: $1 }
 
 func_sin_param:
-    ID { ($1) }
+    ID { ((None, None), $1) }
   | dim ID { ($1, $2) }
 
 dim:
-    LSQBRACK expr RSQBRACK { (SINGLE,$2,0) }
-  | LSQBRACK expr COMMA expr RSQBRACK { (DOUBLE,$2,$4) }
+    LSQBRACK expr RSQBRACK { (Some $2, None) }
+  | LSQBRACK expr COMMA expr RSQBRACK { (Some $2, Some $4) }
 
 ret_dim:
   LSQBRACK ret_sin COMMA ret_sin RSQBRACK { ($2,$4) }
 
 ret_sin:
-    expr { $1 }
-  | UNDERSCORE { (WILD, 0) }
+    expr { Some $1 }
+  | UNDERSCORE { Some Wild }

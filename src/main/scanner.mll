@@ -6,7 +6,9 @@ let flt = (digit)+ ('.' (digit)* exp?|exp)
 let id = ['a'-'z' 'A'-'Z']['a'-'z' 'A'-'Z' '0'-'9' '_']*
 
 rule token = parse
-  [' ' '\t' '\r' '\n'] { token lexbuf } (* Whitespace *)
+  [' ' '\t' '\r' '\n'] { token lexbuf }   (* Whitespace *)
+| "/*"                 { multiline_comment lexbuf }
+| "//"                 { oneline_comment lexbuf }
 | '['             { LSQBRACK }
 | ']'             { RSQBRACK }
 | '('             { LPAREN }
@@ -50,6 +52,14 @@ rule token = parse
 | "import"        { IMPORT }
 | "global"        { GLOBAL }
 | digit+ as lit   { LIT_INT(int_of_string lit) }
-| flt as lit      { LIT_FLT(float_of_string lit) }
+| flt as lit      { LIT_FLOAT(float_of_string lit) }
 | id as lit       { ID(lit) }
 | eof             { EOF }
+
+and multiline_comment = parse
+  "*/" { token lexbuf }
+| _    { multiline_comment lexbuf }
+
+and oneline_comment = parse
+  '\n' { token lexbuf }
+| _    { oneline_comment lexbuf }

@@ -24,7 +24,8 @@ and  case     = (expr list) option * expr
 type dim      = expr option * expr option
 type var      = dim * string
 type assign   = string * sel * expr option
-type stmt     = Assign of assign | Vardecl of var * assign
+type init     = string * expr option
+type stmt     = Assign of assign | Vardecl of dim * init list
 
 type func_decl = {
     name: string;
@@ -118,9 +119,19 @@ let string_of_assign (s, selection, eo) =
      "\"Selection\": " ^ string_of_sel selection ^ ", " ^
      "\"expr\": " ^ (match eo with None -> "null" | Some e -> string_of_expr e) ^ "}"
 
+let string_of_init (s, eo) =
+    "{\"VarName\": \"" ^ s (* TODO: escape the string *) ^ "\", " ^
+     "\"expr\": " ^ (match eo with None -> "null" | Some e -> string_of_expr e) ^ "}"
+
+let rec string_of_inits = function
+    [] -> "[{\"error\":\"This shouldn\'t be possible\"}]"
+  | [init] -> string_of_init init
+  | init :: inits -> string_of_init init ^ ", " ^ string_of_inits inits
+
 let string_of_stmt = function
     Assign(a) -> "{\"Assign\": " ^ string_of_assign a ^ "}"
-  | Vardecl(v, a) -> "{\"Vardecl\": {\"Var\": " ^ string_of_var v ^ ",\"Assign\": " ^ string_of_assign a ^ "}}"
+  | Vardecl(d, inits) -> "{\"Vardecl\": {\"Dimensions\": " ^ string_of_dim d ^
+                                       ",\"Initializations\": [" ^ string_of_inits inits ^ "]}}"
 
 let rec string_of_vars = function
     [] -> ""

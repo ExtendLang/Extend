@@ -85,14 +85,12 @@ ret_stmt:
     RETURN expr SEMI {$2}
 
 vardecl:
-    ID varassign SEMI { Vardecl(
-      ((None, None), $1), (* var *)
-      ($1, (None, None), $2) (* assign *)
-    )}
-  | dim ID varassign SEMI { Vardecl(
-      ($1, $2), (* var *)
-      ($2, (None, None), $3) (* assign *)
-    )}
+    var_list SEMI { Vardecl((None, None), List.rev $1) }
+  | dim var_list SEMI { Vardecl($1, List.rev $2) }
+
+var_list:
+    ID varassign { [ ($1, $2)] }
+  | var_list COMMA ID varassign { ($3, $4) :: $1}
 
 varassign:
     /* nothing */ { None }
@@ -234,7 +232,8 @@ dim:
   | LSQBRACK expr COMMA expr RSQBRACK { (Some $2, Some $4) }
 
 ret_dim:
-  LSQBRACK ret_sin COMMA ret_sin RSQBRACK { ($2,$4) }
+    LSQBRACK ret_sin RSQBRACK { ($2, None) }
+  | LSQBRACK ret_sin COMMA ret_sin RSQBRACK { ($2,$4) }
 
 ret_sin:
     expr { Some $1 }

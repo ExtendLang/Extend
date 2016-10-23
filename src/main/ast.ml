@@ -38,7 +38,7 @@ type program = string list * stmt list * func_decl list
 let string_of_op = function
     Plus -> "+" | Minus -> "-" | Times -> "*" | Divide -> "/" | Mod -> "%" | Pow -> "**" |
     LShift -> "<<" | RShift -> ">>" | BitOr -> "|" | BitAnd -> "&" | BitXor -> "^" |
-    Eq -> "--" | NotEq -> "!-" | Gt -> ">" | Lt -> "<" | GtEq -> ">=" | LtEq -> "<=" | LogAnd -> "&& " | LogOr -> "||"
+    Eq -> "==" | NotEq -> "!-" | Gt -> ">" | Lt -> "<" | GtEq -> ">=" | LtEq -> "<=" | LogAnd -> "&& " | LogOr -> "||"
 
 let string_of_unop = function
     Neg -> "-" | LogNot -> "!" | BitNot -> "~"

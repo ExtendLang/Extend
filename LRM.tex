@@ -3,6 +3,7 @@
 \usepackage[english]{babel}
 \usepackage[utf8]{inputenc}
 \usepackage{amsmath}
+\usepackage{listings}
 \usepackage{amsthm}
 \usepackage{graphicx}
 \usepackage[colorinlistoftodos]{todonotes}
@@ -25,6 +26,7 @@
 \usepackage{hyperref}
 \usepackage{csquotes}
 \usepackage{colortbl}
+\usepackage{indentfirst}
 \linespread{2}
 \titlelabel{\thetitle.\quad}
 \allowdisplaybreaks
@@ -49,13 +51,9 @@
 \subsection{Variable Declaration}
 \subsection{Variable Assignment}
 \subsection{Conditionals}
-\section{Functions}
-\subsection{Format}
-\subsection{Dimension Assignment}
-\subsection{Application across Dimensions}
-\subsection{Dependencies Illustrated}
-\section{I/O}
-\subsection{File I/O}
+\input{./tex/Functions.tex}
+\section{File I/O} \label{IO}
+\subsection{File}
 \subsection{Input Arguments}
 \subsubsection{How to run a program}
 \subsubsection{Main function}

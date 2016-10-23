@@ -18,8 +18,8 @@ open Ast
 %token <string> ID
 %token EOF
 
-%left PRECEDES
 %right QUESTION
+%left PRECEDES
 %left LOGOR
 %left LOGAND
 %left EQ NOTEQ LT GT LTEQ GTEQ

@@ -73,7 +73,7 @@ let rec string_of_expr = function
                             "\"arguments\": [" ^ string_of_exprs arguments ^ "]}}"
   | Selection(e, s) ->    "{\"Selection\": {" ^
                             "\"expr\": " ^ string_of_expr e ^ ", " ^
-                          "\"slices\": " ^ string_of_sel s ^ "}}"
+                            "\"slices\": " ^ string_of_sel s ^ "}}"
   | Precedence(e1, e2) -> "{\"Precedence\": { " ^
                             "\"prior_expr\": " ^ string_of_expr e1 ^ ", " ^
                             "\"dependent_expr\": " ^ string_of_expr e2 ^ "}}"

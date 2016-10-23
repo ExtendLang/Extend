@@ -12,5 +12,3 @@ let dir = "./samples" in
       fun s -> let in_channel = open_in (dir ^ "/" ^ s) in
         OUnit2.assert_equal ((Jsonify.jsonify (Lexing.from_channel in_channel)) ^ "\n") (load_file (dir ^ "_comp/" ^ s ^ ".out"))
     ) children;;
-
-print_endline "Hi";

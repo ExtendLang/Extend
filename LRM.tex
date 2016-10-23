@@ -4,6 +4,7 @@
 \usepackage[utf8]{inputenc}
 \usepackage{amsmath}
 \usepackage{listings}
+\usepackage{courier}
 \usepackage{amsthm}
 \usepackage{graphicx}
 \usepackage[colorinlistoftodos]{todonotes}
@@ -17,7 +18,7 @@
 \usepackage{algorithm}
 \usepackage{todonotes}
 \usepackage[noend]{algpseudocode}
-\usepackage[a4paper,left=3cm,right=3cm,top=3cm,bottom=3cm]{geometry} 
+\usepackage[a4paper,left=3cm,right=3cm,top=3cm,bottom=3cm]{geometry}
 \usepackage{titlesec}
 \usepackage{siunitx}
 \usepackage{mathrsfs}
@@ -28,13 +29,14 @@
 \usepackage{colortbl}
 \usepackage{indentfirst}
 \linespread{2}
+\lstset{basicstyle=\footnotesize\ttfamily,breaklines=true,lineskip={-1pt}}
 \titlelabel{\thetitle.\quad}
 \allowdisplaybreaks
 \delimitershortfall-1sp
 
 \usetikzlibrary{arrows}
 \usetikzlibrary{automata,positioning}
-  
+
 \title{Extend\\ Language Reference Manual}
 \author{Ishaan Kolluri, Kevin Ye, Jared Samet, Nigel Schuster}
 \date{\today}

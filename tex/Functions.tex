@@ -2,27 +2,15 @@
 Functions lie at Extend's core; however, they are not \textit{first class objects}. Since it can be verbose to write certain operations in Extend, the language will feature a comprehensive number of built-in and standard library function. An important built-in function will be I/O (see section \ref{IO}).
 \subsection{Format}
 Every function in Extend follows the same format, but allows some optional declarations. As in most programming languages the header of the function declares the parameters it accepts and the return type. The simplest function is this:
-\begin{lstlisting}
-[1,1] foo([1,1] arg) {
-  return arg;
-}
-\end{lstlisting}
+\lstinputlisting{./samples/functions_simple.xtnd}
 This function simply returns whatever value is passed into it. The leading \texttt{[1,1]} marks the return dimensions. \texttt{foo} is the function name. In parentheses the function arguments are declared, again with dimensions of the input. The body of the function follows, which in this case is only the return statement.
 \subsection{Dimension Assignment}
 \par Extend will feature gradual typing for function declarations. This will enable users with a weak experience in typing to use the language, but maintains the ability to improve during development.
 \par To avoid specifying the return dimensions, an underscore can be used. This marks a variable range. Thus our function now looks like this:
-\begin{lstlisting}
-[_,1] foo([5,5] arg1, [1,1] arg2) {
-  return arg1[0:arg2 ,0];
-}
-\end{lstlisting}
+\lstinputlisting{./samples/functions_dim_range_u.xtnd}
 Here we are selecting a range from arg1 that depends on the value of arg2 and can therefore not be known ahead of time.
 \par However Extend will feature even more options to specify ranges. If a certain operation should be applied to a range of numbers of unknown size, the size can be inferred at runtime and match the return size:
-\begin{lstlisting}
-[m,1] foo([m,1] arg) {
-  return arg[0:m-1 ,0] + 1;
-}
-\end{lstlisting}
+\lstinputlisting{./samples/functions_dim_range_v.xtnd}
 This function will add 1 to each element in arg. Notice, that \texttt{m} is used across the function to apply the operation to the range.
 \par Summarizing, we have 3 ways of specifying a return range:\newline
 \begin{tabularx}{\columnwidth}{| c | c | X |} \hline
@@ -33,37 +21,15 @@ Underscore & \_ & This marker is unique, since it is a wildcard. While the other
 \end{tabularx}
 \subsection{Application on Ranges}
 Extend gives the developer the power to easily apply operations in a functional style on ranges. As outlined in the section above, there are various ways to apply functions to ranges. A feature unique to Extend is the powerful operation on values and ranges. To apply a function on a per cell basis, the corresponding variable needs to be preceded by "\#". The following function applies cell wise addition:
-\begin{lstlisting}
-[m,n] foo([m,n] arg1, [m,n] arg2) {
-  [m,n] bar = #arg1 + #arg2;
-  return bar;
-}
-\end{lstlisting}
+\lstinputlisting{./samples/functions_range_single.xtnd}
 If we want to apply a function to the whole range at once we drop the leading symbol. Thus matrix addition takes the following shape:
-\begin{lstlisting}
-[m,n] foo([m,n] arg1, [m,n] arg2) {
-  [m,n] bar = arg1 + arg2;
-  return bar;
-}
-\end{lstlisting}
+\lstinputlisting{./samples/functions_range.xtnd}
 While both function above result in the same value, and only show the syntactical difference, more involved functions. If we wanted each cell to to be the square root divided by the sum of the input we have the following:
-\begin{lstlisting}
-[m] foo([m] arg) {
-  [m] bar = sqrt(#arg) / sum(arg);
-  return bar;
-}
-\end{lstlisting}
+\lstinputlisting{./samples/functions_range_mix.xtnd}
 Notice that \texttt{arg} is only once preceded by \texttt{\#}.
 \subsection{Dependencies Illustrated}
 The dependency resolution is another asset that sets Extend apart from other languages. Most languages compile ordinarily and execute the given commands sequentially. Extend builds a dependency graph. The advantage of this is that only relevant code segments will be executed. Given the function
-\begin{lstlisting}
-[m,n] foo([m,n] arg1, [m,n] arg2) {
-  [m,n] bar := #arg1 + 1;
-  [m,n] faz := #arg1 + 3;
-  [m,n] baz := bar + arg2;
-  return baz;
-}
-\end{lstlisting}
+\lstinputlisting{./samples/functions_dep_graph.xtnd}
 The dependency graph will look like this: \newline
 \begin{tikzpicture}[->,>=stealth',shorten >=0pt,auto,node distance=3cm,
         thick,main/.style={circle,draw,minimum size=0.6cm,inner sep=0pt]}]

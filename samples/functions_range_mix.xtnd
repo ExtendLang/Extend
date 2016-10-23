@@ -1,0 +1,4 @@
+[m] foo([m] arg) {
+  [m] bar := sqrt(#arg) / sum(arg);
+  return bar;
+}

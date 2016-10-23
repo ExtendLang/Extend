@@ -36,6 +36,15 @@ Executable test
   MainIs: test.ml
   Path: tests
 
-Test test_hello
+Executable compare
+  BuildDepends: oUnit, jsonify
+  MainIs: compare.ml
+  Path: tests
+
+Test testcases
   Type: Custom (0.0.1)
   Command: $test
+
+Test testsamples
+  Type: Custom (0.0.1)
+  Command: $compare

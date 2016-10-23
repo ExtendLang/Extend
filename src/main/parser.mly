@@ -5,7 +5,7 @@ open Ast
 %}
 
 %token LSQBRACK RSQBRACK LPAREN RPAREN LBRACE RBRACE HASH
-%token COLON COMMA QUESTION GETS ASN SEMI UNDERSCORE
+%token COLON COMMA QUESTION GETS ASN SEMI PRECEDES UNDERSCORE
 %token SWITCH CASE DEFAULT
 %token PLUS MINUS TIMES DIVIDE MOD POWER LSHIFT RSHIFT
 %token EQ NOTEQ GT LT GTEQ LTEQ
@@ -19,6 +19,7 @@ open Ast
 %token EOF
 
 %right QUESTION
+%left PRECEDES
 %left LOGOR
 %left LOGAND
 %left EQ NOTEQ LT GT LTEQ GTEQ
@@ -107,6 +108,7 @@ expr:
   | switch_expr         { $1 }
   | func_expr           { $1 }
   | range_expr          { $1 }
+  | expr PRECEDES expr  { Precedence($1, $3) }
   | LPAREN expr RPAREN  { $2 }
   | ID                  { Id($1) }
   | LIT_INT             { LitInt($1) }

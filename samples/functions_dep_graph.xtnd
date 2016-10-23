@@ -1,0 +1,6 @@
+[m,n] foo([m,n] arg1, [m,n] arg2) {
+  [m,n] bar := #arg1 + 1;
+  [m,n] faz := #arg1 + 3;
+  [m,n] baz := bar + arg2;
+  return baz;
+}

@@ -4,6 +4,7 @@ let digit = ['0'-'9']
 let exp = 'e'('+'|'-')?['0'-'9']+
 let flt = (digit)+ ('.' (digit)* exp?|exp)
 let id = ['a'-'z' 'A'-'Z']['a'-'z' 'A'-'Z' '0'-'9' '_']*
+let str_lit = ['a'-'z' 'A'-'Z']*
 
 rule token = parse
   [' ' '\t' '\r' '\n'] { token lexbuf }   (* Whitespace *)
@@ -55,6 +56,7 @@ rule token = parse
 | digit+ as lit   { LIT_INT(int_of_string lit) }
 | flt as lit      { LIT_FLOAT(float_of_string lit) }
 | id as lit       { ID(lit) }
+| str_lit as lit  { LIT_STRING(lit) }
 | eof             { EOF }
 
 and multiline_comment = parse

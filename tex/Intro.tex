@@ -7,7 +7,7 @@
 \lstinputlisting{./src/main/parser.mly}
 \section{Types and Literals}
 	\subsection{Primitive Data Types}
-		Extend's basic primitives are \textit{integers}, \textit{floats}, \textit{char} literals, and \textit{string} literals. They are all internally represented as numbers or a range of numbers. They are as follows:
+		Extend has two primitive data types, \textbf{numbers} and \textbf{ranges}. In the vein of Javascript, numbers are essentially 64-bit floating point numbers in Extend. Ranges are elaborated on in the next section. The user can choose to represent numbers in the following different ways:
 		\newline
 		\underline{\textbf{Char}}\newline
 		A \textbf{char} literal is essentially a size 1 numerical range. At evaluation, the number in the range will be compared with its ASCII equivalent.

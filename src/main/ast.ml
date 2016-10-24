@@ -35,6 +35,15 @@ type func_decl = {
     ret_val: dim * expr;
 }
 
+type listable = Inits of init list|
+                Vars of var list |
+                Stmts of stmt list |
+                Funcs of func_decl list |
+                Exprs of expr list |
+                Rows of (expr list) list |
+                Strings of string list |
+                Cases of case list
+
 type program = string list * stmt list * func_decl list
 
 let string_of_op = function
@@ -45,11 +54,16 @@ let string_of_op = function
 let string_of_unop = function
     Neg -> "-" | LogNot -> "!" | BitNot -> "~"
 
+let rec comma = function
+    [] -> ""
+  | [str] -> str
+  | str :: strs -> str ^ ", " ^ comma strs
+
 let rec string_of_expr = function
     LitInt(l) ->          "{\"LitInt\":" ^ string_of_int l ^ "}"
   | LitFlt(l) ->          "{\"LitFlt\":" ^ string_of_float l ^ "}"
   | LitString(s) ->       "{\"LitString\":\"" ^ s (* TODO: Escape the string *) ^ "\"}"
-  | LitRange(rowlist) ->  "{\"LitRange\": [" ^ string_of_rowlist rowlist ^ "]}"
+  | LitRange(rowlist) ->  "{\"LitRange\": " ^ string_of_list (Rows rowlist) ^ "}"
   | Id(s) ->              "{\"Id\": \"" ^ s (* TODO: Escape the string *) ^ "\"}"
   | Empty ->              "{\"Empty\": null}"
   | Wild ->               "{\"Wild\": null}"
@@ -67,10 +81,10 @@ let rec string_of_expr = function
   | Switch(eo, cases) ->  "{\"Switch\": {" ^
                             "\"condition\": " ^
                               (match eo with None -> "null" | Some e -> string_of_expr e) ^ ", " ^
-                            "\"cases\": [" ^ string_of_cases cases ^ "]}}"
+                            "\"cases\": " ^ string_of_list (Cases cases) ^ "}}"
   | Call(f, arguments) -> "{\"Call\": {" ^
                             "\"function\": \"" ^ f (* TODO: Escape the string *) ^ "\", " ^
-                            "\"arguments\": [" ^ string_of_exprs arguments ^ "]}}"
+                            "\"arguments\": " ^ string_of_list (Exprs arguments) ^ "}}"
   | Selection(e, s) ->    "{\"Selection\": {" ^
                             "\"expr\": " ^ string_of_expr e ^ ", " ^
                             "\"slices\": " ^ string_of_sel s ^ "}}"
@@ -78,25 +92,9 @@ let rec string_of_expr = function
                             "\"prior_expr\": " ^ string_of_expr e1 ^ ", " ^
                             "\"dependent_expr\": " ^ string_of_expr e2 ^ "}}"
 
-(* TODO: Do this in more idiomatic OCaml *)
-and string_of_rowlist = function
-    [] -> "[{\"error\":\"This shouldnt be possible\"}]"
-  | [row] -> "[" ^ string_of_exprs row ^ "]"
-  | row :: rows -> "[" ^ string_of_exprs row ^ "], " ^ string_of_rowlist rows
-
-and string_of_exprs = function
-    [] -> "[{\"error\":\"This shouldn\'t be possible\"}]"
-  | [col] -> string_of_expr col
-  | col :: cols -> string_of_expr col ^ ", " ^ string_of_exprs cols
-
 and string_of_case (el, e) =
-    "{\"Cases\": " ^ (match el with None -> "null" | Some es -> "[" ^ string_of_exprs es ^ "]") ^ ", " ^
+    "{\"Cases\": " ^ (match el with None -> "null" | Some es -> string_of_list (Exprs es)) ^ ", " ^
      "\"expr\": " ^ string_of_expr e ^ "}"
-
-and string_of_cases = function
-    [c] -> string_of_case c
-  | c :: cs -> string_of_case c ^ ", " ^ string_of_cases cs
-  | [] -> "[{\"error\":\"This shouldn\'t be possible\"}]"
 
 and string_of_sel (s1, s2) =
     "{\"slice1\": " ^ string_of_slice s1 ^ ", \"slice2\": " ^ string_of_slice s2 ^ "}"
@@ -112,62 +110,51 @@ and string_of_index = function
   | Some(DimensionStart) -> "{\"DimensionStart\": null}"
   | Some(DimensionEnd) -> "{\"DimensionEnd\": null}"
 
-let string_of_dim (d1,d2) = "{\"d1\": " ^ (match d1 with None -> "null" | Some e -> string_of_expr e) ^ ", " ^
+and string_of_dim (d1,d2) = "{\"d1\": " ^ (match d1 with None -> "null" | Some e -> string_of_expr e) ^ ", " ^
                              "\"d2\": " ^ (match d2 with None -> "null" | Some e -> string_of_expr e) ^ "}"
 
-let string_of_var (d, s) = "{\"Dimensions\": " ^ string_of_dim d ^ ", " ^
+and string_of_var (d, s) = "{\"Dimensions\": " ^ string_of_dim d ^ ", " ^
                             "\"VarName\": \"" ^ s (* TODO: escape the string *) ^ "\"}"
 
-let string_of_assign (s, selection, eo) =
+and string_of_assign (s, selection, eo) =
     "{\"VarName\": \"" ^ s (* TODO: escape the string *) ^ "\", " ^
      "\"Selection\": " ^ string_of_sel selection ^ ", " ^
      "\"expr\": " ^ (match eo with None -> "null" | Some e -> string_of_expr e) ^ "}"
 
-let string_of_init (s, eo) =
+and string_of_init (s, eo) =
     "{\"VarName\": \"" ^ s (* TODO: escape the string *) ^ "\", " ^
      "\"expr\": " ^ (match eo with None -> "null" | Some e -> string_of_expr e) ^ "}"
 
-let rec string_of_inits = function
-    [] -> "[{\"error\":\"This shouldn\'t be possible\"}]"
-  | [init] -> string_of_init init
-  | init :: inits -> string_of_init init ^ ", " ^ string_of_inits inits
-
-let string_of_stmt = function
+and string_of_stmt = function
     Assign(a) -> "{\"Assign\": " ^ string_of_assign a ^ "}"
   | Vardecl(d, inits) -> "{\"Vardecl\": {\"Dimensions\": " ^ string_of_dim d ^
-                                       ",\"Initializations\": [" ^ string_of_inits inits ^ "]}}"
+                                       ",\"Initializations\": " ^ string_of_list (Inits inits) ^ "}}"
 
-let rec string_of_vars = function
-    [] -> ""
-  | [v] -> string_of_var v
-  | v :: vs -> string_of_var v ^ ", " ^ string_of_vars vs
-
-let rec string_of_stmts = function
-    [] -> ""
-  | [st] -> string_of_stmt st
-  | st :: sts -> string_of_stmt st ^ ", " ^ string_of_stmts sts
-
-let string_of_range (d, e) = "{\"Dimensions\": " ^ string_of_dim d ^ ", " ^
+and string_of_range (d, e) = "{\"Dimensions\": " ^ string_of_dim d ^ ", " ^
                               "\"expr\": " ^ string_of_expr e ^ "}"
 
-let string_of_funcdecl fd =
+and string_of_funcdecl fd =
     "{\"Name\": \"" ^ fd.name (* TODO: Escape the string *) ^ "\"," ^
-     "\"Params\": [" ^ string_of_vars fd.params ^ "]," ^
-     "\"Stmts\": [" ^ string_of_stmts fd.body ^ "]," ^
+     "\"Params\": " ^ string_of_list (Vars fd.params) ^ "," ^
+     "\"Stmts\": " ^ string_of_list (Stmts fd.body) ^ "," ^
      "\"ReturnVal\": " ^ string_of_range fd.ret_val ^ "}"
 
-let rec string_of_strs = function
-    [] -> ""
-  | [str] -> "\"" ^ str (* TODO: Escape the string *) ^ "\""
-  | str :: strs -> "\"" ^ str (* TODO: Escape the string *) ^ "\", " ^ string_of_strs strs
+and quote_string s = "\"" ^ s ^ "\""
 
-let rec string_of_funcs = function
-    [] -> ""
-  | [f] -> string_of_funcdecl f
-  | f :: fs -> string_of_funcdecl f ^ ", " ^ string_of_funcs fs
+and string_of_list l =
+  let stringrep = (match l with
+    Inits (il) -> List.map string_of_init il
+  | Vars(vl) -> List.map string_of_var vl
+  | Stmts(sl) -> List.map string_of_stmt sl
+  | Funcs(fl) -> List.map string_of_funcdecl fl
+  | Exprs(el) -> List.map string_of_expr el
+  | Rows(rl) -> List.map (fun (el : expr list) -> string_of_list (Exprs el)) rl
+  | Strings(sl) -> List.map quote_string sl
+  | Cases(cl) -> List.map string_of_case cl)
+  in "[" ^ comma stringrep ^ "]"
 
 let string_of_program (imp, glb, fs) =
     "{\"Program\": {" ^
-      "\"Imports\": [" ^ string_of_strs imp ^ "]," ^
-      "\"Globals\": [" ^ string_of_stmts glb ^ "]," ^
-      "\"Functions\": [" ^ string_of_funcs fs ^ "]}}"
+      "\"Imports\": " ^ string_of_list (Strings imp) ^ "," ^
+      "\"Globals\": " ^ string_of_list (Stmts glb) ^ "," ^
+      "\"Functions\": " ^ string_of_list (Funcs fs) ^ "}}"

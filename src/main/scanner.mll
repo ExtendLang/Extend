@@ -7,9 +7,7 @@ let id = ['a'-'z' 'A'-'Z']['a'-'z' 'A'-'Z' '0'-'9' '_']*
 let str_lit = ['a'-'z' 'A'-'Z']*
 
 rule token = parse
-  [' ' '\t' '\r' '\n'] { token lexbuf }   (* Whitespace *)
-| "/*"                 { multiline_comment lexbuf }
-| "//"                 { oneline_comment lexbuf }
+  [' ' '\t' '\r' '\n'] { token lexbuf } (* Whitespace *)
 | '['             { LSQBRACK }
 | ']'             { RSQBRACK }
 | '('             { LPAREN }
@@ -36,6 +34,11 @@ rule token = parse
 | '&'             { BITAND }
 | '|'             { BITOR }
 | '^'             { BITXOR }
+| ':'             { COLON }
+| ','             { COMMA }
+| '?'             { QUESTION }
+| '='             { EQ }
+| ';'             { SEMI }
 | '_'             { UNDERSCORE }
 | '+'             { PLUS }
 | '-'             { MINUS }

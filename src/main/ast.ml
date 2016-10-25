@@ -46,15 +46,16 @@ type listable = Inits of init list|
 
 type program = string list * stmt list * func_decl list
 
-let escape_characters = Str.regexp "[\n \t \r \\ \"]"
-let replace_fn s = match Str.matched_string s with
-  "\n" -> "\\n"   |
-  "\t" -> "\\t"   |
-  "\r" -> "\\r"   |
-  "\\" -> "\\\\"  |
-  "\"" -> "\\\""  |
-  _    -> Str.matched_string s in
-let quote_string str = "\"" ^ Str.global_substitute escape_characters replace_fn s ^ "\""
+let quote_string str =
+  let escape_characters = Str.regexp "[\n \t \r \\ \"]" in
+  let replace_fn s = match Str.matched_string s with
+    "\n" -> "\\n"   |
+    "\t" -> "\\t"   |
+    "\r" -> "\\r"   |
+    "\\" -> "\\\\"  |
+    "\"" -> "\\\""  |
+    _    -> Str.matched_string s in
+  "\"" ^ Str.global_substitute escape_characters replace_fn str ^ "\""
 
 let string_of_op o = "\"" ^ (match o with
     Plus -> "+" | Minus -> "-" | Times -> "*" | Divide -> "/" | Mod -> "%" | Pow -> "**" |

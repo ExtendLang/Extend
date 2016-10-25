@@ -6,4 +6,4 @@ The built-in \texttt{fopen} and \texttt{fclose} functions open and close file po
 \subsection{Reading and Writing}
 The built-in \texttt{fread}, \texttt{freadline}, and \texttt{fwrite} functions read from and write to an open file pointer.  \texttt{fread} takes a maximum number of bytes and a file pointer as arguments and returns a 1-by-n range, where n is the lesser of the number of bytes actually read and the maximum number of bytes requested. If the maximum number of bytes requested is \texttt{empty}, the entire contents of the file are returned. \texttt{freadline} takes a file pointer as argument and returns a 1-by-n range, where n is the number of bytes between the current position of the file pointer and the first newline encountered or EOF, whichever occurs first. The newline, if present, is included in the returned range. The arguments to \texttt{fwrite} are a 1-by-n range and a file pointer and the return value is \texttt{empty}.
 \subsubsection{Example using the precedence operator}
-\lstinputlisting{./tex/fileio_precedence.xtnd}
+\lstinputlisting{./samples/fileio_precedence.xtnd}

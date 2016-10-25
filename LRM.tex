@@ -28,6 +28,7 @@
 \usepackage{csquotes}
 \usepackage{colortbl}
 \usepackage{indentfirst}
+\usepackage[T1]{fontenc}
 \linespread{2}
 \lstset{basicstyle=\footnotesize\ttfamily,breaklines=true,lineskip={-1pt}}
 \titlelabel{\thetitle.\quad}
@@ -44,20 +45,9 @@
 \maketitle
 \tableofcontents
 \input{tex/Intro}
-\section{Expressions}
-\subsection{Operators}
-\subsubsection{Multiplication}
-\subsubsection{Addition}
-\subsubsection{Unary}
-\subsection{Booleans}
-\subsection{Variable Declaration}
-\subsection{Variable Assignment}
-\subsection{Conditionals}
+\input{./tex/Expressions.tex}
 \input{./tex/Functions.tex}
-\section{File I/O} \label{IO}
-\subsection{File}
-\subsection{Input Arguments}
-\subsubsection{How to run a program}
-\subsubsection{Main function}
-\section{Example Program}
+\input{./tex/FileIO.tex}
+\input{./tex/EntryPoint.tex}
+\input{./tex/ExampleProgram.tex}
 \end{document}

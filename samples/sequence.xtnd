@@ -1,12 +1,20 @@
+main([1,n] args) {
+  seqFP := open(args[0]);
+  seq1 := readline(seqFP)[:-2]; // discard newline
+  seq2 := seq1 -> readline(seqFP)[:-2];
+  alignment := computeSequenceAlignment(seq1, seq2, 1, -1, -3);
+  output := write(alignment[:,0], STDOUT) ->
+            write(alignment[:,1], STDOUT) ->
+            close(seqFP);
+  return output;
+}
+
 [_,2] computeSequenceAlignment([m,1] seq1, [n,1] seq2,
-matchReward, mismatchPenalty, gapPenalty) {
+  matchReward, mismatchPenalty, gapPenalty) {
 
   [m, n] scoreFromMatch, scoreFromLeft, scoreFromTop;
   [m, n] step, path;
-
-
   [1,n] seq2T := transpose(seq2);
-
   [m+1,n+1] score;
 
   score[0, 0] = 0;

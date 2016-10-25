@@ -46,13 +46,20 @@ type listable = Inits of init list|
 
 type program = string list * stmt list * func_decl list
 
-let string_of_op = function
+let rxnewline = Str.regexp "\n";;
+let rxtab = Str.regexp "\t";;
+let rxreturn = Str.regexp "\r";;
+let rxbackslash = Str.regexp "\\";;
+let rxquote = Str.regexp "\"";;
+
+let string_of_op o = "\"" ^ (match o with
     Plus -> "+" | Minus -> "-" | Times -> "*" | Divide -> "/" | Mod -> "%" | Pow -> "**" |
     LShift -> "<<" | RShift -> ">>" | BitOr -> "|" | BitAnd -> "&" | BitXor -> "^" |
-    Eq -> "==" | NotEq -> "!-" | Gt -> ">" | Lt -> "<" | GtEq -> ">=" | LtEq -> "<=" | LogAnd -> "&& " | LogOr -> "||"
+    Eq -> "==" | NotEq -> "!-" | Gt -> ">" | Lt -> "<" | GtEq -> ">=" | LtEq -> "<=" |
+    LogAnd -> "&& " | LogOr -> "||" ) ^ "\""
 
 let string_of_unop = function
-    Neg -> "-" | LogNot -> "!" | BitNot -> "~"
+    Neg -> "\"-\"" | LogNot -> "\"!\"" | BitNot -> "\"~\""
 
 let rec comma = function
     [] -> ""
@@ -62,17 +69,17 @@ let rec comma = function
 let rec string_of_expr = function
     LitInt(l) ->          "{\"LitInt\":" ^ string_of_int l ^ "}"
   | LitFlt(l) ->          "{\"LitFlt\":" ^ string_of_float l ^ "}"
-  | LitString(s) ->       "{\"LitString\":\"" ^ s (* TODO: Escape the string *) ^ "\"}"
+  | LitString(s) ->       "{\"LitString\":" ^ quote_string s ^ "}"
   | LitRange(rowlist) ->  "{\"LitRange\": " ^ string_of_list (Rows rowlist) ^ "}"
-  | Id(s) ->              "{\"Id\": \"" ^ s (* TODO: Escape the string *) ^ "\"}"
+  | Id(s) ->              "{\"Id\": " ^ quote_string s ^ "}"
   | Empty ->              "{\"Empty\": null}"
   | Wild ->               "{\"Wild\": null}"
   | BinOp(e1, o, e2) ->   "{\"BinOp\": {" ^
                             "\"expr1\": " ^ string_of_expr e1 ^ ", " ^
-                            "\"operator\": \"" ^ string_of_op o ^ "\", " ^
+                            "\"operator\": " ^ string_of_op o ^ ", " ^
                             "\"expr2\": " ^ string_of_expr e2 ^ "}}"
   | UnOp(o, e) ->         "{\"UnOp\": {" ^
-                            "\"operator\": \"" ^ string_of_unop o ^ "\", " ^
+                            "\"operator\": " ^ string_of_unop o ^ ", " ^
                             "\"expr\": " ^ string_of_expr e ^ "}}"
   | Ternary(c, e1, e2) -> "{\"Ternary\": {" ^
                             "\"condition\": " ^ string_of_expr c ^ ", " ^
@@ -83,7 +90,7 @@ let rec string_of_expr = function
                               (match eo with None -> "null" | Some e -> string_of_expr e) ^ ", " ^
                             "\"cases\": " ^ string_of_list (Cases cases) ^ "}}"
   | Call(f, arguments) -> "{\"Call\": {" ^
-                            "\"function\": \"" ^ f (* TODO: Escape the string *) ^ "\", " ^
+                            "\"function\": " ^ quote_string f ^ ", " ^
                             "\"arguments\": " ^ string_of_list (Exprs arguments) ^ "}}"
   | Selection(e, s) ->    "{\"Selection\": {" ^
                             "\"expr\": " ^ string_of_expr e ^ ", " ^
@@ -114,15 +121,15 @@ and string_of_dim (d1,d2) = "{\"d1\": " ^ (match d1 with None -> "null" | Some e
                              "\"d2\": " ^ (match d2 with None -> "null" | Some e -> string_of_expr e) ^ "}"
 
 and string_of_var (d, s) = "{\"Dimensions\": " ^ string_of_dim d ^ ", " ^
-                            "\"VarName\": \"" ^ s (* TODO: escape the string *) ^ "\"}"
+                            "\"VarName\": " ^ quote_string s ^ "}"
 
 and string_of_assign (s, selection, eo) =
-    "{\"VarName\": \"" ^ s (* TODO: escape the string *) ^ "\", " ^
+    "{\"VarName\": " ^ quote_string s ^ ", " ^
      "\"Selection\": " ^ string_of_sel selection ^ ", " ^
      "\"expr\": " ^ (match eo with None -> "null" | Some e -> string_of_expr e) ^ "}"
 
 and string_of_init (s, eo) =
-    "{\"VarName\": \"" ^ s (* TODO: escape the string *) ^ "\", " ^
+    "{\"VarName\": " ^ quote_string s ^ ", " ^
      "\"expr\": " ^ (match eo with None -> "null" | Some e -> string_of_expr e) ^ "}"
 
 and string_of_stmt = function
@@ -134,12 +141,21 @@ and string_of_range (d, e) = "{\"Dimensions\": " ^ string_of_dim d ^ ", " ^
                               "\"expr\": " ^ string_of_expr e ^ "}"
 
 and string_of_funcdecl fd =
-    "{\"Name\": \"" ^ fd.name (* TODO: Escape the string *) ^ "\"," ^
+    "{\"Name\": " ^ quote_string fd.name ^ "," ^
      "\"Params\": " ^ string_of_list (Vars fd.params) ^ "," ^
      "\"Stmts\": " ^ string_of_list (Stmts fd.body) ^ "," ^
      "\"ReturnVal\": " ^ string_of_range fd.ret_val ^ "}"
 
-and quote_string s = "\"" ^ s ^ "\""
+and quote_string s = "\"" ^
+  Str.global_replace rxnewline "\\n" (
+    Str.global_replace rxtab "\\t" (
+      Str.global_replace rxbackslash "\\\\" (
+        Str.global_replace rxreturn "\\r" (
+          Str.global_replace rxquote "\\\"" s
+        )
+      )
+    )
+  ) ^ "\""
 
 and string_of_list l =
   let stringrep = (match l with

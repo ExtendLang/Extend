@@ -46,11 +46,15 @@ type listable = Inits of init list|
 
 type program = string list * stmt list * func_decl list
 
-let rxnewline = Str.regexp "\n";;
-let rxtab = Str.regexp "\t";;
-let rxreturn = Str.regexp "\r";;
-let rxbackslash = Str.regexp "\\";;
-let rxquote = Str.regexp "\"";;
+let escape_characters = Str.regexp "[\n \t \r \\ \"]"
+let replace_fn s = match Str.matched_string s with
+  "\n" -> "\\n"   |
+  "\t" -> "\\t"   |
+  "\r" -> "\\r"   |
+  "\\" -> "\\\\"  |
+  "\"" -> "\\\""  |
+  _    -> Str.matched_string s in
+let quote_string str = "\"" ^ Str.global_substitute escape_characters replace_fn s ^ "\""
 
 let string_of_op o = "\"" ^ (match o with
     Plus -> "+" | Minus -> "-" | Times -> "*" | Divide -> "/" | Mod -> "%" | Pow -> "**" |
@@ -145,17 +149,6 @@ and string_of_funcdecl fd =
      "\"Params\": " ^ string_of_list (Vars fd.params) ^ "," ^
      "\"Stmts\": " ^ string_of_list (Stmts fd.body) ^ "," ^
      "\"ReturnVal\": " ^ string_of_range fd.ret_val ^ "}"
-
-and quote_string s = "\"" ^
-  Str.global_replace rxnewline "\\n" (
-    Str.global_replace rxtab "\\t" (
-      Str.global_replace rxbackslash "\\\\" (
-        Str.global_replace rxreturn "\\r" (
-          Str.global_replace rxquote "\\\"" s
-        )
-      )
-    )
-  ) ^ "\""
 
 and string_of_list l =
   let stringrep = (match l with

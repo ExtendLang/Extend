@@ -1,9 +1,25 @@
-\section{File I/O}
+\section {Built-In Functions}
+\subsection{isEmpty}
+Since \texttt{empty} cannot be compared to any other value using the boolean operators, the built-in function \texttt{isEmpty(expr)} can be used to determine whether the supplied expression evaluates to \texttt{empty}. It returns 1 if the supplied argument is empty and 0 otherwise.
+\subsection{Dimension and Position Functions}
+The built-in function \texttt{size(expr)} returns a 1x2 range containing the number of rows and columns, in that order, of the value of that expression. \texttt{size(empty)} returns \texttt{\{0, 0\}}. The built-in functions \texttt{row()} and \texttt{column()} return the row index or column index of the cell in which they are evaluated. Examples include:
+
+\begin{lstlisting}
+/* The 5x5 identity matrix */
+[5,5] id := row() == column() ? 1 : 0; 
+
+/* A 1x10 range in which the first 5 cells evaluate to "left"
+   and the next 5 cells evaluate to "right" */
+[1,10] left_half := column() < 5 ? "left" : "right";
+\end{lstlisting}
+\subsection{Serialization and Deserialization}
+The built in functions \texttt{toString(expr)} and \texttt{fromString(s)} will serialize an expression to a string and vice versa. If expr is a range, \texttt{toString()} will evaluate the value of every cell in the range, proceeding from left to right within a row and from top to bottom within the range, and will produce a string that could be used as a range literal in a source file. \texttt{fromString()} will do the reverse.
+\subsection{File I/O}
 \label{sec:IO}
 Although the anticipated use cases of Extend generally do not include highly interactive programs, the language has built-in functions that allow the developer to read from and write to files, including standard input, output, and error. These functions are the only part of the language with side effects; as a result, the dependencies between expressions referencing the file I/O functions should be carefully analyzed by the developer to ensure that the program behaves as intended. The precedence operator \texttt{->} can be used to create an artificial dependency between expressions to enforce the correct order of evaluation.
-\subsection{File Pointers}
+\subsubsection{File Pointers}
 The built-in \texttt{open} and \texttt{close} functions open and close file pointers for reading and writing. An attempt to open a nonexistent file, or a file that the user does not have permission to read and write, will result in a runtime error causing the program to halt, as will an attempt to close a file pointer that is not open. The return value of \texttt{open} is a range that can be supplied as the file pointer argument to \texttt{close}, \texttt{read}, or \texttt{write}. The return value of \texttt{close} is \texttt{empty}. The built-in variables \texttt{STDIN}, \texttt{STDOUT}, and \texttt{STDERR} refer to file pointers that do not need to be opened or closed.
-\subsection{Reading and Writing}
+\subsubsection{Reading and Writing}
 The built-in \texttt{read}, \texttt{readline}, and \texttt{write} functions read from and write to an open file pointer.  \texttt{read} takes a maximum number of bytes and a file pointer as arguments and returns a 1-by-n range, where n is the lesser of the number of bytes actually read and the maximum number of bytes requested. If the maximum number of bytes requested is \texttt{empty}, the entire contents of the file are returned. \texttt{readline} takes a file pointer as argument and returns a 1-by-n range, where n is the number of bytes between the current position of the file pointer and the first newline encountered or EOF, whichever occurs first. The newline, if present, is included in the returned range. The arguments to \texttt{write} are a 1-by-n range and a file pointer and the return value is \texttt{empty}.
 \subsubsection{Example using the precedence operator}
 \lstinputlisting{./samples/fileio_precedence.xtnd}

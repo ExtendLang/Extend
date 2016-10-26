@@ -2,7 +2,7 @@
 Functions lie at Extend's core; however, they are not \textit{first class objects}. Since it can be verbose to write certain operations in Extend, the language will feature a small number of built-in functions and and a comprehensive standard library. An important set of built-in functions will handle I/O (see section~\ref{sec:IO}). Besides the built-in file I/O functions, all functions in Extend are free of side effects.
 \subsection{Format}
 Every function in Extend follows the same format, but allows some optional declarations. As in most programming languages, the header of the function declares the parameters it accepts and the dimensions of the return value. The body of the function consists of an optional set of variable declarations and formula assignments, which can occur in any order, and a return statement, which must be the last statement in the function body. All variable declarations and formula assignments, in addition to the return statement, must be terminated by a semicolon.
-This very simple function simply returns whatever value is passed into it:
+This very simple function returns whatever value is passed into it:
 \lstinputlisting{./samples/functions_simple.xtnd}
 The leading \texttt{[1,1]} marks the return dimensions. \texttt{foo} is the function name. In parentheses the function arguments are declared, again with dimensions of the input. The body of the function follows, which in this case is only the return statement.
 \subsection{Variable Declaration}
@@ -20,11 +20,12 @@ A formula assignment assigns an expression to a subset of the cells of a variabl
 foo[0,0] = 42; // Assigns the expression 42 to the first cell of the first row of foo
 foo[0,1] = foo[0,0] * 2; // Assigns (foo[0,0] * 2) to the 2nd cell of the 1st row of foo
 bar = 3.14159; // Assigns pi to every cell of every row of bar
-/* The next line assigns foo[[-1],0] + 1 to every cell
-   in both columns of foo, except for the first row */
+
+/* The next line assigns foo[[-1],0] + 1 to every cell in 
+   both columns of foo, besides the first row */
 foo[1:,0:1] = foo[[-1],0] + 2; 
 \end{lstlisting}
-The last line of the source snippet above demonstrates the idiomatic Extend way of simulating an imperative language's loop; foo[4,0] would evaluate to 42+2+2+2+2 = 50 and foo[4,1] would evaluate to (42*2)+2+2+2+2 = 92.
+The last line of the source snippet above demonstrates the idiomatic Extend way of simulating an imperative language's loop; foo[4,0] would evaluate to 42+2+2+2+2 = 50 and foo[4,1] would evaluate to (42*2)+2+2+2+2 = 92. Although this may appear wasteful, intermediate values can be garbage collected once they are no longer needed to calculate the function's return value.
 \subsubsection{Combined Variable Declaration and Formula Assignment}
 For convenience, a variable declaration and a formula assignment to all cells of that variable can be combined on a single line by inserting a \texttt{:=} and an expression after the identifier. Multiple variables and assignments, separated by commas, can be declared on a single line as well.
 \begin{lstlisting}
@@ -33,10 +34,12 @@ For convenience, a variable declaration and a formula assignment to all cells of
 [2,2] foo := 1, bar := 2; 
 \end{lstlisting}
 \subsection{Dimension Assignment}
-\par Extend will feature gradual typing for function declarations. This will enable users with a weak experience in typing to use the language, but maintains the ability to improve during development.
-\par To avoid specifying the return dimensions, an underscore can be used. This marks a variable range. Thus our function now looks like this:
+\par Extend will feature gradual typing for function declarations. This will enable users with a weak experience in typing to use the language, while allowing more sophisticated developers to enforce type checking at compile time. In addition, it allows the developer to return ranges whose size is an unpredictable or complex function of the inputs. 
+\par To avoid specifying the precise return dimensions, an underscore can be used. This marks a variable range. Thus our function now looks like this:
 \lstinputlisting{./samples/functions_dim_range_u.xtnd}
 Here we are selecting a range from arg1 that depends on the value of arg2 and can therefore not be known ahead of time.
+\subsection{Parameter Declarations}
+If a parameter is declared with an identifier for the dimensions, instead of an integer literal, that identifier will contain the dimension size of the argument inside the function. In addition, expressions consisting solely of other identifiers are allowed, and will cause a run-time error if the sizes of the arguments are not consistent. 
 \par However Extend will feature even more options to specify ranges. If a certain operation should be applied to a range of numbers of unknown size, the size can be inferred at runtime and match the return size:
 \lstinputlisting{./samples/functions_dim_range_v.xtnd}
 This function will add 1 to each element in arg. Notice, that \texttt{m} is used across the function as a variable identifier to apply the operation to the range.

@@ -33,12 +33,12 @@ import "string.xtnd";
 	\subsection{Ranges}
 		Extend has one composite type, the \textbf{range}. A range borrows conceptually from spreadsheets; it is a group of cells with two dimensions, described as rows and columns. Each cell contains a formula that either evaluates to a number or another range. Cell formulas are described in detail in section~\ref{sec:formula}. A range can either be declared as described in section~\ref{sec:vardecl} or with a range literal expression.
 \subsubsection{Range and String Literals}
-		A range literal is a semicolon-delimited list of rows, enclosed in curly brackets. Each row is a comma-delimited list of numbers or ranges. In addition, a range literal can be written in the form of a string literal, which represents a 1-by-n range corresponding to the ASCII values of the contents of the string. A few examples follow: 
+		A range literal is a semicolon-delimited list of rows, enclosed in curly brackets. Each row is a comma-delimited list of numbers or range literals. In addition, a range literal can be written in the form of a string literal, which represents a 1-by-n range corresponding to the ASCII values of the contents of the string. A few examples follow: 
 		
 \begin{lstlisting}
 {2,3,4} /* A range consisting of 1 row and 3 columns */
 {1,0,0;0,1,0;0,0,1} /* A range corresponding to the 3x3 identity matrix */
 "hello" /* Equivalent to {104,101,108,108,111} */
-{"hello";"world"} /* A range with 2 rows and 1 column; 
+{"don't";"panic"} /* A range with 2 rows and 1 column; 
 both cells of the range contain a range */
 \end{lstlisting}

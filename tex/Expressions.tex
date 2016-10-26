@@ -92,20 +92,7 @@ expr && expr
 expr || expr
 		\end{lstlisting}
 		
-	\subsection{Variable Declaration}
-		A variable declaration generally associates an identifier or name with a variable. In Extend, a variable declaration specifies a variable name and also the dimensions the variable. An example of this can be seen below:
-		\begin{lstlisting}
-/* This is declaring a variable foo with a range consisting of m rows and n columns */
-[m, n] foo;
-		\end{lstlisting}
-	\subsection{Variable Assignment}
-		A variable assignment sets and/or resets a value stored in a variable name. In Extend, this means setting and/or resetting values stores in one or more cells that are reference by a variable name. An example of this can be seen below:
-		\begin{lstlisting}
-/* This is declaring a variable foo with a range consisting of 1 rows and 1 columns,   */
-/* which equals to one cell, setting the value equal to 3 and then resetting it to 5. */
-[1, 1] foo = 3;
-foo = 5;
-		\end{lstlisting}
+
 	\subsection{Conditionals}
 		Conditionals statements and conditional expressions allow you to control your program to do different actions in different situations. Extend uses the operators Switch, Case, and Default to do this. A Switch statement evaluates an expression, checks each Case statement for a match and executes the statements in that Case statement. If none of these cases match, then it will execute the Default case. An example of this is shown below:
 		\begin{lstlisting}

@@ -1,9 +1,23 @@
 \section{Functions}
 Functions lie at Extend's core; however, they are not \textit{first class objects}. Since it can be verbose to write certain operations in Extend, the language will feature a comprehensive number of built-in and standard library function. An important built-in function will be I/O (see section~\ref{sec:IO}).
 \subsection{Format}
-Every function in Extend follows the same format, but allows some optional declarations. As in most programming languages the header of the function declares the parameters it accepts and the return type. The simplest function is this:
+Every function in Extend follows the same format, but allows some optional declarations. As in most programming languages the header of the function declares the parameters it accepts and the return dimensions. A very simple function is this:
 \lstinputlisting{./samples/functions_simple.xtnd}
 This function simply returns whatever value is passed into it. The leading \texttt{[1,1]} marks the return dimensions. \texttt{foo} is the function name. In parentheses the function arguments are declared, again with dimensions of the input. The body of the function follows, which in this case is only the return statement.
+\subsection{Variable Declaration}
+A variable declaration generally associates an identifier or name with a variable. In Extend, a variable declaration specifies a variable name and also the dimensions the variable. An example of this can be seen below:
+\begin{lstlisting}
+/* This is declaring a variable foo with a range consisting of m rows and n columns */
+[m, n] foo;
+\end{lstlisting}
+\subsection{Variable Assignment}
+A variable assignment sets and/or resets a value stored in a variable name. In Extend, this means setting and/or resetting values stores in one or more cells that are reference by a variable name. An example of this can be seen below:
+\begin{lstlisting}
+/* This is declaring a variable foo with a range consisting of 1 rows and 1 columns,   */
+/* which equals to one cell, setting the value equal to 3 and then resetting it to 5. */
+[1, 1] foo = 3;
+foo = 5;
+\end{lstlisting}
 \subsection{Dimension Assignment}
 \par Extend will feature gradual typing for function declarations. This will enable users with a weak experience in typing to use the language, but maintains the ability to improve during development.
 \par To avoid specifying the return dimensions, an underscore can be used. This marks a variable range. Thus our function now looks like this:
@@ -11,12 +25,12 @@ This function simply returns whatever value is passed into it. The leading \text
 Here we are selecting a range from arg1 that depends on the value of arg2 and can therefore not be known ahead of time.
 \par However Extend will feature even more options to specify ranges. If a certain operation should be applied to a range of numbers of unknown size, the size can be inferred at runtime and match the return size:
 \lstinputlisting{./samples/functions_dim_range_v.xtnd}
-This function will add 1 to each element in arg. Notice, that \texttt{m} is used across the function to apply the operation to the range.
+This function will add 1 to each element in arg. Notice, that \texttt{m} is used across the function as a variable identifier to apply the operation to the range.
 \par Summarizing, we have 3 ways of specifying a return range:\newline
 \begin{tabularx}{\columnwidth}{| c | c | X |} \hline
 Type & Symbol Example & Description \\ \hline
 Number & 3 & A number is the simplest descriptor. It specifies the absolute return size \\ \hline
-Variable & bar & A variable identifier. To use this, the identifier must also be present as a range descriptor in a function parameter. \\ \hline
+Expression & bar * 2 & An expression that can be anything, ranging from a simple arithmetic operation to a function call. To use this, any identifier used, must also be present as a range descriptor in a function parameter. \\ \hline
 Underscore & \_ & This marker is unique, since it is a wildcard. While the other options aim to be specific, the underscore circumvents declaring the range size. \\ \hline
 \end{tabularx}
 \subsection{Application on Ranges}
@@ -24,7 +38,7 @@ Extend gives the developer the power to easily apply operations in a functional 
 \lstinputlisting{./samples/functions_range_single.xtnd}
 If we want to apply a function to the whole range at once we drop the leading symbol. Thus matrix addition takes the following shape:
 \lstinputlisting{./samples/functions_range.xtnd}
-While both function above result in the same value, and only show the syntactical difference, more involved functions. If we wanted each cell to to be the square root divided by the sum of the input we have the following:
+While both function above result in the same value, and only show the syntactical difference. If we wanted each cell to to be the square root divided by the sum of the input we have the following:
 \lstinputlisting{./samples/functions_range_mix.xtnd}
 Notice that \texttt{arg} is only once preceded by \texttt{\#}.
 \subsection{Dependencies Illustrated}
@@ -43,4 +57,4 @@ The dependency graph will look like this: \newline
 		\draw (4) to (5);
 		\draw (2) to (4);
 \end{tikzpicture} \newline
-Notice that \texttt{faz} does not appear in the graph, because it is not relevant for the return value. Ultimately this graph enables the Extend to find the leaves, evaluate code paths in the best configuration and even in parallel.
+Notice that \texttt{faz} does not appear in the graph, because it is not relevant for the return value. Ultimately this graph enables Extend to find the leaves, evaluate code paths in the best configuration and even in parallel.

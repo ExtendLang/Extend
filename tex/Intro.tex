@@ -4,8 +4,7 @@
 	Extend's syntax is meant to provide clear punctuation and easily understandable cell range access specifications, while borrowing elements from languages with C-style syntax for ease of development. Despite these syntactic similarities, the semantics of an Extend program have more in common with a spreadsheet such as Microsoft Excel than imperative languages such as C, Java or Python.
 \section{Structure of an Extend Program}
 \label{sec:Grammar}
-	An Extend program consists of one or more source files. A source file consists of an optional set of import directives, an optional set of global variable declarations, and an optional set of function declarations, in that order. The grammar for a source file is displayed below:
-\lstinputlisting{./src/main/parser.mly}
+	An Extend program consists of one or more source files. A source file consists of an optional set of import directives, an optional set of global variable declarations, and an optional set of function declarations, in that order. 
 	\subsection{Import Statements}
 		Import statements in Extend are written with \texttt{import}, followed by the name of a file in double quotes, and terminated with a semicolon. The syntax is as follows:
 		\begin{lstlisting}
@@ -37,7 +36,7 @@ import "string.xtnd";
 		
 \begin{lstlisting}
 {2,3,4} /* A range consisting of 1 row and 3 columns */
-{1,0,0;0,1,0;0,0,1} /* A range corresponding to the 3x3 identity matrix */
+{1,0,0; 0,1,0; 0,0,1} /* A range corresponding to the 3x3 identity matrix */
 "hello" /* Equivalent to {104,101,108,108,111} */
 {"don't";"panic"} /* A range with 2 rows and 1 column; 
 both cells of the range contain a range */

@@ -1,110 +1,78 @@
 \section{Expressions}
-	Expressions in Extend allows for arithmetic and boolean operations, function calls, conditional branching, and extraction of contents of other variables. In Section 2 “Structure of an Extend Program,” it shows the OCAML grammar for Extend and exactly what an expression can be under “expr:”. In this section, Extend expressions are broken down into the following 5 categories: Operators, Booleans, Variable Declaration, Variable Assignment, and Conditionals.
-
-
+	Expressions in Extend allows for arithmetic and boolean operations, function calls, conditional branching, and extraction of contents of other variables. In Section 2, the structure of an Extend program is shown, specifying what an expression \texttt{expr} can be. In this section, Extend expressions are broken down further into range slicing and the different types of operators alongside their order of precedence.
 	\subsection{Operators}
-		Extend has three different operator types: \textbf{Multiplication}, \textbf{Addition}, and \textbf{Unary}. The precedence of the operators are listed in order from the highest starting in section 4.1.1. and each subsequent subsection is of lower precedence than the previous subsection. 
-		\newline
-
-		\subsubsection{Multiplication, Quotient, and Modulo}
-			The multiplication, division, and modulo operators are of equal and highest precedence when it comes to operations. The expressions for all three operators are arithmetic types.
-			\newline
-			\underline{\textbf{Multiplication}}\newline
-			The binary '*' operator computes the \textbf{multiplication} of two expressions.
+		Extend has arithmetic, boolean, and conditional operators in addition to the ability to slice ranges, which is documented below. The operators for each type are listed in order of descending precedence below in this section.
+		\subsubsection{Range Slicing}
+			As mentioned earlier, the composite \textbf{range} type has the ability to slice in both an absolute and relative fashion. Slicing allows the programmer to capture a portion of the range in either dimension, with the first dimension specified being inclusive and the second being exclusive. There are multiple ways to slice ranges, which are illustrated below.\newline
 			\begin{lstlisting}
-Syntax:
-expr * expr 
+foo[1,2] /* This evaluates to the cell value at row 1, column 2. */
+foo[1,] /* Evaluates to the range of cells in row 1. */
+foo[,2] /* Evaluates to the range of cells in column 2.*/
+foo[,[1]] /* The internal brackets denote RELATIVE notation. 
+In this case, 1 column right of the one currently being operated on. */ 
+foo[5:, 7:] /* 5th row down, and 7th column from the absolute origin.
+foo[[1:2], [5:7]] 
+/* Selects the rows between the 1st and 2nd row from current row */
+/* Selects the columns between 5th and 7th column from current column */
 			\end{lstlisting}
-			\underline{\textbf{Quotient}}\newline
-			The binary '/' operator computes the \textbf{quotient} of two expressions. The quotient operator will perform the quotient as a decimal operation. This means that if you assign both expressions are of type integer, then the result will be an integer. For example, the quotient of 5/2 will compute to 2 and not 2.5. This can be solved by making one or both expressions to type float. Another thing to note is that if the second expression or divisor is 0, then it will yield an undefined value.
+			It's important to note that the value of a range that is not 1 by 1 is a range, but the value of a 1 by 1 range is dereferenced to the result of the cell formula.
+		\subsubsection{Arithmetic Operators} 
+			Expressions that return a number. Operators grouped within the same inner box have the same level of precedence, which is defined from highest to lowest.
+			\begin{table}[H]
+			\begin{tabular}{ |p{2cm}|p{3cm}|p{8cm}|  }
+			\hline
+			\textbf{Operator} & \textbf{Description} & \textbf{Definition} \\ \hline
+			\texttt{~} & \texttt{Bitwise NOT } & {Performs a bitwise negation on the binary representation of an expression.} \\
+			\texttt{-} & \texttt{Negative unary} & {A simple negative sign to negate expressions.} \\ \hline
+			\texttt{**} & \texttt{Power} & {Adds exponents to expressions} \\ \hline
+			\texttt{*} & \texttt{Multiplication} & {Multiplies two expressions} \\
+			\texttt{/} & \texttt{Division} & {Divides one number into another}. \\
+			\texttt{\%} & \texttt{Modulo} & {Finds the remainder by dividing the expression on the left side of the modulo by the right side expression.} \\
+			\texttt{<<} & \texttt{Left Shift} & {Performs a bitwise left shift on the binary representation of an expression.} \\
+			\texttt{>>} & \texttt{Right Shift} & {Performs a bitwise right shift on the binary representation of an expression.} \\
+			\texttt{\&} & \texttt{Bitwise AND} & {Performs a bitwise AND between two expressions. If both expressions have a 1 at the same digit, the resultant expression will have a 1 there; otherwise, it is 0.} \\ \hline
+			\texttt{+} & \texttt{Addition} & {Adds two expressions together.} \\
+			\texttt{-} & \texttt{Subtraction} & {Subtracts one expression from another.} \\
+			\texttt{|} & \texttt{Bitwise OR} & {Performs a bitwise OR between two expressions. If at least one of the expressions has a one at the same digit, the resultant expression will have a 1 there; otherwise, it is 0.} \\
+			\texttt{\^} & \texttt{Bitwise XOR} & {Performs a bitwise exclusive OR between two expressions. If exactly one of the expressions has a one in the same digit, the resultant expression will have a 1 there; otherwise it is 0.} \\ \hline
+			\end{tabular}
+			\end{table}
+		\subsubsection{Boolean Operators}
+			Expressions that return 0 or 1. Operators grouped within the same inner box have the same level of precedence, which is defined from highest to lowest.
+			\begin{table}[H]
+			\begin{tabular}{ |p{2cm}|p{5cm}|p{7cm}|  }
+			\hline
+			\textbf{Operator} & \textbf{Description} & \textbf{Definition} \\ \hline
+			\texttt{!} & \texttt{Logical NOT} & {Turns truthy values false and vice versa.} \\ \hline
+			\texttt{==} & \texttt{Equals} & {Evaluates to true if the two expressions are the same - empty if one or more of the expressions is \texttt{empty}.} \\
+			\texttt{!=} & \texttt{Not equals} & {Evaluates to true if the expressions are not the same.} \\
+			\texttt{<} & \texttt{Less than} & {Evaluates to true if the first expression is less than the first.} \\
+			\texttt{>} & \texttt{Greater than} & {Evaluates to true if the first expression is greater than the first.}. \\
+			\texttt{<=} & \texttt{Less than or equals to} & {Evaluates to true if the first expression is less than or equals to the second.} \\
+			\texttt{>=} & \texttt{Greater than or equals to} & {Evaluates to true if the first expression is less than or equals to the second.} \\ \hline
+			\texttt{\&\&} & \texttt{Logical AND} & {Returns true if both expressions evaluate to true, otherwise false.} \\ \hline
+			\texttt{||} & \texttt{Logical OR} & {Returns true if at least one of the two expressions evaluate to true.} \\ \hline
+			\end{tabular}
+			\end{table}
+		\subsubsection{Conditional Operators}
+			Expressions that evaluate a certain statement based on the truthiness of a certain expression. There are two types of conditional statements, \texttt{?} and \texttt{switch}.
+			
+			The \texttt{?} symbol works like an if-else conditional statement. An example is shown below:
 			\begin{lstlisting}
-Syntax:
-expr / expr 
+val ? foo: bar;
 			\end{lstlisting}
-			\underline{\textbf{Modulo}}\newline
-			The binary '\%' operator computes the \textbf{modulo} of two expressions. The modulo operator finds the remainder from dividing the expression to the left of the modulo symbol, the dividend, with the expression to the right of the modulo symbol, the divisor. For the modulo operator to return a correct value, the expression to the left of the modulo symbol or dividend must be greater than 0.
+			This statement will evaluate to \texttt{foo} if \texttt{val} is truthy; otherwise, it evaluates to \texttt{bar}.
+			
+			The \texttt{switch} statement takes a optional parameter, and a list of cases that correspond with case statements should the case evaluate to true. In the event that multiple cases are true, the statement of the first true case encountered will be evaluated. An example is provided below:
 			\begin{lstlisting}
-Syntax:
-expr % expr 
-			\end{lstlisting}
-		\subsubsection{Addition and Subtraction}
-			The Addition and Subtraction operators are of equal and second highest precedence after Multiplication, Division, and Modulo when it comes to operations. The expressions for all three operators are also arithmetic types.
-			\newline
-			\underline{\textbf{Addition}}\newline
-			The binary operator ‘+’ computes the addition of two expressions. 
-			\begin{lstlisting}
-Syntax:
-expr + expr 
-			\end{lstlisting}
-			\underline{\textbf{Subtraction}}\newline
-			The binary operator ‘-’ computes the subtraction of two expressions. 
-			\begin{lstlisting}
-Syntax:
-expr - expr 
-			\end{lstlisting}
-		\subsubsection{Unary}
-			The unary operators operate on a single expression. Extend uses three unary operators: Minus, Logical Complement, and Bitwise Complement.
-			\newline
-			\underline{\textbf{Minus}}\newline
-			The unary Minus operator '-' can be used to negate numbers of type integer, decimal and floating-point.
-			\begin{lstlisting}
-Syntax:
--expr 
-			\end{lstlisting}
-			\underline{\textbf{Logical Complement}}\newline
-			The unary Logical Complement Operator '!', also known as negation, can be used to negate a boolean type.
-			\begin{lstlisting}
-Syntax:
-!expr 
-			\end{lstlisting}
-			\underline{\textbf{Bitwise Complement}}\newline
-			The unary Bitwise Complement Operator '\textasciitilde' can be used to to get the bitwise complement of an expression. This operator can only be used on an integral type. 
-			\begin{lstlisting}
-Syntax:
-~expr 
-			\end{lstlisting}
-
-
-	\subsection{Booleans}
-		Extend supports boolean comparisons between two expressions. The operators that compare two expressions and return a boolean value are Equal To, Not Equal To, Greater Than, Less Than, Greater Than Or Equal To, Less Than Or Equal To, And, and Or. 
-		\begin{lstlisting}
-/* this checks if the two expressions are equal     */
-expr == expr 
-/* this checks if the two expressions are not equal */
-expr != expr
-/* this checks if the first expression is greater   */
-/* than the second expression                       */
-expr > expr
-/* this checks if the first expression is less than */
-/* the second expression                            */
-expr < expr
-/* this checks if the first expression is greater   */
-/* than or equal to the second expression           */
-expr >= expr
-/* this checks if the first expression is less than */
-/* or equal to the second expression                */
-expr <= expr
-/* this checks if the first expression is true AND  */
-/* if the second is true                            */
-expr && expr
-/* this checks if the first expression is true OR  */
-/* if the second is true                            */
-expr || expr
-		\end{lstlisting}
-		
-
-	\subsection{Conditionals}
-		Conditionals statements and conditional expressions allow you to control your program to do different actions in different situations. Extend uses the operators Switch, Case, and Default to do this. A Switch statement evaluates an expression, checks each Case statement for a match and executes the statements in that Case statement. If none of these cases match, then it will execute the Default case. An example of this is shown below:
-		\begin{lstlisting}
 [1,1] foo = 3;
-return switch {
-	case foo = 2:
+return switch() {
+	case foo == 2:
 		"foo is 2";
-	case foo = 3:
+	case foo == 3:
 		"foo is 3";
-	case foo = 4:
+	case foo == 4:
 		"foo is 4";
 	default:
-		"foo is none of the cases"
-}
-		\end{lstlisting}
+		"foo is none of the cases";
+			\end{lstlisting}

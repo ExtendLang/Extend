@@ -1,5 +1,5 @@
 \section{Expressions}
-	Expressions in Extend allows for arithmetic and boolean operations, function calls, conditional branching, and extraction of contents of other variables. The expressions allowed by the grammar presented in section~\ref{sec:Grammar} are explained in detail below. The boolean and conditional operators refer to truthy and falsey values. Any number besides zero is truthy; zero is falsey. \textbf{empty} is neither truthy nor falsey. 
+	Expressions in Extend allows for arithmetic and boolean operations, function calls, conditional branching, and extraction of contents of other variables. The sections for boolean and conditional operators refer to truthy and falsey values. Any number besides zero is truthy; zero is falsey. \textbf{empty} is neither truthy nor falsey. 
 		\subsection{Arithmetic Operators} 
 			The arithmetic operators listed below take one or two expressions and return a number, if neither expression is empty, or empty, if either expression is empty. Operators grouped within the same inner box have the same level of precedence, and are listed from highest precedence to lowest precedence. All of the binary operators, with the exception of exponentiation, are left-associative. Exponentiation, bitwise negation, and unary negation are right-associative.
 			\begin{table}[H]
@@ -39,13 +39,24 @@
 			\end{tabular}
 			\end{table}
 		\subsection{Conditional Operators}
-			Expressions that evaluate to a specified expression based on the truthiness of a specified expression. There are two types of conditional expressions, ternary expressions and \texttt{switch} expressions.
+			The conditional operators can be used to create expressions that evaluate to a specified expression based on the truthiness of a specified expression. There are two types of conditional expressions, ternary expressions and \texttt{switch} expressions.
 			
-			A ternary expression, written as \texttt{cond-expr ? expr-if-true : expr-if-false} works like an if-else conditional statement. It evaluates to \texttt{expr-if-true} if \texttt{cond-expr} is numeric and truthy, or  \texttt{expr-if-false} if \texttt{cond-expr} is numeric and falsey. If \texttt{cond-expr} is empty, the expression evaluates to empty.
-			
-			The \texttt{switch} statement takes a optional parameter, and a list of cases that correspond with case statements should the case evaluate to true. In the event that multiple cases are true, the statement of the first true case encountered will be evaluated. An example is provided below:
-			\begin{lstlisting}
+\subsubsection{Ternary Expressions}
+\label{sec:Ternary}
+A ternary expression, written as \texttt{cond-expr ? expr-if-true : expr-if-false} works like an if-else conditional statement. It evaluates to \texttt{expr-if-true} if \texttt{cond-expr} is numeric and truthy, or  \texttt{expr-if-false} if \texttt{cond-expr} is numeric and falsey. If \texttt{cond-expr} is empty, the expression evaluates to empty. Both expr-if-true and expr-if-false are mandatory.
+
+\subsubsection{Switch Expressions}
+\label{sec:Switch}			
+A \texttt{switch} expression takes a optional condition, and a list of cases and expressions that the overall expression should evaluate to if the case applies. In the event that multiple cases are true, the expression of the first matching case encountered will be evaluated. An example is provided below:
+\begin{lstlisting}
 [1,1] foo := 3;
+return switch (foo) {
+	case 2: "foo is 2";
+	case 3,4: "foo is 3 or 4";
+	default: "none of the above";
+}
+
+/* Equivalently: */
 return switch() {
 	case foo == 2:
 		"foo is 2";
@@ -54,14 +65,16 @@ return switch() {
 	default:
 		"none of the above";
 }
-/* Equivalently: */
-return switch (foo) {
-	case 2: "foo is 2";
-	case 3,4: "foo is 3 or 4";
-	default: "none of the above";
-}
-			\end{lstlisting}
-		\subsection{Range Slicing}
+\end{lstlisting}
+The format for a \texttt{switch} statement is the keyword \texttt{switch}, followed by pair of parentheses that optionally contain an expression \texttt{switch-expr}, followed by a list of case clauses enclosed in curly braces and delimited by semicolons. A case clause consists of the keyword \texttt{case} followed by a comma-separated list of expressions \texttt{case-expr1 [, case-expr2, [...]]}, a colon, and an expression \texttt{match-expr}, or the keyword \texttt{default}, a colon, and an expression \texttt{default-expr}. If \texttt{switch-expr} is omitted, the value 1 is assumed. The \texttt{switch} expression evaluates to the \texttt{match-expr} for the first case where one of the \texttt{case-expr}s is equal to \texttt{switch-expr}, with equality defined as for the \texttt{==} operator, or \texttt{default-expr}, if none of the \texttt{case-expr}s is equal to \texttt{switch-expr} for any of the cases. 
+
+The \texttt{switch} expression can be used to compactly represent what in most imperative languages would require a long string such as \texttt{if (cond1) \{...\} else if (cond2) \{...\}}.
+\subsection {Function Calls}
+A function expression consists of an identifier and an optional list of expressions enclosed in parentheses and separated by commas. The value of the expression is the result of applying the function to the arguments passed in as expressions. For more detail, see section ~\ref{sec:Functions}.
+\subsection{Range Expressions}
+Range expressions are used to select part or all of a range. A range expression consists of a bare identifier, a bare range literal, or an expression and a selector. If a range expression has exactly 1 row and 1 column, the value of the expression is the value of the formula of the single cell of the range. If it has more than 1 row or more than 1 column, the value of the expression is the selected range. If the range has zero or fewer rows or zero or fewer columns, the value of the expression is \texttt{empty}. If a range expression with a selector would access a row index or column index greater than the number of rows or columns of the range, or a negative row or column index, the value of the expression is \texttt{empty}. 
+\subsubsection{Selections}
+A selection expression consists of an expression and a pair of slices separated by a comma and enclosed in square brackets. It can also be written as the hash symbol \texttt{\#} and an expression. A slice consists of a pair of expressions separated by a colon. 
 			As mentioned earlier, the composite \textbf{range} type has the ability to slice in both an absolute and relative fashion. Slicing allows the programmer to capture a portion of the range in either dimension, with the first dimension specified being inclusive and the second being exclusive. There are multiple ways to slice ranges, which are illustrated below.\newline
 			\begin{lstlisting}
 foo[1,2] /* This evaluates to the cell value at row 1, column 2. */
@@ -74,4 +87,6 @@ foo[[1:2], [5:7]]
 /* Selects the rows between the 1st and 2nd row from current row */
 /* Selects the columns between 5th and 7th column from current column */
 			\end{lstlisting}
-			It's important to note that the value of a range that is not 1 by 1 is a range, but the value of a 1 by 1 range is dereferenced to the result of the cell formula.
+			As mentioned above, the value of a range that is not 1 by 1 is a range, but the value of a 1 by 1 range is essentially dereferenced to the result of the cell formula.
+\subsection{Precedence Expressions}
+A precedence expression is used to force the evaluation of one expression before another, when that order of operation is required for functions with side-effects. It consists of an expression \texttt{prec-expr}, the precedence operator \texttt{->}, and an expression \texttt{succ-expr}. The value of the expression is \texttt{succ-expr}, but the value of \texttt{prec-expr} will be calculated first and the result ignored. The only functions in Extend are the built-in file I/O functions described in section~\ref{sec:IO} or user-defined functions that call those built-in functions; an example is located in that section.

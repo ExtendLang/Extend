@@ -1,41 +1,44 @@
 \section{Introduction to Extend}
 	Extend is a domain-specific programming language used to designate ranges of cells as reusable functions. It abstracts dependencies between cells and models a dependency graph during compilation. In order to offer great performance for any size of datasets, Extend compiles down to LLVM.
 	
-	Extend's syntax is meant to provide clear punctuation and easily understandable cell range access specifications, while using C-style syntax for ease of development. Despite these syntactic similarities, the semantics of an Extend program have more in common with a spreadsheet such as Microsoft Excel than imperative languages such as C, Java or Python.
+	Extend's syntax is meant to provide clear punctuation and easily understandable cell range access specifications, while borrowing elements from languages with C-style syntax for ease of development. Despite these syntactic similarities, the semantics of an Extend program have more in common with a spreadsheet such as Microsoft Excel than imperative languages such as C, Java or Python.
 \section{Structure of an Extend Program}
+\label{sec:Grammar}
 	An Extend program consists of one or more source files. A source file consists of an optional set of import directives, an optional set of global variable declarations, and an optional set of function declarations, in that order. The grammar for a source file is displayed below:
 \lstinputlisting{./src/main/parser.mly}
 	\subsection{Import Statements}
 		Import statements in Extend are written with \texttt{import}, followed by the name of a file in double quotes, and terminated with a semicolon. The syntax is as follows:
 		\begin{lstlisting}
-import "string";
+import "string.xtnd";
 		\end{lstlisting}
 		
 		Extend imports act like \texttt{\#include} in C, except that multiple imports of the same file are ignored, and Extend rearranges the initial import and global statements to properly compile. The imports are all aggregated into a single namespace.
 	\subsection{Global Variables}
-		In essence, global variable declarations function as constants in Extend. It is in the same form as a variable declaration within a function. See Section 5, Functions, for more information.
+		In essence, global variable declarations function as constants in Extend. They are written with the keyword \texttt{global}, followed by a variable declaration in the same form as a variable declaration within a function as described in section~\ref{sec:vardecl}. 
 	\subsection{Function Declarations}
-		Function declarations will additionally be described in more detail in Section 5.
+		Function declarations are described in detail in section~\ref{sec:Functions}.
 \section{Types and Literals}
 	\subsection{Primitive Data Types}
-		Extend has two primitive data types, \textbf{numbers} and \textbf{empty}. In the vein of Javascript, numbers are primitive values corresponding to a double-precision 64-bit binary format IEEE 754 value. The \textbf{range}, Extend's composite data type, is elaborated on in the next section.
-		Both \textbf{integer} and \textbf{float} can be represented with numbers. The \textbf{empty} type can be written as the keyword \texttt{empty} or the empty string \texttt{""}, and serves a similar function to \texttt{NULL} in SQL.
+		Extend has two primitive data types, \textbf{numbers} and \textbf{empty}. In the vein of Javascript, numbers are primitive values corresponding to a double-precision 64-bit binary format IEEE 754 value. Numbers can be written in an Extend source file as either integer or floating point constants; both are represented internally as floating-point values. The \textbf{empty} type can be written as the keyword \texttt{empty} or the empty string \texttt{""}, and serves a similar function to \texttt{NULL} in SQL.
 		\newline
 		\begin{table}[H]
 		\centering
 		\begin{tabular} {| l | l |}
 			\hline
 			\textbf{Primitives} & \textbf{Examples} \\ \hline
-			Integer & \texttt{5 or -5} \\ \hline
-			Floating Point & \texttt{2.67 or -3.50} \\ \hline
+			Number & \texttt{42 or -5 or 2.71828 or 314159e-5} \\ \hline
 			Empty & \texttt{empty or ""} \\ \hline
 		\end{tabular}
 		\end{table}
 	\subsection{Ranges}
-		Ranges are a data type unique to the Extend language. It borrows conceptually from spreadsheets; a range is a group of cells with two dimensions, represented as rows and columns. The range is composed of cells, and cells contain a formula that either evaluates to a number or another range. If a the range that a cell contains ultimately results in a circular dependency, a runtime exception will be thrown. A range is written as follows:
-		\begin{lstlisting}
-/* This is a left-handed range, used to assign a value. */
-[1,2]foo; /*Range with 1 row and 2 columns */
-		\end{lstlisting}
-	\subsubsection{Range and String Literals}
-		Ranges can be represented in literal form as well. Range literals can be written as \texttt{\{2, 3, 4\}}, which is a 1x3 range. String literals can be written simply as \texttt{"hello"}, which should evaluate to a 1x5 range that is internally represented as the numeric range \texttt{[104, 101, 108, 108, 111]}.
+		Extend has one composite type, the \textbf{range}. A range borrows conceptually from spreadsheets; it is a group of cells with two dimensions, described as rows and columns. Each cell contains a formula that either evaluates to a number or another range. Cell formulas are described in detail in section~\ref{sec:formula}. A range can either be declared as described in section~\ref{sec:vardecl} or with a range literal expression.
+\subsubsection{Range and String Literals}
+		A range literal is a semicolon-delimited list of rows, enclosed in curly brackets. Each row is a comma-delimited list of numbers or ranges. In addition, a range literal can be written in the form of a string literal, which represents a 1-by-n range corresponding to the ASCII values of the contents of the string. A few examples follow: 
+		
+\begin{lstlisting}
+{2,3,4} /* A range consisting of 1 row and 3 columns */
+{1,0,0;0,1,0;0,0,1} /* A range corresponding to the 3x3 identity matrix */
+"hello" /* Equivalent to {104,101,108,108,111} */
+{"hello";"world"} /* A range with 2 rows and 1 column; 
+both cells of the range contain a range */
+\end{lstlisting}

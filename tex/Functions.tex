@@ -1,11 +1,14 @@
 \section{Functions}
+\label{sec:Functions}
 Functions lie at Extend's core; however, they are not \textit{first class objects}. Since it can be verbose to write certain operations in Extend, the language will feature a small number of built-in functions and and a comprehensive standard library. An important set of built-in functions will handle I/O (see section~\ref{sec:IO}). Besides the built-in file I/O functions, all functions in Extend are free of side effects.
 \subsection{Format}
+\label{sec:funcdecl}
 Every function in Extend follows the same format, but allows some optional declarations. As in most programming languages, the header of the function declares the parameters it accepts and the dimensions of the return value. The body of the function consists of an optional set of variable declarations and formula assignments, which can occur in any order, and a return statement, which must be the last statement in the function body. All variable declarations and formula assignments, in addition to the return statement, must be terminated by a semicolon.
 This very simple function returns whatever value is passed into it:
 \lstinputlisting{./samples/functions_simple.xtnd}
 The leading \texttt{[1,1]} marks the return dimensions. \texttt{foo} is the function name. In parentheses the function arguments are declared, again with dimensions of the input. The body of the function follows, which in this case is only the return statement.
 \subsection{Variable Declaration}
+\label{sec:vardecl}
 A variable declaration associates an identifier with a range of the specified dimensions, which are listed in square brackets before the identifier. For convenience, if the square brackets and dimensions are omitted, the identifier will be associated with a 1x1 range, and if only a single dimension is listed instead of two, the identifier will be associated with a range consisting of one row and the specified number of columns. In addition, multiple identifiers, separated by commas, can be listed after the dimensions; all of these identifiers will be separate ranges, but with equal dimension sizes. The dimensions can be specified either as literal integers or as expressions that evaluate to integers. 
 \begin{lstlisting}
 [2, 5] foo; // Declares foo as a range with 2 rows and 5 columns
@@ -14,6 +17,7 @@ baz; // Declares baz as a 1x1 range
 [10] ham, eggs, spam; // Declares ham, eggs and spam as distinct 1x10 ranges
 \end{lstlisting}
 \subsection{Formula Assignment}
+\label{sec:formula}
 A formula assignment assigns an expression to a subset of the cells of a variable. Unlike most imperative languages, this expression is not immediately evaluated, but is instead only evaluated if and when it is needed to calculate the return value of the function. A formula assignment consists of an identifier, an optional pair of slices enclosed in square brackets specifying the subset of the cells that the assignment applies to, an \texttt{=}, and an expression, followed by a semicolon. The slices specifying the cell subset can contain arbitrary expressions, as long as the expression taken as a whole evaluates to an integer.
 \begin{lstlisting}
 [5, 2] foo, bar;

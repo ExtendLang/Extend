@@ -1,8 +1,67 @@
 \section{Expressions}
-	Expressions in Extend allows for arithmetic and boolean operations, function calls, conditional branching, and extraction of contents of other variables. In Section 2, the structure of an Extend program is shown, specifying what an expression \texttt{expr} can be. In this section, Extend expressions are broken down further into range slicing and the different types of operators alongside their order of precedence.
-	\subsection{Operators}
-		Extend has arithmetic, boolean, and conditional operators in addition to the ability to slice ranges, which is documented below. The operators for each type are listed in order of descending precedence below in this section.
-		\subsubsection{Range Slicing}
+	Expressions in Extend allows for arithmetic and boolean operations, function calls, conditional branching, and extraction of contents of other variables. The expressions allowed by the grammar presented in section~\ref{sec:Grammar} are explained in detail below. The boolean and conditional operators refer to truthy and falsey values. Any number besides zero is truthy; zero is falsey. \textbf{empty} is neither truthy nor falsey. 
+		\subsection{Arithmetic Operators} 
+			The arithmetic operators listed below take one or two expressions and return a number, if neither expression is empty, or empty, if either expression is empty. Operators grouped within the same inner box have the same level of precedence, and are listed from highest precedence to lowest precedence. All of the binary operators, with the exception of exponentiation, are left-associative. Exponentiation, bitwise negation, and unary negation are right-associative.
+			\begin{table}[H]
+			\begin{tabular}{ |p{2cm}|p{3cm}|p{8cm}|  }
+			\hline
+			\textbf{Operator} & \textbf{Description} & \textbf{Definition} \\ \hline
+			\texttt{\~} & \texttt{Bitwise NOT } & {Performs a bitwise negation on the binary representation of an expression.} \\
+			\texttt{-} & \texttt{Unary negation} & {A simple negative sign to negate expressions.} \\ \hline
+			\texttt{**} & \texttt{Power} & {Returns the first expression raised to the power of the second expression} \\ \hline
+			\texttt{*} & \texttt{Multiplication} & {Multiplies two expressions} \\
+			\texttt{/} & \texttt{Division} & {Divides first expression by second}. \\
+			\texttt{\%} & \texttt{Modulo} & {Finds the remainder by dividing the expression on the left side of the modulo by the right side expression.} \\
+			\texttt{<<} & \texttt{Left Shift} & {Performs a bitwise left shift on the binary representation of an expression.} \\
+			\texttt{>>} & \texttt{Right Shift} & {Performs a bitwise right shift on the binary representation of an expression.} \\
+			\texttt{\&} & \texttt{Bitwise AND} & {Performs a bitwise AND between two expressions. If both expressions have a 1 at the same digit, the resultant expression will have a 1 there; otherwise, it is 0.} \\ \hline
+			\texttt{+} & \texttt{Addition} & {Adds two expressions together.} \\
+			\texttt{-} & \texttt{Subtraction} & {Subtracts second expression from first.} \\
+			\texttt{|} & \texttt{Bitwise OR} & {Performs a bitwise OR between two expressions. If at least one of the expressions has a one at the same digit, the resultant expression will have a 1 there; otherwise, it is 0.} \\
+			\texttt{\^} & \texttt{Bitwise XOR} & {Performs a bitwise exclusive OR between two expressions. If exactly one of the expressions has a one in the same digit, the resultant expression will have a 1 there; otherwise it is 0.} \\ \hline
+			\end{tabular}
+			\end{table}
+		\subsection{Boolean Operators}
+			These operators take one or two expressions and evaluate to empty, if either expression is empty, or to 0 or 1 if both expressions are numeric. Operators grouped within the same inner box have the same level of precedence and are listed from highest precedence to lowest precedence. All of these operators besides logical negation are left-associative.
+			\begin{table}[H]
+			\begin{tabular}{ |p{2cm}|p{5cm}|p{7cm}|  }
+			\hline
+			\textbf{Operator} & \textbf{Description} & \textbf{Definition} \\ \hline
+			\texttt{!} & \texttt{Logical NOT} & {Returns 0 given a truthy values false and 1 given a falsey value.} \\ \hline
+			\texttt{==} & \texttt{Equals} & {Evaluates to 1 if the two expressions have the same value} \\
+			\texttt{!=} & \texttt{Not equals} & {Evaluates to 1 if the expressions are not the same.} \\
+			\texttt{<} & \texttt{Less than} & {Evaluates to 1 if the first expression is less than the first.} \\
+			\texttt{>} & \texttt{Greater than} & {Evaluates to 1 if the first expression is greater than the first.}. \\
+			\texttt{<=} & \texttt{Less than or equals to} & {Evaluates to 1 if the first expression is less than or equals to the second.} \\
+			\texttt{>=} & \texttt{Greater than or equals to} & {Evaluates to 1 if the first expression is less than or equals to the second.} \\ \hline
+			\texttt{\&\&} & \texttt{Logical AND} & {Returns 1 if both expressions evaluate to truthy values, otherwise 0.} \\ \hline
+			\texttt{||} & \texttt{Logical OR} & {Returns 1 if at least one of the two expressions evaluate to a truthy value, otherwise 0.} \\ \hline
+			\end{tabular}
+			\end{table}
+		\subsection{Conditional Operators}
+			Expressions that evaluate to a specified expression based on the truthiness of a specified expression. There are two types of conditional expressions, ternary expressions and \texttt{switch} expressions.
+			
+			A ternary expression, written as \texttt{cond-expr ? expr-if-true : expr-if-false} works like an if-else conditional statement. It evaluates to \texttt{expr-if-true} if \texttt{cond-expr} is numeric and truthy, or  \texttt{expr-if-false} if \texttt{cond-expr} is numeric and falsey. If \texttt{cond-expr} is empty, the expression evaluates to empty.
+			
+			The \texttt{switch} statement takes a optional parameter, and a list of cases that correspond with case statements should the case evaluate to true. In the event that multiple cases are true, the statement of the first true case encountered will be evaluated. An example is provided below:
+			\begin{lstlisting}
+[1,1] foo := 3;
+return switch() {
+	case foo == 2:
+		"foo is 2";
+	case foo == 3, foo == 4:
+		"foo is 3 or 4";
+	default:
+		"none of the above";
+}
+/* Equivalently: */
+return switch (foo) {
+	case 2: "foo is 2";
+	case 3,4: "foo is 3 or 4";
+	default: "none of the above";
+}
+			\end{lstlisting}
+		\subsection{Range Slicing}
 			As mentioned earlier, the composite \textbf{range} type has the ability to slice in both an absolute and relative fashion. Slicing allows the programmer to capture a portion of the range in either dimension, with the first dimension specified being inclusive and the second being exclusive. There are multiple ways to slice ranges, which are illustrated below.\newline
 			\begin{lstlisting}
 foo[1,2] /* This evaluates to the cell value at row 1, column 2. */
@@ -16,63 +75,3 @@ foo[[1:2], [5:7]]
 /* Selects the columns between 5th and 7th column from current column */
 			\end{lstlisting}
 			It's important to note that the value of a range that is not 1 by 1 is a range, but the value of a 1 by 1 range is dereferenced to the result of the cell formula.
-		\subsubsection{Arithmetic Operators} 
-			Expressions that return a number. Operators grouped within the same inner box have the same level of precedence, which is defined from highest to lowest.
-			\begin{table}[H]
-			\begin{tabular}{ |p{2cm}|p{3cm}|p{8cm}|  }
-			\hline
-			\textbf{Operator} & \textbf{Description} & \textbf{Definition} \\ \hline
-			\texttt{~} & \texttt{Bitwise NOT } & {Performs a bitwise negation on the binary representation of an expression.} \\
-			\texttt{-} & \texttt{Negative unary} & {A simple negative sign to negate expressions.} \\ \hline
-			\texttt{**} & \texttt{Power} & {Adds exponents to expressions} \\ \hline
-			\texttt{*} & \texttt{Multiplication} & {Multiplies two expressions} \\
-			\texttt{/} & \texttt{Division} & {Divides one number into another}. \\
-			\texttt{\%} & \texttt{Modulo} & {Finds the remainder by dividing the expression on the left side of the modulo by the right side expression.} \\
-			\texttt{<<} & \texttt{Left Shift} & {Performs a bitwise left shift on the binary representation of an expression.} \\
-			\texttt{>>} & \texttt{Right Shift} & {Performs a bitwise right shift on the binary representation of an expression.} \\
-			\texttt{\&} & \texttt{Bitwise AND} & {Performs a bitwise AND between two expressions. If both expressions have a 1 at the same digit, the resultant expression will have a 1 there; otherwise, it is 0.} \\ \hline
-			\texttt{+} & \texttt{Addition} & {Adds two expressions together.} \\
-			\texttt{-} & \texttt{Subtraction} & {Subtracts one expression from another.} \\
-			\texttt{|} & \texttt{Bitwise OR} & {Performs a bitwise OR between two expressions. If at least one of the expressions has a one at the same digit, the resultant expression will have a 1 there; otherwise, it is 0.} \\
-			\texttt{\^} & \texttt{Bitwise XOR} & {Performs a bitwise exclusive OR between two expressions. If exactly one of the expressions has a one in the same digit, the resultant expression will have a 1 there; otherwise it is 0.} \\ \hline
-			\end{tabular}
-			\end{table}
-		\subsubsection{Boolean Operators}
-			Expressions that return 0 or 1. Operators grouped within the same inner box have the same level of precedence, which is defined from highest to lowest.
-			\begin{table}[H]
-			\begin{tabular}{ |p{2cm}|p{5cm}|p{7cm}|  }
-			\hline
-			\textbf{Operator} & \textbf{Description} & \textbf{Definition} \\ \hline
-			\texttt{!} & \texttt{Logical NOT} & {Turns truthy values false and vice versa.} \\ \hline
-			\texttt{==} & \texttt{Equals} & {Evaluates to true if the two expressions are the same - empty if one or more of the expressions is \texttt{empty}.} \\
-			\texttt{!=} & \texttt{Not equals} & {Evaluates to true if the expressions are not the same.} \\
-			\texttt{<} & \texttt{Less than} & {Evaluates to true if the first expression is less than the first.} \\
-			\texttt{>} & \texttt{Greater than} & {Evaluates to true if the first expression is greater than the first.}. \\
-			\texttt{<=} & \texttt{Less than or equals to} & {Evaluates to true if the first expression is less than or equals to the second.} \\
-			\texttt{>=} & \texttt{Greater than or equals to} & {Evaluates to true if the first expression is less than or equals to the second.} \\ \hline
-			\texttt{\&\&} & \texttt{Logical AND} & {Returns true if both expressions evaluate to true, otherwise false.} \\ \hline
-			\texttt{||} & \texttt{Logical OR} & {Returns true if at least one of the two expressions evaluate to true.} \\ \hline
-			\end{tabular}
-			\end{table}
-		\subsubsection{Conditional Operators}
-			Expressions that evaluate a certain statement based on the truthiness of a certain expression. There are two types of conditional statements, \texttt{?} and \texttt{switch}.
-			
-			The \texttt{?} symbol works like an if-else conditional statement. An example is shown below:
-			\begin{lstlisting}
-val ? foo: bar;
-			\end{lstlisting}
-			This statement will evaluate to \texttt{foo} if \texttt{val} is truthy; otherwise, it evaluates to \texttt{bar}.
-			
-			The \texttt{switch} statement takes a optional parameter, and a list of cases that correspond with case statements should the case evaluate to true. In the event that multiple cases are true, the statement of the first true case encountered will be evaluated. An example is provided below:
-			\begin{lstlisting}
-[1,1] foo = 3;
-return switch() {
-	case foo == 2:
-		"foo is 2";
-	case foo == 3:
-		"foo is 3";
-	case foo == 4:
-		"foo is 4";
-	default:
-		"foo is none of the cases";
-			\end{lstlisting}

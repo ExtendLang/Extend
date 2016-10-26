@@ -37,6 +37,8 @@ For convenience, a variable declaration and a formula assignment to all cells of
    bar evaluates to 2. */
 [2,2] foo := 1, bar := 2; 
 \end{lstlisting}
+\subsubsection{Formula Assignment Errors}
+If the developer writes code in such a way that more than one formula applies to a cell, this causes a compile-time error if the compiler can detect it or a runtime error if the compiler cannot detect it in advance and the cell is evaluated. If there is no formula assigned to a cell, the cell will evaluate to \texttt{empty}.
 \subsection{Dimension Assignment}
 \par Extend will feature gradual typing for function declarations. This will enable users with a weak experience in typing to use the language, while allowing more sophisticated developers to enforce type checking at compile time. In addition, it allows the developer to return ranges whose size is an unpredictable or complex function of the inputs. 
 \par To avoid specifying the precise return dimensions, an underscore can be used. This marks a variable range. Thus our function now looks like this:

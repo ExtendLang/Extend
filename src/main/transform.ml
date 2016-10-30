@@ -6,45 +6,80 @@ let idgen =
   fun () -> incr count; "_tmp" ^ string_of_int !count;;
 
 let expand_expressions (imports, globals, functions) =
-  (* expand_dimensions: Take a Vardecl and return a list of
-     more atomic statements. Each dimension will be given a
-     temporary ID, which will be declared as [1,1] _tmpXXX;
-     the formula for tmpXXX will be set as a separate assignment;
-     the original variable will be declared as [_tmpXXX, _tmpYYY] var;
-     and the formula assignment will be applied to [0:_tmpXXX,0:_tmpYYY].
-  *)
   let expand_stmt s =
-    let expand_dimensions (row_dim, col_dim) inits =
+    let lit_zero = LitInt(0) in let abs_zero = Abs(lit_zero) in
+    let lit_one  = LitInt(1) in let abs_one  = Abs(lit_one)  in
+    let one_by_one = (Some lit_one, Some lit_one) in
+    let zero_comma_zero = (Some (Some abs_zero, Some abs_one),
+                           Some (Some abs_zero, Some abs_one)) in
+    let entire_dimension = (Some DimensionStart, Some DimensionEnd) in
+    let entire_range = (Some entire_dimension, Some entire_dimension) in
+    let expand_assign (var_name, (row_slice, col_slice), formula) =
+      let expand_index = function
+          Abs(e) ->
+          let new_id = idgen() in
+          (
+            Abs(Id(new_id)),
+            [Vardecl (one_by_one, [(new_id, None)]);
+             Assign (new_id, zero_comma_zero, Some e)]
+          )
+        | DimensionStart -> (DimensionStart, [])
+        | DimensionEnd -> (DimensionEnd, [])
+        | _ -> (Abs(Empty), []) (* TODO: RAISE AN EXCEPTION!!! *) in
+      let expand_slice = function
+          None -> (entire_dimension, [])
+        | Some (Some (Abs(e)), None) ->
+          let start_id = idgen () in let start_plus_one_id = idgen () in
+          (
+            (Some (Abs(Id(start_id))), Some (Abs(Id(start_plus_one_id)))),
+            [Vardecl (one_by_one, [(start_id, None)]);
+             Vardecl (one_by_one, [(start_plus_one_id, None)]);
+             Assign (start_id, zero_comma_zero, Some e);
+             Assign (start_plus_one_id, zero_comma_zero, Some (BinOp(Id(start_id), Plus, lit_one)))]
+          )
+        | Some (Some idx_start, Some idx_end) ->
+          let (new_start, new_start_exprs) = expand_index idx_start in
+          let (new_end, new_end_exprs) = expand_index idx_end in
+          ((Some new_start, Some new_end), new_start_exprs @ new_end_exprs)
+        | Some (Some _, None) | Some (None, _) -> ((None, None), []) (* TODO: RAISE AN EXCEPTION!!! *) in
+      let (new_row_slice, row_exprs) = expand_slice row_slice in
+      let (new_col_slice, col_exprs) = expand_slice col_slice in
+      Assign(var_name, (Some new_row_slice, Some new_col_slice), formula) :: 
+      (row_exprs @ col_exprs) in
+    let expand_vardecl ((row_dim, col_dim), inits) =
+      (* expand_vardecl: Take a Vardecl and return a list of more atomic
+         statements. Each dimension will be given a temporary ID, which
+         will be declared as [1,1] _tmpXXX; the formula for tmpXXX will be
+         set as a separate assignment; the original variable will be
+         declared as [_tmpXXX, _tmpYYY] var; and the formula assignment
+         will be applied to [:,:]. *)
       let expand_init (r, c) (v, e) =
         Vardecl((Some (Id(r)), Some (Id(c))), [(v, None)]) ::
         match e with
           None -> []
-        | Some e -> [Assign (v,
-                             (Some (Some (Abs(LitInt(0))), Some (Abs(Id(r)))),
-                              Some (Some (Abs(LitInt(0))), Some (Abs(Id(c))))),
-                             Some e)] in
+        | Some e -> [Assign (v, entire_range, Some e)] in
       let expand_dimension = function
           None -> (idgen (), LitInt(1))
         | Some expr -> (idgen (), expr) in
       let (row_var, row_expr) = expand_dimension row_dim in
-      let (col_var, col_expr) = expand_dimension col_dim in
-      Vardecl ((Some (LitInt(1)), Some (LitInt(1))), [(row_var, None)]) ::
-      Vardecl ((Some (LitInt(1)), Some (LitInt(1))), [(col_var, None)]) ::
-      Assign (row_var,
-              (Some (Some (Abs(LitInt(0))), Some (Abs(LitInt(1)))),
-               Some (Some (Abs(LitInt(0))), Some (Abs(LitInt(1))))),
-              Some row_expr) ::
-      Assign (col_var,
-              (Some (Some (Abs(LitInt(0))), Some (Abs(LitInt(1)))),
-               Some (Some (Abs(LitInt(0))), Some (Abs(LitInt(1))))),
-              Some col_expr) ::
-      List.concat (List.map (expand_init (row_var, col_var)) inits) in
+      let (col_var, col_expr) = expand_dimension col_dim
+
+      in (* Return expression for expand_vardecl: *)
+      Vardecl (one_by_one, [(row_var, None)]) ::
+      Vardecl (one_by_one, [(col_var, None)]) ::
+      Assign (row_var, zero_comma_zero, Some row_expr) ::
+      Assign (col_var, zero_comma_zero, Some col_expr) ::
+      List.concat (List.map (expand_init (row_var, col_var)) inits)
+
+    in (* Return expression for expand_stmt: *)
     match s with
-      Assign(a) -> [Assign(a)]
-    | Vardecl(d, inits) -> expand_dimensions d inits in
+      Assign(a) -> expand_assign(a)
+    | Vardecl(d, inits) -> expand_vardecl (d, inits) in
+
+  let expand_stmt_list stmts = List.concat (List.map expand_stmt stmts) in
   let expand_function f = {
     name = f.name;
     params = f.params;
-    body = List.concat (List.map expand_stmt f.body);
+    body = expand_stmt_list f.body;
     ret_val = f.ret_val} in
-  (imports, globals, List.map expand_function functions);;
+  (imports, expand_stmt_list globals, List.map expand_function functions);;

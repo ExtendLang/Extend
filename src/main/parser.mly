@@ -195,8 +195,8 @@ rhs_sel:
   | LSQBRACK rslice COMMA rslice RSQBRACK { (Some $2, Some $4) }
 
 lslice:
-    /* nothing */                         { (None, None) }
-  | lslice_val                            { (Some $1, None) }
+  /* commented out: nothing production { (None, None) } */
+    lslice_val                            { (Some $1, None) }
   | lslice_val COLON lslice_val           { (Some $1, Some $3) }
   | lslice_val COLON                      { (Some $1, Some DimensionEnd) }
   | COLON lslice_val                      { (Some DimensionStart, Some $2) }

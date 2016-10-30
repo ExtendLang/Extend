@@ -25,8 +25,13 @@ let expand_expressions (imports, globals, functions) =
       | e         -> let new_id = idgen() in (
           Id(new_id),
           [Vardecl (one_by_one, [(new_id, None)]);
-            Assign (new_id, zero_comma_zero, Some e)]) in
+           Assign (new_id, zero_comma_zero, Some e)])
+    in
     let expand_assign (var_name, (row_slice, col_slice), formula) =
+      (* expand_assign: Take an Assign and return a list of more
+         atomic statements, with new variables replacing any
+         complex expressions in the selection slices and with single
+         index values desugared to expr:expr+1. *)
       let expand_index = function
           Abs(e) -> let (new_e, new_stmts) = expand_expr e in
           (Abs(new_e), new_stmts)
@@ -43,7 +48,7 @@ let expand_expressions (imports, globals, functions) =
           let (new_start, new_start_exprs) = expand_index idx_start in
           let (new_end, new_end_exprs) = expand_index idx_end in
           ((Some new_start, Some new_end), new_start_exprs @ new_end_exprs)
-        | Some (Some _, None) | Some (None, _) -> ((None, None), []) (* TODO: RAISE AN EXCEPTION!!! *) in
+        | Some (Some _, None) | Some (None, _) -> ((None, None), []) in (* TODO: RAISE AN EXCEPTION!!! *)
       let (new_row_slice, row_exprs) = expand_slice row_slice in
       let (new_col_slice, col_exprs) = expand_slice col_slice
 

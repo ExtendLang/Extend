@@ -17,7 +17,10 @@ type expr     = LitInt of int |
                 Call of string * expr list |
                 Selection of expr * sel |
                 Precedence of expr * expr
-and  index    = Abs of expr | Rel of expr | DimensionStart | DimensionEnd
+and  index    = Abs of expr |
+                Rel of expr |
+                DimensionStart |
+                DimensionEnd
 and  slice    = index option * index option
 and  sel      = slice option * slice option
 and  case     = (expr list) option * expr
@@ -26,7 +29,8 @@ type dim      = expr option * expr option
 type var      = dim * string
 type assign   = string * sel * expr option
 type init     = string * expr option
-type stmt     = Assign of assign | Vardecl of dim * init list
+type stmt     = Assign of assign |
+                Vardecl of dim * init list
 
 type func_decl = {
     name: string;
@@ -35,7 +39,7 @@ type func_decl = {
     ret_val: dim * expr;
 }
 
-type listable = Inits of init list|
+type listable = Inits of init list |
                 Vars of var list |
                 Stmts of stmt list |
                 Funcs of func_decl list |

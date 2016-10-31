@@ -35,7 +35,13 @@ open Ast
 %%
 
 program:
-    imports globals func_decls EOF { (List.rev $1, List.rev $2, List.rev $3) }
+    program_piece EOF {  let (imp, glob, fnc) = $1 in (List.rev imp, List.rev glob, List.rev fnc) }
+
+program_piece:
+    /* nothing */ {([],[],[])}
+  | program_piece import { let (imp, glob, fnc) = $1 in ($2 :: imp, glob, fnc) }
+  | program_piece global { let (imp, glob, fnc) = $1 in (imp, $2 :: glob, fnc) }
+  | program_piece func_decl { let (imp, glob, fnc) = $1 in (imp, glob, $2 :: fnc) }
 
 imports:
     /* nothing */ {[]}

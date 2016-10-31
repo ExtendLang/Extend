@@ -35,25 +35,19 @@ open Ast
 %%
 
 program:
-    imports globals func_decls EOF { (List.rev $1, List.rev $2, List.rev $3) }
+    program_piece EOF {  let (imp, glob, fnc) = $1 in (List.rev imp, List.rev glob, List.rev fnc) }
 
-imports:
-    /* nothing */ {[]}
-  | imports import {$2 :: $1}
+program_piece:
+    /* nothing */ {([],[],[])}
+  | program_piece import { let (imp, glob, fnc) = $1 in ($2 :: imp, glob, fnc) }
+  | program_piece global { let (imp, glob, fnc) = $1 in (imp, $2 :: glob, fnc) }
+  | program_piece func_decl { let (imp, glob, fnc) = $1 in (imp, glob, $2 :: fnc) }
 
 import:
     IMPORT LIT_STRING SEMI {$2}
 
-globals:
-    /* nothing */ {[]}
-  | globals global {$2 :: $1}
-
 global:
     GLOBAL vardecl {$2}
-
-func_decls:
-    /* nothing */ {[]}
-  | func_decls func_decl {$2 :: $1}
 
 func_decl:
     ID LPAREN func_param_list RPAREN LBRACE opt_stmt_list ret_stmt RBRACE

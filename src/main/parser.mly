@@ -43,23 +43,11 @@ program_piece:
   | program_piece global { let (imp, glob, fnc) = $1 in (imp, $2 :: glob, fnc) }
   | program_piece func_decl { let (imp, glob, fnc) = $1 in (imp, glob, $2 :: fnc) }
 
-imports:
-    /* nothing */ {[]}
-  | imports import {$2 :: $1}
-
 import:
     IMPORT LIT_STRING SEMI {$2}
 
-globals:
-    /* nothing */ {[]}
-  | globals global {$2 :: $1}
-
 global:
     GLOBAL vardecl {$2}
-
-func_decls:
-    /* nothing */ {[]}
-  | func_decls func_decl {$2 :: $1}
 
 func_decl:
     ID LPAREN func_param_list RPAREN LBRACE opt_stmt_list ret_stmt RBRACE

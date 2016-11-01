@@ -1,0 +1,8 @@
+import "samples/slice_expansion.xtnd";
+import "samples/slice_expansion.xtnd";
+import "samples/slice_expansion.xtnd";
+import "samples/import.xtnd";
+
+foo() {
+  return 0;
+}

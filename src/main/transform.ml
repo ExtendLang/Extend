@@ -7,6 +7,25 @@ let idgen =
   let count = ref (-1) in
   fun () -> incr count; "_tmp" ^ string_of_int !count;;
 
+module StringSet = Set.Make (String);;
+let importSet = StringSet.empty;;
+
+let expand_imports (imports, globals, functions) =
+  let rec find_imports (imports, importSet) =
+    let rec find_import (import, importSet) =
+      let (imports, globals, functions) = Parser.program Scanner.token (Lexing.from_channel (open_in import))
+      in
+        find_imports (imports, importSet)
+    in
+      List.fold_left (fun st item -> if StringSet.mem item st then st else find_import (item, StringSet.add item st)) importSet imports
+  in (StringSet.elements (find_imports (imports, StringSet.empty)), globals, functions)
+
+let load_imports (imports, globals, functions) =
+  List.fold_left (fun (imp, glo, func) item ->
+    let (i, g, f) = Parser.program Scanner.token (Lexing.from_channel (open_in item))
+    in (imp, List.append g glo, List.append f func)
+  ) ([], globals, functions) imports;;
+
 let expand_expressions (imports, globals, functions) =
   let expand_stmt s =
     let lit_zero = LitInt(0) in let abs_zero = Abs(lit_zero) in

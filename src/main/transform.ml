@@ -1,5 +1,7 @@
 open Ast
 
+exception Wild_encounter of string;
+
 let idgen =
   (* from http://stackoverflow.com/questions/10459363/side-effects-and-top-level-expressions-in-ocaml*)
   let count = ref (-1) in
@@ -21,7 +23,7 @@ let expand_expressions (imports, globals, functions) =
         LitInt(i) -> (LitInt(i), [])
       | Id(s)     -> (Id(s), [])
       | Empty     -> (Empty, []) (* This should be a semantic error *)
-      | Wild      -> (Wild, []) (* TODO: RAISE AN EXCEPTION!!! *)
+      | Wild      -> raise (Wild_encounter "Encountered Wild expression, this should not happen, please check your code")
       | e         -> let new_id = idgen() in (
           Id(new_id),
           [Vardecl (one_by_one, [(new_id, None)]);
@@ -37,7 +39,7 @@ let expand_expressions (imports, globals, functions) =
           (Abs(new_e), new_stmts)
         | DimensionStart -> (DimensionStart, [])
         | DimensionEnd -> (DimensionEnd, [])
-        | _ -> (Abs(Empty), []) (* TODO: RAISE AN EXCEPTION!!! *) in
+        | _ -> (Abs(Empty), []) raise (Wild_encounter "Unexpected input for dimension") in
       let expand_slice = function
           None -> (entire_dimension, [])
         | Some (Some (Abs(e)), None) ->

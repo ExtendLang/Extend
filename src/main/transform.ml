@@ -1,6 +1,6 @@
 open Ast
 
-exception Wild_encounter of string;
+exception Wild_encounter of string;;
 
 let idgen =
   (* from http://stackoverflow.com/questions/10459363/side-effects-and-top-level-expressions-in-ocaml*)
@@ -58,7 +58,7 @@ let expand_expressions (imports, globals, functions) =
           (Abs(new_e), new_stmts)
         | DimensionStart -> (DimensionStart, [])
         | DimensionEnd -> (DimensionEnd, [])
-        | _ -> (Abs(Empty), []) raise (Wild_encounter "Unexpected input for dimension") in
+        | _ -> raise (Wild_encounter "Unexpected input for dimension") in
       let expand_slice = function
           None -> (entire_dimension, [])
         | Some (Some (Abs(e)), None) ->

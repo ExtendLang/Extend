@@ -57,7 +57,7 @@ let expand_expressions (imports, globals, functions) =
     | _ -> raise (Wild_encounter "Unexpected input for dimension") in
 
   let expand_slice = function
-    (* Turn [(expr)] into [(expr:expr+1)] if necessary, and
+    (* Turn [(expr)] into [expr:expr+1] if necessary, and
        expand both sides of the slice, if necessary. *)
       None -> (entire_dimension, [])
     | Some (Some (Abs(e)), None) ->
@@ -84,6 +84,7 @@ let expand_expressions (imports, globals, functions) =
     match e with
       None -> []
     | Some e -> [Assign (v, entire_range, Some e)] in
+
   let expand_dimension = function
       None -> expand_expr (LitInt(1))
     | Some e -> expand_expr e in

@@ -126,8 +126,18 @@ let zero_until i =
   in aux (i-1) []
 
 (* from http://stackoverflow.com/questions/27930976/how-to-make-the-cartesian-product-of-two-lists-in-ocaml *)
+(* This is the tail-recursive version *)
 let cartesian l l' =
-  List.concat (List.map (fun e -> List.map (fun e' -> (e,e')) l') l)
+  List.rev (List.fold_left (fun x a -> List.fold_left (fun y b -> (a,b) :: y) x l') [] l)
+
+(* from http://stackoverflow.com/questions/27386520/tail-recursive-list-map *)
+
+let tailrec_map f l =
+  let rec map_aux acc = function
+    | [] -> List.rev acc
+    | x :: xs -> map_aux (f x :: acc) xs
+  in
+  map_aux [] l
 
 let interpret input =
   let ast_raw = Parser.program Scanner.token input in
@@ -159,7 +169,7 @@ let interpret input =
           Uncalculated -> "huh?" |
           Range(_) -> "some range here"
       ) in
-    String.concat "\n" (List.map string_of_cell cart)
+    String.concat "\n" (tailrec_map string_of_cell cart)
   | _ -> "";;
 
 (*

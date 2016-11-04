@@ -119,6 +119,7 @@ let zero_until i =
     if n < 0 then acc else aux (n-1) (n :: acc)
   in aux (i-1) []
 
+(* from http://stackoverflow.com/questions/27930976/how-to-make-the-cartesian-product-of-two-lists-in-ocaml *)
 let cartesian l l' =
   List.concat (List.map (fun e -> List.map (fun e' -> (e,e')) l') l)
 

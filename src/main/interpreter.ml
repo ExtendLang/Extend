@@ -7,6 +7,9 @@ type mark_color = White |
                   Black
 exception         Cyclic of string
 
+let index_of_cell (Cell(r,c)) =
+  "[" ^ string_of_int r ^ "," ^ string_of_int c ^ "]"
+
 module CellMap  = Map.Make(struct
     type t = cell
     let compare (Cell(row1, col1)) (Cell(row2, col2)) =
@@ -104,14 +107,17 @@ let rec evaluate scope cell e =
     Precedence of expr * expr *)
   | _ -> ExtendNumber(3.14159)
 
+
 and get_val scope rg cell =
+  print_endline ("Looking for " ^ rg.variable_name ^ index_of_cell cell) ;
   let (value, color) = check_val rg cell in match color with
     White ->
     let new_value = (evaluate scope cell (get_formula rg cell)) in
+    print_endline ("Finished calculating " ^ rg.variable_name ^ index_of_cell cell) ;
     rg.values := CellMap.add cell (new_value, Black) !(rg.values) ; new_value
   | Grey -> let Cell(r, c) = cell in
     raise (Cyclic(rg.variable_name ^ "[" ^ string_of_int r ^ "," ^ string_of_int c ^ "]"))
-  | Black -> value
+  | Black -> print_endline ("Found " ^ rg.variable_name ^ index_of_cell cell) ; value
 
 (* from http://stackoverflow.com/questions/243864/what-is-the-ocaml-idiom-equivalent-to-pythons-range-function without the infix *)
 let zero_until i =

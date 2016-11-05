@@ -50,6 +50,8 @@ type listable = Inits of init list |
 
 type program = string list * stmt list * func_decl list
 
+exception IllegalRangeLiteral of string
+
 let quote_string str =
   let escape_characters = Str.regexp "[\n \t \r \\ \"]" in
   let replace_fn s = match Str.matched_string s with
@@ -172,3 +174,17 @@ let string_of_program (imp, glb, fs) =
       "\"Imports\": " ^ string_of_list (Strings imp) ^ "," ^
       "\"Globals\": " ^ string_of_list (Stmts glb) ^ "," ^
       "\"Functions\": " ^ string_of_list (Funcs fs) ^ "}}"
+
+let allow_range_literal (LitRange(rowlist)) =
+  (* This function should probably also calculate the size for easy processing later *)
+  let rec check_basic_expr = function
+      LitInt(_) | LitFlt(_) | LitString(_) | Empty -> true
+    | UnOp(Neg, LitInt(_)) | UnOp(Neg, LitFlt(_)) -> true
+    | LitRange(rl) -> check_range_literal rl
+    | _ -> false
+
+  and check_range_literal rl =
+    List.for_all (fun exprs -> List.for_all check_basic_expr exprs) rl in
+
+  if check_range_literal rowlist then LitRange(rowlist)
+  else raise(IllegalRangeLiteral(string_of_expr (LitRange(rowlist))))

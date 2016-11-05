@@ -161,11 +161,11 @@ func_expr:
     ID LPAREN opt_arg_list RPAREN { Call($1, $3) }
 
 range_expr:
-    LBRACE row_list RBRACE { LitRange(List.rev $2) }
+    LBRACE row_list RBRACE { allow_range_literal (LitRange(List.rev $2)) }
 
 row_list:
     col_list {[List.rev $1]}
-  | row_list SEMI col_list {$3 :: $1}
+  | row_list SEMI col_list {List.rev $3 :: $1}
 
 col_list:
     expr {[$1]}

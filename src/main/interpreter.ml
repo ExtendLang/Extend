@@ -200,22 +200,27 @@ let interpret input =
   let ast_raw = Parser.program Scanner.token input in
   let ast_imp_res = Transform.load_imports (Transform.expand_imports ast_raw) in
   let ast_expanded = Transform.expand_expressions ast_imp_res in
-  print_endline (string_of_program ast_expanded) ;
-  match ast_expanded with (_, _, [foo]) ->
-    let is_x_formula = function
-        Assign(s, sel, eo) -> s = "x"
-      | _ -> false in
-    let x_formula = function
-        Assign(a) -> a
-      | _ -> raise (Cyclic("Inconceivable!")) in
-    let is_x_vardecl = function
-        Vardecl(_, [(s, None)]) -> s = "x"
-      | _ -> false in
-    let x_dimensions = function
-        Vardecl((Some(LitInt(rows)), (Some(LitInt(cols)))), _) -> Dimensions(rows, cols)
-      | _ -> raise (Cyclic("Inconceivable!")) in
-    let x_formulas = List.map x_formula (List.filter is_x_formula foo.body) in
-    let x_dims = x_dimensions (List.hd (List.filter is_x_vardecl foo.body)) in
-    let rg = {variable_name="x"; variable_dimensions = x_dims; values=ref CellMap.empty; formulas = x_formulas} in
-    string_of_val [rg] (Range(Variable(rg)))
-  | _ -> "";;
+  string_of_program ast_expanded ^
+  (match ast_expanded with
+     (_, _, [foo]) ->
+     let is_x_formula = function
+         Assign(s, sel, eo) -> s = "x"
+       | _ -> false in
+     let x_formula = function
+         Assign(a) -> a
+       | _ -> raise (Cyclic("Inconceivable!")) in
+     let is_x_vardecl = function
+         Vardecl(_, [(s, None)]) -> s = "x"
+       | _ -> false in
+     let x_dimensions = function
+         Vardecl((Some(LitInt(rows)), (Some(LitInt(cols)))), _) -> Dimensions(rows, cols)
+       | _ -> raise (Cyclic("Inconceivable!")) in
+     let x_formulas = List.map x_formula (List.filter is_x_formula foo.body) in
+     (match (List.filter is_x_vardecl foo.body) with
+        [] -> ""
+      | [x] ->
+        let x_dims = x_dimensions x in
+        let rg = {variable_name="x"; variable_dimensions = x_dims; values=ref CellMap.empty; formulas = x_formulas} in
+        "\n" ^ string_of_val [rg] (Range(Variable(rg)))
+      | x :: xs -> raise (Cyclic("Inconceivable!")))
+   | _ -> "");;

@@ -175,16 +175,15 @@ let string_of_program (imp, glb, fs) =
       "\"Globals\": " ^ string_of_list (Stmts glb) ^ "," ^
       "\"Functions\": " ^ string_of_list (Funcs fs) ^ "}}"
 
-let allow_range_literal (LitRange(rowlist)) =
-  (* This function should probably also calculate the size for easy processing later *)
-  let rec check_basic_expr = function
-      LitInt(_) | LitFlt(_) | LitString(_) | Empty -> true
-    | UnOp(Neg, LitInt(_)) | UnOp(Neg, LitFlt(_)) -> true
-    | LitRange(rl) -> check_range_literal rl
-    | _ -> false
+let allow_range_literal = function
+    LitRange(rowlist) ->
+      let rec check_range_literal rl =
+        List.for_all (fun exprs -> List.for_all check_basic_expr exprs) rl
+      and check_basic_expr = function
+          LitInt(_) | UnOp(Neg, LitInt(_)) | LitFlt(_) | UnOp(Neg, LitFlt(_)) | LitString(_) | Empty -> true
+        | LitRange(rl) -> check_range_literal rl
+        | _ -> false in
 
-  and check_range_literal rl =
-    List.for_all (fun exprs -> List.for_all check_basic_expr exprs) rl in
-
-  if check_range_literal rowlist then LitRange(rowlist)
-  else raise(IllegalRangeLiteral(string_of_expr (LitRange(rowlist))))
+      if check_range_literal rowlist then LitRange(rowlist)
+      else raise(IllegalRangeLiteral(string_of_expr (LitRange(rowlist))))
+  | e -> raise(IllegalRangeLiteral(string_of_expr e))

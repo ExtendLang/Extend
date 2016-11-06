@@ -1,0 +1,5 @@
+illegal_assignments() {
+  [5,5] x;
+  y[0,0] = 1;
+  return 0;
+}

@@ -30,7 +30,7 @@ open Ast
 %left HASH LSQBRACK
 
 %start program
-%type <Ast.program> program
+%type <Ast.raw_program> program
 
 %%
 
@@ -47,7 +47,7 @@ import:
     IMPORT LIT_STRING SEMI {$2}
 
 global:
-    GLOBAL vardecl {$2}
+    GLOBAL varinit {$2}
 
 func_decl:
     ID LPAREN func_param_list RPAREN LBRACE opt_stmt_list ret_stmt RBRACE
@@ -74,14 +74,14 @@ stmt_list:
   | stmt_list stmt { $2 :: $1 }
 
 stmt:
-    vardecl { $1 } |  assign { $1 }
+    varinit { $1 } |  assign { $1 }
 
 ret_stmt:
     RETURN expr SEMI {$2}
 
-vardecl:
-    var_list SEMI { Vardecl((None, None), List.rev $1) }
-  | dim var_list SEMI { Vardecl($1, List.rev $2) }
+varinit:
+    var_list SEMI { Varinit((None, None), List.rev $1) }
+  | dim var_list SEMI { Varinit($1, List.rev $2) }
 
 var_list:
     ID varassign { [ ($1, $2)] }

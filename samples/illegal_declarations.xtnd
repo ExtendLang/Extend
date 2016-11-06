@@ -1,0 +1,11 @@
+illegal_declarations() {
+  [5,5] x;
+//  [2,2] x;
+  return 0;
+}
+
+/* illegal_declarations() {
+  [5,5] x;
+//  [2,2] x;
+  return 0;
+} */

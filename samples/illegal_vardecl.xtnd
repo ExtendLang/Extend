@@ -1,0 +1,4 @@
+illegal_ranges() {
+  [empty, 2] x;
+  return 0;
+}

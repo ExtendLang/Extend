@@ -111,8 +111,8 @@ let rec string_of_expr = function
   | LitString(s) ->       "{\"LitString\":" ^ quote_string s ^ "}"
   | LitRange(rowlist) ->  "{\"LitRange\": " ^ string_of_list (Rows rowlist) ^ "}"
   | Id(s) ->              "{\"Id\": " ^ quote_string s ^ "}"
-  | Empty ->              "{\"Empty\": null}"
-  | Wild ->               "{\"Wild\": null}"
+  | Empty ->              "\"Empty\""
+  | Wild ->               "\"Wild\""
   | BinOp(e1, o, e2) ->   "{\"BinOp\": {" ^
                             "\"expr1\": " ^ string_of_expr e1 ^ ", " ^
                             "\"operator\": " ^ string_of_op o ^ ", " ^
@@ -153,8 +153,8 @@ and string_of_index = function
     None -> "null"
   | Some(Abs(e)) -> "{\"Absolute\": " ^ string_of_expr e ^ "}"
   | Some(Rel(e)) -> "{\"Relative\": " ^ string_of_expr e ^ "}"
-  | Some(DimensionStart) -> "{\"DimensionStart\": null}"
-  | Some(DimensionEnd) -> "{\"DimensionEnd\": null}"
+  | Some(DimensionStart) -> "\"DimensionStart\""
+  | Some(DimensionEnd) -> "\"DimensionEnd\""
 
 and string_of_dim (d1,d2) = "{\"d1\": " ^ (match d1 with None -> "null" | Some e -> string_of_expr e) ^ ", " ^
                              "\"d2\": " ^ (match d2 with None -> "null" | Some e -> string_of_expr e) ^ "}"

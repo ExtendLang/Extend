@@ -100,11 +100,6 @@ let string_of_op o = "\"" ^ (match o with
 let string_of_unop = function
     Neg -> "\"-\"" | LogNot -> "\"!\"" | BitNot -> "\"~\""
 
-let rec comma = function
-    [] -> ""
-  | [str] -> str
-  | str :: strs -> str ^ ", " ^ comma strs
-
 let rec string_of_expr = function
     LitInt(l) ->          "{\"LitInt\":" ^ string_of_int l ^ "}"
   | LitFlt(l) ->          "{\"LitFlt\":" ^ string_of_float l ^ "}"
@@ -210,7 +205,7 @@ and string_of_list l =
   | Strings(sl) -> List.map quote_string sl
   | Cases(cl) -> List.map string_of_case cl
   | Formulas(fl) -> List.map string_of_formula fl)
-  in "[" ^ comma stringrep ^ "]"
+  in "[" ^ String.concat ", " stringrep ^ "]"
 
 let string_of_raw_program (imp, glb, fs) =
     "{\"Program\": {" ^
@@ -223,29 +218,22 @@ let string_of_variable v =
   "\"Columns\": " ^ string_of_dimexpr v.var_cols ^ "," ^
   "\"Formulas\": " ^ string_of_list (Formulas v.var_formulas) ^ "}"
 
-let string_of_variable_map m =
+let string_of_map value_desc val_printing_fn m =
   let f_key_val_list k v l = (
-    "{\"VariableName\": " ^ quote_string k ^ ", " ^
-    "\"VariableDef\": " ^ string_of_variable v ^ "}"
+    "{\"" ^ value_desc ^ "Name\": " ^ quote_string k ^ ", " ^
+    "\"" ^ value_desc ^ "Def\": " ^ val_printing_fn v ^ "}"
   ) :: l in
-  "[" ^ comma (List.rev (StringMap.fold f_key_val_list m [])) ^ "]"
+  "[" ^ String.concat ", " (List.rev (StringMap.fold f_key_val_list m [])) ^ "]"
 
 let string_of_funcdecl f =
   "{\"Params\": " ^ string_of_list (Vars f.func_params) ^ "," ^
-  "\"Variables\": " ^ string_of_variable_map f.func_body ^ "," ^
+  "\"Variables\": " ^ string_of_map "Variable" string_of_variable f.func_body ^ "," ^
   "\"ReturnVal\": " ^ string_of_range f.func_ret_val ^ "}"
-
-let string_of_funcdecl_map m =
-  let f_key_val_list k v l = (
-    "{\"FunctionName\": " ^ quote_string k ^ ", " ^
-    "\"FunctionDef\": " ^ string_of_funcdecl v ^ "}"
-  ) :: l in
-  "[" ^ comma (List.rev (StringMap.fold f_key_val_list m [])) ^ "]"
 
 let string_of_program (glb, fs) =
   "{\"Program\": {" ^
-    "\"Globals\": " ^ string_of_variable_map glb ^ "," ^
-    "\"Functions\": " ^ string_of_funcdecl_map fs ^ "}}"
+    "\"Globals\": " ^ string_of_map "Variable" string_of_variable glb ^ "," ^
+    "\"Functions\": " ^ string_of_map "Function" string_of_funcdecl fs ^ "}}"
 
 let allow_range_literal = function
     LitRange(rowlist) ->

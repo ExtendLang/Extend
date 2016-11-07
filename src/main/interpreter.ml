@@ -25,10 +25,9 @@ type cell_value = ExtendNumber of int |
 and  range      = InterpreterVariable of interpreter_variable |
                   Subrange of subrange
 and  interpreter_variable   = {
-  interpreter_variable_name:             string;
+  interpreter_variable_ast_variable: variable;
   interpreter_variable_dimensions:       dimen;
   values:                    ((cell_value * mark_color) CellMap.t) ref;
-  formulas:                  assign list;
 }
 and  subrange   = {
   base_range:                range;
@@ -59,12 +58,15 @@ let get_formula rg (Cell(r, c)) =
       | _ -> false in
     matchMin && matchMax in
   let is_match asn =
-    match asn with
-      (rg_name, (Some (Some row_start, Some row_end), Some (Some col_start, Some col_end)), Some e) ->
-      rg.interpreter_variable_name = rg_name && r < num_rows && r >= 0 && c < num_cols && c >= 0 &&
-      (matchesDim row_start row_end r) && (matchesDim col_start col_end c)
-    | _ -> false in
-  let maybe_formula = try (let (_, _, e) = List.find is_match rg.formulas in e) with Not_found -> None in
+    (matchesDim asn.formula_row_start asn.formula_row_end r) &&
+    (matchesDim asn.formula_col_start asn.formula_col_end c) in
+  let maybe_formula =
+    if r < num_rows && r >= 0 && c < num_cols && c >= 0 then
+    (try
+      let asn = List.find is_match rg.interpreter_variable_ast_variable.var_formulas in
+      Some asn.formula_expr
+     with Not_found -> None)
+    else None in
   match maybe_formula with
     Some e -> e
   | None -> Empty
@@ -98,8 +100,11 @@ let rec evaluate scope cell e =
 
   let range_of_val = function
       Range(r) -> r
-    | v -> InterpreterVariable({interpreter_variable_name = Transform.idgen (); interpreter_variable_dimensions = Dimensions(1,1); values = ref (CellMap.add (Cell(0,0)) (v, Black) CellMap.empty); formulas=[]}) in
-
+    | v -> InterpreterVariable({interpreter_variable_dimensions = Dimensions(1,1);
+                                values = ref (CellMap.add (Cell(0,0)) (v, Black) CellMap.empty);
+                                interpreter_variable_ast_variable = {var_rows = DimInt(1);
+                                                                     var_cols = DimInt(1);
+                                                                     var_formulas = []}}) in
   let rec val_of_val = function
       Range(rg) ->
       let Dimensions(rows, cols) = dimensions_of_range rg in
@@ -118,7 +123,7 @@ let rec evaluate scope cell e =
         EmptyValue -> EmptyValue
       | ExtendNumber(0) -> (evaluate scope cell false_exp)
       | _ -> (evaluate scope cell true_exp))
-  | Id(s) -> Range(InterpreterVariable(List.find (fun rng -> rng.interpreter_variable_name = s) scope))
+  | Id(s) -> Range(InterpreterVariable(StringMap.find s scope))
   | Selection(expr, sel) ->
     let rng = range_of_val (evaluate scope cell expr) in
     let Cell(cell_row, cell_col) = cell in
@@ -147,7 +152,7 @@ and get_val scope rg cell =
         (* print_endline ("Finished calculating " ^ v.interpreter_variable_name ^ index_of_cell cell) ; *)
         v.values := CellMap.add cell (new_value, Black) !(v.values) ; new_value
       | Grey -> let Cell(r, c) = cell in
-        raise (Cyclic(v.interpreter_variable_name ^ "[" ^ string_of_int r ^ "," ^ string_of_int c ^ "]"))
+        raise (Cyclic("[" ^ string_of_int r ^ "," ^ string_of_int c ^ "]"))
       | Black ->
         (* print_endline ("Found " ^ v.interpreter_variable_name ^ index_of_cell cell) ;  *)
         value)
@@ -198,27 +203,16 @@ let interpret input =
   let ast_imp_res = Transform.load_imports (Transform.expand_imports ast_raw) in
   let ast_expanded = Transform.expand_expressions ast_imp_res in
   let ast_mapped = Transform.create_maps ast_expanded in
-  string_of_program ast_mapped ^
-  (match ast_expanded with
-     (_, _, [foo]) ->
-     let is_x_formula = function
-         Assign(s, sel, eo) -> s = "x"
-       | _ -> false in
-     let x_formula = function
-         Assign(a) -> a
-       | _ -> raise (Cyclic("Inconceivable!")) in
-     let is_x_varinit = function
-         Varinit(_, [(s, None)]) -> s = "x"
-       | _ -> false in
-     let x_dimensions = function
-         Varinit((Some(LitInt(rows)), (Some(LitInt(cols)))), _) -> Dimensions(rows, cols)
-       | _ -> raise (Cyclic("Inconceivable!")) in
-     let x_formulas = List.map x_formula (List.filter is_x_formula foo.body) in
-     (match (List.filter is_x_varinit foo.body) with
-        [] -> ""
-      | [x] ->
-        let x_dims = x_dimensions x in
-        let rg = {interpreter_variable_name="x"; interpreter_variable_dimensions = x_dims; values=ref CellMap.empty; formulas = x_formulas} in
-        "\n" ^ string_of_val [rg] (Range(InterpreterVariable(rg)))
-      | x :: xs -> raise (Cyclic("Inconceivable!")))
-   | _ -> "");;
+  string_of_program ast_mapped ^ try
+    (let foofunc = StringMap.find "foo" (snd ast_mapped) in
+    let xvar = StringMap.find "x" foofunc.func_body in
+    let v_dimensions v =
+      match (v.var_rows, v.var_cols) with
+        DimInt(r), DimInt(c) -> Dimensions(r, c)
+      | _ -> raise (Cyclic("Inconceivable!")) in
+    let xrg = {interpreter_variable_dimensions = v_dimensions xvar;
+               interpreter_variable_ast_variable = xvar;
+               values = ref CellMap.empty;} in
+    let scope = StringMap.add "x" xrg StringMap.empty in
+     "\n" ^ string_of_val scope (Range(InterpreterVariable(xrg))))
+  with Not_found -> "";

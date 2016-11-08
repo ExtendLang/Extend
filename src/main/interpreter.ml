@@ -35,6 +35,11 @@ and  subrange   = {
   subrange_dimensions:       dimen;
 }
 
+type interpreter_scope = {
+  interpreter_scope_declared_variables: variable StringMap.t;
+  interpreter_scope_resolved_variables: (interpreter_variable StringMap.t) ref
+}
+
 let dimensions_of_range = function
     InterpreterVariable(v) -> v.interpreter_variable_dimensions
   | Subrange(sr) -> sr.subrange_dimensions
@@ -87,15 +92,51 @@ let rec evaluate scope cell e =
         | _ -> EmptyValue)
     | _ -> EmptyValue in
 
-  let resolve_slice dimension_len cell_index sl =
-    let resolve_index = function
-        Abs(e) -> let ExtendNumber(i) = (evaluate scope cell e) in i
+  let create_interpreter_variable v =
+    let resolve_dimension = function
+        DimInt(i) -> i
+      | DimId(s) -> let ExtendNumber(i) = (evaluate scope (Cell(0,0)) (Id(s))) in i in
+
+    let resolve_formula_index dim_length = function
+        Abs(e) -> let ExtendNumber(i) = (evaluate scope (Cell(0,0)) e) in
+        if i >= 0 then Abs(LitInt(i)) else Abs(LitInt(dim_length + i))
+      | o -> o in
+
+    let resolve_formula (Dimensions(r, c)) f = {
+      formula_row_start = resolve_formula_index r f.formula_row_start;
+      formula_row_end = resolve_formula_index r f.formula_row_end;
+      formula_col_start = resolve_formula_index c f.formula_col_start;
+      formula_col_end = resolve_formula_index c f.formula_col_end;
+      formula_expr = f.formula_expr;
+    } in
+
+    let new_dimensions = Dimensions(resolve_dimension v.var_rows, resolve_dimension v.var_cols) in
+    {
+      interpreter_variable_dimensions = new_dimensions;
+      interpreter_variable_ast_variable = {v with var_formulas = List.map (resolve_formula new_dimensions) v.var_formulas};
+      values = ref CellMap.empty;
+    } in
+
+  let find_variable s =
+    let v =
+      if StringMap.mem s !(scope.interpreter_scope_resolved_variables)
+      then StringMap.find s !(scope.interpreter_scope_resolved_variables)
+      else
+        let new_var = create_interpreter_variable (StringMap.find s scope.interpreter_scope_declared_variables) in
+        scope.interpreter_scope_resolved_variables := StringMap.add s new_var !(scope.interpreter_scope_resolved_variables) ;
+        new_var in
+    Range(InterpreterVariable(v)) in
+
+  let resolve_rhs_slice dimension_len cell_index sl =
+    let resolve_rhs_index = function
+        Abs(e) -> let ExtendNumber(i) = (evaluate scope cell e) in
+        if i >= 0 then i else dimension_len + i
       | Rel(e) -> let ExtendNumber(i) = (evaluate scope cell e) in cell_index + i
       | DimensionStart -> 0
       | DimensionEnd -> dimension_len in
     (match sl with
-       (Some idx1, Some idx2) -> ((resolve_index idx1), (resolve_index idx2))
-     | (Some idx, None) -> let i = resolve_index idx in (i, i+1)
+       (Some idx1, Some idx2) -> ((resolve_rhs_index idx1), (resolve_rhs_index idx2))
+     | (Some idx, None) -> let i = resolve_rhs_index idx in (i, i+1)
      | _ -> raise(Cyclic("Inconceivable!"))) in
 
   let range_of_val = function
@@ -123,15 +164,15 @@ let rec evaluate scope cell e =
         EmptyValue -> EmptyValue
       | ExtendNumber(0) -> (evaluate scope cell false_exp)
       | _ -> (evaluate scope cell true_exp))
-  | Id(s) -> Range(InterpreterVariable(StringMap.find s scope))
+  | Id(s) -> find_variable s
   | Selection(expr, sel) ->
     let rng = range_of_val (evaluate scope cell expr) in
     let Cell(cell_row, cell_col) = cell in
     let Dimensions(rows, cols) = dimensions_of_range rng in
     (match sel with
        (Some row_slice, Some col_slice) ->
-       let (row_start, row_end) = resolve_slice rows cell_row row_slice in
-       let (col_start, col_end) = resolve_slice rows cell_col col_slice in
+       let (row_start, row_end) = resolve_rhs_slice rows cell_row row_slice in
+       let (col_start, col_end) = resolve_rhs_slice cols cell_col col_slice in
        Range(Subrange({base_range = rng; subrange_dimensions = Dimensions(row_end - row_start, col_end - col_start); base_offset = Cell(row_start, col_start)}))
      | _ -> EmptyValue)
 
@@ -204,15 +245,10 @@ let interpret input =
   let ast_expanded = Transform.expand_expressions ast_imp_res in
   let ast_mapped = Transform.create_maps ast_expanded in
   string_of_program ast_mapped ^ try
-    (let foofunc = StringMap.find "foo" (snd ast_mapped) in
-    let xvar = StringMap.find "x" foofunc.func_body in
-    let v_dimensions v =
-      match (v.var_rows, v.var_cols) with
-        DimInt(r), DimInt(c) -> Dimensions(r, c)
-      | _ -> raise (Cyclic("Inconceivable!")) in
-    let xrg = {interpreter_variable_dimensions = v_dimensions xvar;
-               interpreter_variable_ast_variable = xvar;
-               values = ref CellMap.empty;} in
-    let scope = StringMap.add "x" xrg StringMap.empty in
-     "\n" ^ string_of_val scope (Range(InterpreterVariable(xrg))))
+    (let mainfunc = StringMap.find "main" (snd ast_mapped) in
+     let scope = {
+       interpreter_scope_declared_variables = mainfunc.func_body;
+       interpreter_scope_resolved_variables = ref StringMap.empty;
+     } in
+     "\n" ^ (string_of_val scope (evaluate scope (Cell(0,0)) (snd mainfunc.func_ret_val))))
   with Not_found -> "";

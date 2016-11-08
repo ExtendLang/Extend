@@ -52,14 +52,17 @@ let check_val rg (Cell(r, c)) =
 
 let get_formula rg (Cell(r, c)) =
   let Dimensions(num_rows, num_cols) = rg.interpreter_variable_dimensions in
-  let matchesDim s e pos =
+  let matchesDim s eo pos =
     let matchMin = match s with
         DimensionStart -> true
       | Abs(LitInt(i)) -> pos >= i
       | _ -> false in
-    let matchMax = match e with
-        DimensionEnd -> true
-      | Abs(LitInt(i)) -> pos < i
+    let matchMax = match eo with
+        Some DimensionEnd -> true
+      | Some (Abs(LitInt(i))) -> pos < i
+      | None -> (match s with
+          Abs(LitInt(i)) -> pos = i
+          | _ -> false)
       | _ -> false in
     matchMin && matchMax in
   let is_match asn =
@@ -104,9 +107,13 @@ let rec evaluate scope cell e =
 
     let resolve_formula (Dimensions(r, c)) f = {
       formula_row_start = resolve_formula_index r f.formula_row_start;
-      formula_row_end = resolve_formula_index r f.formula_row_end;
+      formula_row_end = (match f.formula_row_end with
+            Some e -> Some (resolve_formula_index r e)
+          | None -> None);
       formula_col_start = resolve_formula_index c f.formula_col_start;
-      formula_col_end = resolve_formula_index c f.formula_col_end;
+      formula_col_end = (match f.formula_col_end with
+            Some e -> Some (resolve_formula_index c e)
+          | None -> None);
       formula_expr = f.formula_expr;
     } in
 
@@ -234,10 +241,10 @@ let rec string_of_val scope = function
     let row_list = zero_until rows in
     let col_list = zero_until cols in
     let cart = cartesian row_list col_list in
-    "{" ^ (String.concat "; " (tailrec_map (string_of_cell scope rg) cart)) ^ "}"
+    "[" ^ (String.concat ", " (tailrec_map (string_of_cell scope rg) cart)) ^ "]"
 
 and string_of_cell scope rg (r,c) =
-  index_of_cell (Cell(r,c)) ^ ": " ^ string_of_val scope (get_val scope rg (Cell(r,c)))
+  "{" ^ quote_string (index_of_cell (Cell(r,c))) ^ ": " ^ quote_string (string_of_val scope (get_val scope rg (Cell(r,c)))) ^ "}"
 
 let interpret input =
   let ast_raw = Parser.program Scanner.token input in

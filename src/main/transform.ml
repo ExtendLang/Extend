@@ -65,13 +65,12 @@ let expand_expressions (imports, globals, functions) =
       None -> (entire_dimension, [])
     | Some (Some (Abs(e)), None) ->
       let (start_e, start_stmts) = expand_expr e in
-      let (end_e, end_stmts) = expand_expr (BinOp(start_e, Plus, lit_one)) in
-      ((Some (Abs(start_e)), Some (Abs(end_e))), start_stmts @ end_stmts)
+      ((Some (Abs(start_e)), None), start_stmts)
     | Some (Some idx_start, Some idx_end) ->
       let (new_start, new_start_exprs) = expand_index idx_start in
       let (new_end, new_end_exprs) = expand_index idx_end in
       ((Some new_start, Some new_end), new_start_exprs @ new_end_exprs)
-    | Some (Some _, None) | Some (None, _) -> ((None, None), []) in (* TODO: RAISE AN EXCEPTION!!! *)
+    | Some (Some _, None) | Some (None, _) -> raise (IllegalExpression("Illegal slice - this shouldn't be possible")) in
 
   let expand_assign (var_name, (row_slice, col_slice), formula) =
     (* expand_assign: Take an Assign and return a list of more
@@ -154,7 +153,7 @@ let create_maps (imports, globals, functions) =
 
   let add_formula m = function
        Varinit(_,_) -> m
-     | Assign(var_name, (Some (Some row_start, Some row_end), Some (Some col_start, Some col_end)), Some e) ->
+     | Assign(var_name, (Some (Some row_start, row_end), Some (Some col_start, col_end)), Some e) ->
        if StringMap.mem var_name m
        then (let v = StringMap.find var_name m in
              StringMap.add var_name {v with var_formulas = v.var_formulas @ [{
@@ -164,7 +163,7 @@ let create_maps (imports, globals, functions) =
                  formula_col_end = col_end;
                  formula_expr = e;
                }]} m)
-       else raise (UnknownVariable(string_of_stmt (Assign(var_name, (Some (Some row_start, Some row_end), Some (Some col_start, Some col_end)), Some e))))
+       else raise (UnknownVariable(string_of_stmt (Assign(var_name, (Some (Some row_start, row_end), Some (Some col_start, col_end)), Some e))))
      | Assign(a) -> raise (LogicError("Unrecognized format for post-desugaring Assign: " ^ string_of_stmt (Assign(a)))) in
 
   let vds_of_stmts stmts =

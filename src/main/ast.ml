@@ -45,9 +45,9 @@ type raw_program = string list * stmt list * raw_func list
 module StringMap = Map.Make(String)
 type formula  = {
   formula_row_start: index;
-  formula_row_end: index;
+  formula_row_end: index option;
   formula_col_start: index;
-  formula_col_end: index;
+  formula_col_end: index option;
   formula_expr: expr;
 }
 
@@ -189,9 +189,9 @@ and string_of_dimexpr = function
 
 and string_of_formula f =
   "{\"RowStart\": " ^ string_of_index (Some f.formula_row_start) ^ "," ^
-  "\"RowEnd\": " ^ string_of_index (Some f.formula_row_end) ^ "," ^
+  "\"RowEnd\": " ^ string_of_index (f.formula_row_end) ^ "," ^
   "\"ColumnStart\": " ^ string_of_index (Some f.formula_col_start) ^ "," ^
-  "\"ColumnEnd\": " ^ string_of_index (Some f.formula_col_end) ^ "," ^
+  "\"ColumnEnd\": " ^ string_of_index (f.formula_col_end) ^ "," ^
   "\"Formula\": " ^ string_of_expr f.formula_expr ^ "}"
 
 and string_of_list l =

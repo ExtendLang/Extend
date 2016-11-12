@@ -19,6 +19,7 @@ module CellMap  = Map.Make(struct
   end);;
 
 type cell_value = ExtendNumber of int |
+                  ExtendString of string |
                   Range of range |
                   EmptyValue |
                   Uncalculated
@@ -234,6 +235,7 @@ let tailrec_map f l =
 
 let rec string_of_val scope = function
     ExtendNumber(cv) -> string_of_int cv
+  | ExtendString(s) -> quote_string s
   | EmptyValue -> "empty"
   | Uncalculated -> "huh?"
   | Range(rg) ->

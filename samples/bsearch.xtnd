@@ -1,10 +1,19 @@
-bsearch(list) {
-  return list[9,0]; // This doesn't work
+bsearch(list, val) {
+  num_rows := size(list)[0,0];
+  mid := (num_rows - 1) / 2;
+  return
+    list[mid,0] == val ? mid : (
+      list[mid,0] > val ?
+        (mid > 0 ? bsearch(list[:mid,:], val) : empty) :
+        (num_rows > 1 ? mid + 1 + bsearch(list[mid+1:,:], val) : empty)
+    );
 }
 
 main() {
-  [10,1] array;
-  array[0,0] = 1;
-  array[1:,0] = array[[-1],0] + 1;
-  return bsearch(array); // This doesn't work
+  [1000,2] array;
+  array[0,0] = 0;
+  array[1:,0] = array[[-1],[0]] + 2;
+  array[1:,1] = array[[-1],[0]] + 1;
+  array[0,1] = 10;
+  return array[bsearch(array,100),1];
 }

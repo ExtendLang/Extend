@@ -22,11 +22,6 @@ Library jsonify
   Path: src/main
   Modules: Jsonify
 
-Executable codegen
-  BuildDepends: llvm, llvm.analysis
-  MainIs: comp.ml
-  Path: src/codegen
-
 Executable main
   BuildDepends: str, llvm, llvm.analysis
   CompiledObject: byte

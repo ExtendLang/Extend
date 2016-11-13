@@ -18,12 +18,17 @@ SourceRepository master
   Browser: https://github.com/Neitsch/plt
 
 Library jsonify
-  BuildDepends: str
+  BuildDepends: str, llvm, llvm.analysis
   Path: src/main
   Modules: Jsonify
 
+Executable codegen
+  BuildDepends: llvm, llvm.analysis
+  MainIs: comp.ml
+  Path: src/codegen
+
 Executable main
-  BuildDepends: str
+  BuildDepends: str, llvm, llvm.analysis
   CompiledObject: byte
   Path: src/main
   MainIs: main.ml

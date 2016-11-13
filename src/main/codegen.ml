@@ -55,14 +55,17 @@ let translate (globals, functions) =
   and base_module = Llvm.create_module context "Extend" in
   let base_types = setup_types context in
   let build_function_names =
-    Ast.StringMap.mapi (fun key func ->
-        (func, Llvm.define_function key (Llvm.function_type base_types.range_p (Array.of_list [])) base_module)
+    Ast.StringMap.mapi (fun key (func: Ast.func_decl) ->
+        (func, Llvm.define_function key (Llvm.function_type base_types.range_p (Array.of_list (List.map (fun a -> base_types.range_p) func.Ast.func_params))) base_module)
       ) functions in
   let build_function_body =
     Ast.StringMap.iter (fun key (desc, func) ->
         let builder = Llvm.builder_at_end context (Llvm.entry_block func) in
-        let my_val = Llvm.build_alloca base_types.range_t "some_shit" builder in
-        Llvm.build_ret my_val builder; () (*Llvm.build_ret_void builder; ()*)
+        let dummy_ret = Llvm.build_alloca base_types.range_t "some_shit" builder in
+        let _ = Ast.StringMap.fold (
+            fun a b c -> c
+          ) desc.Ast.func_body () in
+        Llvm.build_ret dummy_ret builder; ()
       ) build_function_names in
     base_module
 

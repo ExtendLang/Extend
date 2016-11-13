@@ -60,8 +60,7 @@ let expand_expressions (imports, globals, functions) =
     | Rel(_) -> raise (IllegalExpression("relative - this shouldn't be possible")) in
 
   let expand_slice = function
-    (* Turn [(expr)] into [expr:expr+1] if necessary, and
-       expand both sides of the slice, if necessary. *)
+    (* Expand one or both sides as necessary. *)
       None -> (entire_dimension, [])
     | Some (Some (Abs(e)), None) ->
       let (start_e, start_stmts) = expand_expr e in

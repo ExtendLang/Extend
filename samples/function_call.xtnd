@@ -1,0 +1,7 @@
+gcd(m, n) {
+  return (n == 0) ? m : gcd(n, m % n);
+}
+
+main() {
+  return gcd(70, 55);
+}

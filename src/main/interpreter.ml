@@ -126,7 +126,7 @@ let rec evaluate scope cell e =
         Neg -> (match v with
             ExtendNumber(n) -> ExtendNumber(-n)
           | _ -> EmptyValue )
-      | Size ->
+      | SizeOf ->
         let Dimensions(r,c) = dimensions_of_range (range_of_val v) in
         Range(InterpreterVariable({interpreter_variable_dimensions = Dimensions(1,2);
                                    interpreter_variable_scope = scope;
@@ -196,6 +196,7 @@ let rec evaluate scope cell e =
      | (Some idx, None) -> (match (resolve_rhs_index idx) with
            Some i -> (Some i, Some (i+1))
          | _ -> (None, None))
+     | (None, None) -> if dimension_len = 1 then (Some 0, Some 1) else (Some cell_index, Some (cell_index+1))
      | _ -> raise(Cyclic("Inconceivable!"))) in
 
   let rec val_of_val = function
@@ -222,15 +223,19 @@ let rec evaluate scope cell e =
     let rng = range_of_val (evaluate scope cell expr) in
     let Cell(cell_row, cell_col) = cell in
     let Dimensions(rows, cols) = dimensions_of_range rng in
-    (match sel with
-       (Some row_slice, Some col_slice) ->
+    let (row_slice, col_slice) = (match sel with
+          (Some rs, Some cs) -> (rs, cs)
+        | (Some sl, None) -> if rows = 1
+          then ((Some(Abs(LitInt(0))),Some(Abs(LitInt(1)))), sl)
+          else if cols = 1 then (sl, (Some(Abs(LitInt(0))),Some(Abs(LitInt(1)))))
+          else raise(InvalidIndex("Only one slice supplied but neither dimension length is one in " ^ string_of_expr expr))
+        | _ -> ((None, None), (None, None))) in
        (match ((resolve_rhs_slice rows cell_row row_slice), (resolve_rhs_slice cols cell_col col_slice)) with
           ((Some row_start, Some row_end), (Some col_start, Some col_end)) ->
           Range(Subrange({base_range = rng;
                           subrange_dimensions = Dimensions(row_end - row_start, col_end - col_start);
                           base_offset = Cell(row_start, col_start)}))
         | _ -> EmptyValue)
-     | _ -> EmptyValue)
   | Call(fname, exprs) ->
     if StringMap.mem fname builtins then
       (StringMap.find fname builtins) scope cell exprs
@@ -252,6 +257,7 @@ and get_val rg cell =
       (* print_endline ("Looking for " ^ (*v.interpreter_variable_name ^ *) index_of_cell cell) ; *)
       let (value, color) = check_val v cell in match color with
         White ->
+        v.values := CellMap.add cell (Uncalculated, Grey) !(v.values) ;
         let new_value = (evaluate v.interpreter_variable_scope cell (get_formula v cell)) in
         (* print_endline ("Finished calculating " ^ v.interpreter_variable_name ^ index_of_cell cell) ; *)
         v.values := CellMap.add cell (new_value, Black) !(v.values) ; new_value

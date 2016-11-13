@@ -130,7 +130,7 @@ op_expr:
   | expr LT expr        { BinOp($1, Lt, $3) }
   | expr GTEQ expr      { BinOp($1, GtEq, $3) }
   | expr LTEQ expr      { BinOp($1, LtEq, $3) }
-  | SIZE LPAREN expr RPAREN { UnOp(Size, $3) }
+  | SIZE LPAREN expr RPAREN { UnOp(SizeOf, $3) }
   | MINUS expr %prec NEG    { UnOp(Neg, $2) }
   | LOGNOT expr             { UnOp(LogNot, $2) }
   | BITNOT expr             { UnOp(BitNot, $2) }
@@ -182,7 +182,7 @@ arg_list:
 
 lhs_sel:
     /* nothing */                         { (None, None) }
-  | LSQBRACK lslice RSQBRACK              { (Some $2, None) }
+/* commented out: LSQBRACK lslice RSQBRACK { (Some $2, None) } */
   | LSQBRACK lslice COMMA lslice RSQBRACK { (Some $2, Some $4) }
 
 rhs_sel:

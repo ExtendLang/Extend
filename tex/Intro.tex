@@ -18,26 +18,32 @@ import "string.xtnd";
 		Function declarations are described in detail in section~\ref{sec:Functions}.
 \section{Types and Literals}
 	\subsection{Primitive Data Types}
-		Extend has two primitive data types, \textbf{numbers} and \textbf{empty}. In the vein of Javascript, numbers are primitive values corresponding to a double-precision 64-bit binary format IEEE 754 value. Numbers can be written in an Extend source file as either integer or floating point constants; both are represented internally as floating-point values. The \textbf{empty} type can be written as the keyword \texttt{empty} or the empty string \texttt{""}, and serves a similar function to \texttt{NULL} in SQL.
+		Extend has three primitive data types, \textbf{numbers}, \textbf{strings}, and \textbf{empty}.
+		
+		In the vein of Javascript, numbers are primitive values corresponding to a double-precision 64-bit binary format IEEE 754 value. Numbers can be written in an Extend source file as either integer or floating point constants; both are represented internally as floating-point values.
+		
+		Strings are internally represented as an indivisible, immutable set of bytes corresponding to ASCII values. Extend does not allow for slicing of strings to access specific characters; access to the contents of a string will only be available through standard library functions.
+
+		The \textbf{empty} type can be written as the keyword \texttt{empty}, and serves a similar function to \texttt{NULL} in SQL.
 		\newline
 		\begin{table}[H]
 		\centering
 		\begin{tabular} {| l | l |}
 			\hline
-			\textbf{Primitives} & \textbf{Examples} \\ \hline
+			\textbf{Primitive Data Types} & \textbf{Examples} \\ \hline
 			Number & \texttt{42 or -5 or 2.71828 or 314159e-5} \\ \hline
-			Empty & \texttt{empty or ""} \\ \hline
+			String & \texttt{"Hello World" or "foo" or ""} \\ \hline
+			Empty & \texttt{empty} \\ \hline
 		\end{tabular}
 		\end{table}
 	\subsection{Ranges}
 		Extend has one composite type, the \textbf{range}. A range borrows conceptually from spreadsheets; it is a group of cells with two dimensions, described as rows and columns. Each cell contains a formula that either evaluates to a number or another range. Cell formulas are described in detail in section~\ref{sec:formula}. A range can either be declared as described in section~\ref{sec:vardecl} or with a range literal expression.
-\subsubsection{Range and String Literals}
-		A range literal is a semicolon-delimited list of rows, enclosed in curly brackets. Each row is a comma-delimited list of numbers or range literals. In addition, a range literal can be written in the form of a string literal, which represents a 1-by-n range corresponding to the ASCII values of the contents of the string. A few examples follow: 
-		
+\subsubsection{Ranges}
+		A range literal is a semicolon-delimited list of rows, enclosed in curly brackets. Each row is a comma-delimited list of numbers or range literals. A few examples follow: 
+
 \begin{lstlisting}
 {2,3,4} /* A range consisting of 1 row and 3 columns */
 {1,0,0; 0,1,0; 0,0,1} /* A range corresponding to the 3x3 identity matrix */
-"hello" /* Equivalent to {104,101,108,108,111} */
 {"don't";"panic"} /* A range with 2 rows and 1 column; 
-both cells of the range contain a range */
+both cells of the range contain a string */
 \end{lstlisting}

@@ -6,6 +6,7 @@ type mark_color = White |
                   Grey |
                   Black
 exception         Cyclic of string
+exception         InvalidIndex of string
 
 let index_of_cell (Cell(r,c)) =
   "[" ^ string_of_int r ^ "," ^ string_of_int c ^ "]"
@@ -91,6 +92,12 @@ let get_formula rg (Cell(r, c)) =
     Some e -> e
   | None -> Empty
 
+let __row__ _ (Cell(r, c)) _ = ExtendNumber(r)
+
+let __column__ scope (Cell(r, c)) exprs = ExtendNumber(c)
+
+let builtins = List.fold_left2 (fun m fname f -> StringMap.add fname f m) StringMap.empty ["row";"column"] [__row__;__column__]
+
 let rec evaluate scope cell e =
   let eval_binop op = function
       (ExtendNumber(n1), ExtendNumber(n2)) -> (match op with
@@ -113,11 +120,14 @@ let rec evaluate scope cell e =
   let create_interpreter_variable v =
     let resolve_dimension = function
         DimInt(i) -> i
-      | DimId(s) -> let ExtendNumber(i) = (evaluate scope (Cell(0,0)) (Id(s))) in i in
+      | DimId(s) -> (match (evaluate scope (Cell(0,0)) (Id(s))) with
+            ExtendNumber(i) -> i
+          | _ -> raise (InvalidIndex(s))) in
 
     let resolve_formula_index dim_length = function
-        Abs(e) -> let ExtendNumber(i) = (evaluate scope (Cell(0,0)) e) in
-        if i >= 0 then Abs(LitInt(i)) else Abs(LitInt(dim_length + i))
+        Abs(e) -> (match (evaluate scope (Cell(0,0)) e) with
+            ExtendNumber(i) -> if i >= 0 then Abs(LitInt(i)) else Abs(LitInt(dim_length + i))
+          | _ -> raise (InvalidIndex(string_of_expr e)))
       | o -> o in
 
     let resolve_formula (Dimensions(r, c)) f = {
@@ -152,27 +162,20 @@ let rec evaluate scope cell e =
 
   let resolve_rhs_slice dimension_len cell_index sl =
     let resolve_rhs_index = function
-        Abs(e) -> let ExtendNumber(i) = (evaluate scope cell e) in
-        if i >= 0 then i else dimension_len + i
-      | Rel(e) -> let ExtendNumber(i) = (evaluate scope cell e) in cell_index + i
-      | DimensionStart -> 0
-      | DimensionEnd -> dimension_len in
+        Abs(e) -> (match (evaluate scope cell e) with
+            ExtendNumber(i) -> if i >= 0 then Some i else Some (dimension_len + i)
+          | _ -> None)
+      | Rel(e) -> (match (evaluate scope cell e) with
+            ExtendNumber(i) -> Some (cell_index + i)
+          | _ -> None)
+      | DimensionStart -> Some 0
+      | DimensionEnd -> Some dimension_len in
     (match sl with
        (Some idx1, Some idx2) -> ((resolve_rhs_index idx1), (resolve_rhs_index idx2))
-     | (Some idx, None) -> let i = resolve_rhs_index idx in (i, i+1)
+     | (Some idx, None) -> (match (resolve_rhs_index idx) with
+           Some i -> (Some i, Some (i+1))
+         | _ -> (None, None))
      | _ -> raise(Cyclic("Inconceivable!"))) in
-
-  let interpreter_variable_of_val v =
-    {interpreter_variable_dimensions = Dimensions(1,1);
-     interpreter_variable_scope = scope;
-     values = ref (CellMap.add (Cell(0,0)) (v, Black) CellMap.empty);
-     interpreter_variable_ast_variable = {var_rows = DimInt(1);
-                                          var_cols = DimInt(1);
-                                          var_formulas = []}} in
-
-  let range_of_val = function
-      Range(r) -> r
-    | v -> InterpreterVariable(interpreter_variable_of_val v) in
 
   let rec val_of_val = function
       Range(rg) ->
@@ -182,20 +185,16 @@ let rec evaluate scope cell e =
            Range(rg))
     | o -> o in
 
-
-  let __size__ exprs =
-    let Dimensions(r,c) = dimensions_of_range (range_of_val (evaluate scope cell (List.hd exprs))) in
-    Range(InterpreterVariable({interpreter_variable_dimensions = Dimensions(1,2);
-                               interpreter_variable_scope = scope;
-                               values = ref (CellMap.add (Cell(0,0)) (ExtendNumber(r), Black)
-                                               (CellMap.add (Cell(0,1)) (ExtendNumber(c), Black)
-                                                  CellMap.empty));
-                               interpreter_variable_ast_variable = {var_rows = DimInt(1);
-                                                                    var_cols = DimInt(2);
-                                                                    var_formulas = []}})) in
-
-  (* This is a really bad way to do this - it creates this string map every time the function is called *)
-  let builtins = StringMap.add "size" __size__ StringMap.empty in
+  let interpreter_variable_of_val scope v =
+    {interpreter_variable_dimensions = Dimensions(1,1);
+     interpreter_variable_scope = scope;
+     values = ref (CellMap.add (Cell(0,0)) (v, Black) CellMap.empty);
+     interpreter_variable_ast_variable = {var_rows = DimInt(1);
+                                          var_cols = DimInt(1);
+                                          var_formulas = []}} in
+  let range_of_val scope = function
+      Range(r) -> r
+    | v -> InterpreterVariable(interpreter_variable_of_val scope v) in
 
   val_of_val (match e with
     Empty -> EmptyValue
@@ -210,21 +209,24 @@ let rec evaluate scope cell e =
       | _ -> (evaluate scope cell true_exp))
   | Id(s) -> find_variable s
   | Selection(expr, sel) ->
-    let rng = range_of_val (evaluate scope cell expr) in
+    let rng = range_of_val scope (evaluate scope cell expr) in
     let Cell(cell_row, cell_col) = cell in
     let Dimensions(rows, cols) = dimensions_of_range rng in
     (match sel with
        (Some row_slice, Some col_slice) ->
-       let (row_start, row_end) = resolve_rhs_slice rows cell_row row_slice in
-       let (col_start, col_end) = resolve_rhs_slice cols cell_col col_slice in
-       Range(Subrange({base_range = rng; subrange_dimensions = Dimensions(row_end - row_start, col_end - col_start); base_offset = Cell(row_start, col_start)}))
+       (match ((resolve_rhs_slice rows cell_row row_slice), (resolve_rhs_slice cols cell_col col_slice)) with
+          ((Some row_start, Some row_end), (Some col_start, Some col_end)) ->
+          Range(Subrange({base_range = rng;
+                          subrange_dimensions = Dimensions(row_end - row_start, col_end - col_start);
+                          base_offset = Cell(row_start, col_start)}))
+        | _ -> EmptyValue)
      | _ -> EmptyValue)
   | Call(fname, exprs) ->
     if StringMap.mem fname builtins then
-      (StringMap.find fname builtins) exprs
+      (StringMap.find fname builtins) scope cell exprs
     else
       let f = StringMap.find fname scope.interpreter_scope_functions in
-      let args = List.map (fun e -> interpreter_variable_of_val (evaluate scope (Cell(0,0)) e)) exprs in
+      let args = List.map (fun e -> interpreter_variable_of_val scope (evaluate scope (Cell(0,0)) e)) exprs in
       let f_scope = create_scope f args scope.interpreter_scope_functions in
       evaluate f_scope (Cell(0,0)) (snd f.func_ret_val)
 
@@ -253,7 +255,16 @@ and get_val rg cell =
     let Cell(sr_r, sr_c) = sr.base_offset in
     get_val sr.base_range (Cell(cell_r + sr_r, cell_c + sr_c))
 
-
+(* and __size__ scope cell exprs =
+  let Dimensions(r,c) = dimensions_of_range (range_of_val scope (evaluate scope cell (List.hd exprs))) in
+  Range(InterpreterVariable({interpreter_variable_dimensions = Dimensions(1,2);
+                             interpreter_variable_scope = scope;
+                             values = ref (CellMap.add (Cell(0,0)) (ExtendNumber(r), Black)
+                                             (CellMap.add (Cell(0,1)) (ExtendNumber(c), Black)
+                                                CellMap.empty));
+                             interpreter_variable_ast_variable = {var_rows = DimInt(1);
+                                                                  var_cols = DimInt(2);
+                                                                  var_formulas = []}})) *)
 
 (* All stub code below this point *)
 

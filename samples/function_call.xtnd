@@ -1,0 +1,7 @@
+gcd(m, n) {
+  return (m == n) ? m : (m > n ? gcd(m-n, n) : gcd(m, n-m));
+}
+
+main() {
+  return gcd(6, 60);
+}

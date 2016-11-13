@@ -37,6 +37,7 @@ and  subrange   = {
 }
 
 type interpreter_scope = {
+  interpreter_scope_functions: func_decl StringMap.t;
   interpreter_scope_declared_variables: variable StringMap.t;
   interpreter_scope_resolved_variables: (interpreter_variable StringMap.t) ref
 }
@@ -50,6 +51,15 @@ let check_val rg (Cell(r, c)) =
   if r >= num_rows || r < 0 || c >= num_cols || c < 0 then (EmptyValue, Black) else
     try CellMap.find (Cell(r,c)) !(rg.values)
     with Not_found -> (Uncalculated, White)
+
+let create_scope f args function_map =
+  let add_argument m arg_name arg_val = StringMap.add arg_name arg_val m in
+  let inputs = List.fold_left2 add_argument StringMap.empty (List.map snd f.func_params) args in
+   {
+     interpreter_scope_functions = function_map;
+     interpreter_scope_declared_variables = f.func_body;
+     interpreter_scope_resolved_variables = ref inputs;
+   }
 
 let get_formula rg (Cell(r, c)) =
   let Dimensions(num_rows, num_cols) = rg.interpreter_variable_dimensions in
@@ -87,6 +97,8 @@ let rec evaluate scope cell e =
       | Minus -> ExtendNumber(n1 - n2)
       | Times -> ExtendNumber(n1 * n2)
       | Divide -> ExtendNumber(n1 / n2)
+      | Eq -> if n1 = n2 then ExtendNumber(1) else ExtendNumber(0)
+      | Gt -> if n1 > n2 then ExtendNumber(1) else ExtendNumber(0)
       | _ -> EmptyValue)
     | _ -> EmptyValue in
 
@@ -147,13 +159,17 @@ let rec evaluate scope cell e =
      | (Some idx, None) -> let i = resolve_rhs_index idx in (i, i+1)
      | _ -> raise(Cyclic("Inconceivable!"))) in
 
+  let interpreter_variable_of_val v =
+    {interpreter_variable_dimensions = Dimensions(1,1);
+     values = ref (CellMap.add (Cell(0,0)) (v, Black) CellMap.empty);
+     interpreter_variable_ast_variable = {var_rows = DimInt(1);
+                                          var_cols = DimInt(1);
+                                          var_formulas = []}} in
+
   let range_of_val = function
       Range(r) -> r
-    | v -> InterpreterVariable({interpreter_variable_dimensions = Dimensions(1,1);
-                                values = ref (CellMap.add (Cell(0,0)) (v, Black) CellMap.empty);
-                                interpreter_variable_ast_variable = {var_rows = DimInt(1);
-                                                                     var_cols = DimInt(1);
-                                                                     var_formulas = []}}) in
+    | v -> InterpreterVariable(interpreter_variable_of_val v) in
+
   let rec val_of_val = function
       Range(rg) ->
       let Dimensions(rows, cols) = dimensions_of_range rg in
@@ -166,6 +182,7 @@ let rec evaluate scope cell e =
     Empty -> EmptyValue
   | LitInt(i) -> ExtendNumber(i)
   | LitFlt(f) -> ExtendNumber(int_of_float f)
+  | LitString(s) -> ExtendString(s)
   | BinOp(e1, op, e2) -> eval_binop op ((evaluate scope cell e1),(evaluate scope cell e2))
   | UnOp(op, e1) -> eval_unop op (evaluate scope cell e1)
   | Ternary(cond, true_exp, false_exp) -> (match (evaluate scope cell cond) with
@@ -183,9 +200,13 @@ let rec evaluate scope cell e =
        let (col_start, col_end) = resolve_rhs_slice cols cell_col col_slice in
        Range(Subrange({base_range = rng; subrange_dimensions = Dimensions(row_end - row_start, col_end - col_start); base_offset = Cell(row_start, col_start)}))
      | _ -> EmptyValue)
+  | Call(fname, exprs) ->
+    let f = StringMap.find fname scope.interpreter_scope_functions in
+    let args = List.map (fun e -> interpreter_variable_of_val (evaluate scope (Cell(0,0)) e)) exprs in
+    let f_scope = create_scope f args scope.interpreter_scope_functions in
+    evaluate f_scope (Cell(0,0)) (snd f.func_ret_val)
 
-(*  LitString of string |
-    LitRange of (expr list) list |
+(*  LitRange of (expr list) list |
     Switch of expr option * case list |
     Call of string * expr list |
     Precedence of expr * expr *)
@@ -254,10 +275,8 @@ let interpret input =
   let ast_expanded = Transform.expand_expressions ast_imp_res in
   let ast_mapped = Transform.create_maps ast_expanded in
   string_of_program ast_mapped ^ try
-    (let mainfunc = StringMap.find "main" (snd ast_mapped) in
-     let scope = {
-       interpreter_scope_declared_variables = mainfunc.func_body;
-       interpreter_scope_resolved_variables = ref StringMap.empty;
-     } in
+    (let funcs = snd ast_mapped in
+     let mainfunc = StringMap.find "main" funcs in
+     let scope = create_scope mainfunc [] funcs in
      "\n" ^ (string_of_val scope (evaluate scope (Cell(0,0)) (snd mainfunc.func_ret_val))))
   with Not_found -> "";

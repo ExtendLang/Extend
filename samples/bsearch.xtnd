@@ -1,0 +1,10 @@
+bsearch(list) {
+  return list[9,0]; // This doesn't work
+}
+
+main() {
+  [10,1] array;
+  array[0,0] = 1;
+  array[1:,0] = array[[-1],0] + 1;
+  return bsearch(array); // This doesn't work
+}

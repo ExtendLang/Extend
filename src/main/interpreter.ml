@@ -52,6 +52,7 @@ let check_val rg (Cell(r, c)) =
     try CellMap.find (Cell(r,c)) !(rg.values)
     with Not_found -> (Uncalculated, White)
 
+
 let create_scope f args function_map =
   let add_argument m arg_name arg_val = StringMap.add arg_name arg_val m in
   let inputs = List.fold_left2 add_argument StringMap.empty (List.map snd f.func_params) args in
@@ -97,6 +98,7 @@ let rec evaluate scope cell e =
       | Minus -> ExtendNumber(n1 - n2)
       | Times -> ExtendNumber(n1 * n2)
       | Divide -> ExtendNumber(n1 / n2)
+      | Mod -> ExtendNumber(n1 mod n2)
       | Eq -> if n1 = n2 then ExtendNumber(1) else ExtendNumber(0)
       | Gt -> if n1 > n2 then ExtendNumber(1) else ExtendNumber(0)
       | _ -> EmptyValue)
@@ -178,6 +180,20 @@ let rec evaluate scope cell e =
            Range(rg))
     | o -> o in
 
+
+  let __size__ exprs =
+    let Dimensions(r,c) = dimensions_of_range (range_of_val (evaluate scope cell (List.hd exprs))) in
+    Range(InterpreterVariable({interpreter_variable_dimensions = Dimensions(1,2);
+     values = ref (CellMap.add (Cell(0,0)) (ExtendNumber(r), Black)
+                     (CellMap.add (Cell(0,1)) (ExtendNumber(c), Black)
+                        CellMap.empty));
+     interpreter_variable_ast_variable = {var_rows = DimInt(1);
+                                          var_cols = DimInt(2);
+                                          var_formulas = []}})) in
+
+  (* This is a really bad way to do this - it creates this string map every time the function is called *)
+  let builtins = StringMap.add "size" __size__ StringMap.empty in
+
   val_of_val (match e with
     Empty -> EmptyValue
   | LitInt(i) -> ExtendNumber(i)
@@ -201,10 +217,13 @@ let rec evaluate scope cell e =
        Range(Subrange({base_range = rng; subrange_dimensions = Dimensions(row_end - row_start, col_end - col_start); base_offset = Cell(row_start, col_start)}))
      | _ -> EmptyValue)
   | Call(fname, exprs) ->
-    let f = StringMap.find fname scope.interpreter_scope_functions in
-    let args = List.map (fun e -> interpreter_variable_of_val (evaluate scope (Cell(0,0)) e)) exprs in
-    let f_scope = create_scope f args scope.interpreter_scope_functions in
-    evaluate f_scope (Cell(0,0)) (snd f.func_ret_val)
+    if StringMap.mem fname builtins then
+      (StringMap.find fname builtins) exprs
+    else
+      let f = StringMap.find fname scope.interpreter_scope_functions in
+      let args = List.map (fun e -> interpreter_variable_of_val (evaluate scope (Cell(0,0)) e)) exprs in
+      let f_scope = create_scope f args scope.interpreter_scope_functions in
+      evaluate f_scope (Cell(0,0)) (snd f.func_ret_val)
 
 (*  LitRange of (expr list) list |
     Switch of expr option * case list |
@@ -215,7 +234,7 @@ let rec evaluate scope cell e =
 and get_val scope rg cell =
   match rg with
     InterpreterVariable(v) -> (
-      (* print_endline ("Looking for " ^ v.interpreter_variable_name ^ index_of_cell cell) ; *)
+      (* print_endline ("Looking for " ^ (*v.interpreter_variable_name ^ *) index_of_cell cell) ; *)
       let (value, color) = check_val v cell in match color with
         White ->
         let new_value = (evaluate scope cell (get_formula v cell)) in
@@ -230,6 +249,7 @@ and get_val scope rg cell =
     let Cell(cell_r, cell_c) = cell in
     let Cell(sr_r, sr_c) = sr.base_offset in
     get_val scope sr.base_range (Cell(cell_r + sr_r, cell_c + sr_c))
+
 
 
 (* All stub code below this point *)
@@ -257,7 +277,7 @@ let tailrec_map f l =
 let rec string_of_val scope = function
     ExtendNumber(cv) -> string_of_int cv
   | ExtendString(s) -> quote_string s
-  | EmptyValue -> "empty"
+  | EmptyValue -> "null"
   | Uncalculated -> "huh?"
   | Range(rg) ->
     let Dimensions(rows, cols) = dimensions_of_range rg in
@@ -267,7 +287,7 @@ let rec string_of_val scope = function
     "[" ^ (String.concat ", " (tailrec_map (string_of_cell scope rg) cart)) ^ "]"
 
 and string_of_cell scope rg (r,c) =
-  "{" ^ quote_string (index_of_cell (Cell(r,c))) ^ ": " ^ quote_string (string_of_val scope (get_val scope rg (Cell(r,c)))) ^ "}"
+  "{" ^ quote_string (index_of_cell (Cell(r,c))) ^ ": " ^ string_of_val scope (get_val scope rg (Cell(r,c))) ^ "}"
 
 let interpret input =
   let ast_raw = Parser.program Scanner.token input in

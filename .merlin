@@ -3,4 +3,3 @@ S test/**
 B _build/src/**
 B _build/test/**
 PKG oUnit
-PKG Llvm

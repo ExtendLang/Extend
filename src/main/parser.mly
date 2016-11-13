@@ -6,7 +6,7 @@ open Ast
 
 %token LSQBRACK RSQBRACK LPAREN RPAREN LBRACE RBRACE HASH
 %token COLON COMMA QUESTION GETS ASN SEMI PRECEDES UNDERSCORE
-%token SWITCH CASE DEFAULT
+%token SWITCH CASE DEFAULT SIZE
 %token PLUS MINUS TIMES DIVIDE MOD POWER LSHIFT RSHIFT
 %token EQ NOTEQ GT LT GTEQ LTEQ
 %token LOGNOT LOGAND LOGOR
@@ -26,7 +26,7 @@ open Ast
 %left PLUS MINUS BITOR BITXOR
 %left TIMES DIVIDE MOD LSHIFT RSHIFT BITAND
 %right POWER
-%right BITNOT LOGNOT NEG
+%right BITNOT LOGNOT NEG SIZE
 %left HASH LSQBRACK
 
 %start program
@@ -130,9 +130,10 @@ op_expr:
   | expr LT expr        { BinOp($1, Lt, $3) }
   | expr GTEQ expr      { BinOp($1, GtEq, $3) }
   | expr LTEQ expr      { BinOp($1, LtEq, $3) }
-  | MINUS expr %prec NEG  { UnOp(Neg, $2) }
-  | LOGNOT expr           { UnOp(LogNot, $2) }
-  | BITNOT expr           { UnOp(BitNot, $2) }
+  | SIZE LPAREN expr RPAREN { UnOp(Size, $3) }
+  | MINUS expr %prec NEG    { UnOp(Neg, $2) }
+  | LOGNOT expr             { UnOp(LogNot, $2) }
+  | BITNOT expr             { UnOp(BitNot, $2) }
 
 ternary_expr:
   /* commented out optional part for now */

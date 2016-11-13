@@ -15,5 +15,5 @@ main() {
   array[1:,0] = array[[-1],[0]] + 2;
   array[1:,1] = array[[-1],[0]] + 1;
   array[0,1] = 10;
-  return array[bsearch(array,-2),1];
+  return array[bsearch(array,40),1];
 }

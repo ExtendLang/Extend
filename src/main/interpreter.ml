@@ -99,6 +99,17 @@ let __column__ scope (Cell(r, c)) exprs = ExtendNumber(c)
 let builtins = List.fold_left2 (fun m fname f -> StringMap.add fname f m) StringMap.empty ["row";"column"] [__row__;__column__]
 
 let rec evaluate scope cell e =
+  let interpreter_variable_of_val v =
+    {interpreter_variable_dimensions = Dimensions(1,1);
+     interpreter_variable_scope = scope;
+     values = ref (CellMap.add (Cell(0,0)) (v, Black) CellMap.empty);
+     interpreter_variable_ast_variable = {var_rows = DimInt(1);
+                                          var_cols = DimInt(1);
+                                          var_formulas = []}} in
+  let range_of_val = function
+      Range(r) -> r
+    | v -> InterpreterVariable(interpreter_variable_of_val v) in
+
   let eval_binop op = function
       (ExtendNumber(n1), ExtendNumber(n2)) -> (match op with
         Plus -> ExtendNumber(n1 + n2)
@@ -111,11 +122,21 @@ let rec evaluate scope cell e =
       | _ -> EmptyValue)
     | _ -> EmptyValue in
 
-  let eval_unop op = function
-      ExtendNumber(n) -> (match op with
-          Neg -> ExtendNumber(-n)
-        | _ -> EmptyValue)
-    | _ -> EmptyValue in
+  let eval_unop op v = (match op with
+        Neg -> (match v with
+            ExtendNumber(n) -> ExtendNumber(-n)
+          | _ -> EmptyValue )
+      | Size ->
+        let Dimensions(r,c) = dimensions_of_range (range_of_val v) in
+        Range(InterpreterVariable({interpreter_variable_dimensions = Dimensions(1,2);
+                                   interpreter_variable_scope = scope;
+                                   values = ref (CellMap.add (Cell(0,0)) (ExtendNumber(r), Black)
+                                                   (CellMap.add (Cell(0,1)) (ExtendNumber(c), Black)
+                                                      CellMap.empty));
+                                   interpreter_variable_ast_variable = {var_rows = DimInt(1);
+                                                                        var_cols = DimInt(2);
+                                                                        var_formulas = []}}))
+      | _ -> EmptyValue) in
 
   let create_interpreter_variable v =
     let resolve_dimension = function
@@ -185,17 +206,6 @@ let rec evaluate scope cell e =
            Range(rg))
     | o -> o in
 
-  let interpreter_variable_of_val scope v =
-    {interpreter_variable_dimensions = Dimensions(1,1);
-     interpreter_variable_scope = scope;
-     values = ref (CellMap.add (Cell(0,0)) (v, Black) CellMap.empty);
-     interpreter_variable_ast_variable = {var_rows = DimInt(1);
-                                          var_cols = DimInt(1);
-                                          var_formulas = []}} in
-  let range_of_val scope = function
-      Range(r) -> r
-    | v -> InterpreterVariable(interpreter_variable_of_val scope v) in
-
   val_of_val (match e with
     Empty -> EmptyValue
   | LitInt(i) -> ExtendNumber(i)
@@ -209,7 +219,7 @@ let rec evaluate scope cell e =
       | _ -> (evaluate scope cell true_exp))
   | Id(s) -> find_variable s
   | Selection(expr, sel) ->
-    let rng = range_of_val scope (evaluate scope cell expr) in
+    let rng = range_of_val (evaluate scope cell expr) in
     let Cell(cell_row, cell_col) = cell in
     let Dimensions(rows, cols) = dimensions_of_range rng in
     (match sel with
@@ -226,7 +236,7 @@ let rec evaluate scope cell e =
       (StringMap.find fname builtins) scope cell exprs
     else
       let f = StringMap.find fname scope.interpreter_scope_functions in
-      let args = List.map (fun e -> interpreter_variable_of_val scope (evaluate scope (Cell(0,0)) e)) exprs in
+      let args = List.map (fun e -> interpreter_variable_of_val (evaluate scope (Cell(0,0)) e)) exprs in
       let f_scope = create_scope f args scope.interpreter_scope_functions in
       evaluate f_scope (Cell(0,0)) (snd f.func_ret_val)
 
@@ -256,15 +266,7 @@ and get_val rg cell =
     get_val sr.base_range (Cell(cell_r + sr_r, cell_c + sr_c))
 
 (* and __size__ scope cell exprs =
-  let Dimensions(r,c) = dimensions_of_range (range_of_val scope (evaluate scope cell (List.hd exprs))) in
-  Range(InterpreterVariable({interpreter_variable_dimensions = Dimensions(1,2);
-                             interpreter_variable_scope = scope;
-                             values = ref (CellMap.add (Cell(0,0)) (ExtendNumber(r), Black)
-                                             (CellMap.add (Cell(0,1)) (ExtendNumber(c), Black)
-                                                CellMap.empty));
-                             interpreter_variable_ast_variable = {var_rows = DimInt(1);
-                                                                  var_cols = DimInt(2);
-                                                                  var_formulas = []}})) *)
+   *)
 
 (* All stub code below this point *)
 

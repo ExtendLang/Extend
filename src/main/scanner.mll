@@ -47,6 +47,7 @@ rule token = parse
 | ">>"            { RSHIFT }
 | '#'             { HASH }
 | "empty"         { EMPTY }
+| "size"          { SIZE }
 | "switch"        { SWITCH }
 | "case"          { CASE }
 | "default"       { DEFAULT }

@@ -1,7 +1,7 @@
 type op       = Plus | Minus | Times | Divide | Mod | Pow |
                 LShift | RShift | BitOr | BitAnd | BitXor |
                 Eq | NotEq | Gt | Lt | GtEq | LtEq | LogAnd | LogOr
-type unop     = Neg | LogNot | BitNot
+type unop     = Neg | LogNot | BitNot | Size
 
 type expr     = LitInt of int |
                 LitFlt of float |
@@ -98,7 +98,7 @@ let string_of_op o = "\"" ^ (match o with
     LogAnd -> "&& " | LogOr -> "||" ) ^ "\""
 
 let string_of_unop = function
-    Neg -> "\"-\"" | LogNot -> "\"!\"" | BitNot -> "\"~\""
+    Neg -> "\"-\"" | LogNot -> "\"!\"" | BitNot -> "\"~\"" | Size -> "\"size\""
 
 let rec string_of_expr = function
     LitInt(l) ->          "{\"LitInt\":" ^ string_of_int l ^ "}"

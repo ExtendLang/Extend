@@ -13,21 +13,16 @@ let idgen =
 module StringSet = Set.Make (String);;
 let importSet = StringSet.empty;;
 
-let expand_imports (imports, globals, functions) =
-  let rec find_imports (imports, importSet) =
-    let rec find_import (import, importSet) =
-      let (imports, globals, functions) = Parser.program Scanner.token (Lexing.from_channel (open_in import))
-      in
-        find_imports (imports, importSet)
-    in
-      List.fold_left (fun st item -> if StringSet.mem item st then st else find_import (item, StringSet.add item st)) importSet imports
-  in (StringSet.elements (find_imports (imports, StringSet.empty)), globals, functions)
-
-let load_imports (imports, globals, functions) =
-  List.fold_left (fun (imp, glo, func) item ->
-    let (i, g, f) = Parser.program Scanner.token (Lexing.from_channel (open_in item))
-    in (imp, List.append g glo, List.append f func)
-  ) ([], globals, functions) imports;;
+let expand_file filename =
+  let rec expand_imports processed_imports globals fns = function
+      [] -> ([], globals, fns)
+    | import :: imports ->
+      let (file_imports, file_globals, file_functions) = Parser.program Scanner.token (Lexing.from_channel (open_in import)) in
+      let new_proc = StringSet.add filename processed_imports in
+      let first_im_hearing_about imp = not (StringSet.mem imp new_proc || List.mem imp imports) in
+      let new_imports = StringSet.elements (StringSet.of_list (List.filter first_im_hearing_about file_imports)) in
+      expand_imports new_proc (globals @ file_globals) (fns @ file_functions) (imports @ new_imports) in
+  expand_imports StringSet.empty [] [] [filename]
 
 let expand_expressions (imports, globals, functions) =
   let lit_zero = LitInt(0) in let abs_zero = Abs(lit_zero) in
@@ -178,3 +173,9 @@ let create_maps (imports, globals, functions) =
     }) in
 
   (vds_of_stmts globals, map_of_list (List.map fd_of_raw_func functions))
+
+let create_ast filename =
+  let ast_imp_res = expand_file filename in
+  let ast_expanded = expand_expressions ast_imp_res in
+  let ast_mapped = create_maps ast_expanded in
+  ast_mapped

@@ -311,14 +311,10 @@ let rec string_of_val scope = function
 and string_of_cell scope rg (r,c) =
   "{" ^ quote_string (index_of_cell (Cell(r,c))) ^ ": " ^ string_of_val scope (get_val rg (Cell(r,c))) ^ "}"
 
-let interpret input =
-  let ast_raw = Parser.program Scanner.token input in
-  let ast_imp_res = Transform.load_imports (Transform.expand_imports ast_raw) in
-  let ast_expanded = Transform.expand_expressions ast_imp_res in
-  let ast_mapped = Transform.create_maps ast_expanded in
-  string_of_program ast_mapped ^ try
+let interpret ast_mapped =
+  try
     (let funcs = snd ast_mapped in
      let mainfunc = StringMap.find "main" funcs in
      let scope = create_scope mainfunc [] funcs in
-     "\n" ^ (string_of_val scope (evaluate scope (Cell(0,0)) (snd mainfunc.func_ret_val))))
+     (string_of_val scope (evaluate scope (Cell(0,0)) (snd mainfunc.func_ret_val))))
   with Not_found -> "";

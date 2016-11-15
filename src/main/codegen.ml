@@ -27,6 +27,11 @@ let subrange_field_index = function
   | SubrangeRows -> 3
   | SubrangeCols -> 4
 
+type dimensions_field = DimensionRows | DimensionCols
+let subrange_field_index = function
+    DimensionRows -> 0
+  | DimensionCols -> 1
+
 let create_get_subrange_dimensions ctx bt the_module =
   let fn_def = Llvm.define_function "get_subrange_dimensions" (Llvm.function_type bt.dimensions_t (Array.of_list [bt.subrange_p])) the_module in
   let fn_bod = Llvm.builder_at_end ctx (Llvm.entry_block fn_def) in
@@ -63,6 +68,7 @@ let translate (globals, functions) =
     (*and void_p = (Llvm.pointer_type void_t)*) in
     let _ = Llvm.struct_set_body range_t (Array.of_list [int_t; int_t; value_p; status_p; formula_p]) false
     and _ = Llvm.struct_set_body subrange_t (Array.of_list [range_p; int_t; int_t; int_t; int_t]) false
+    and _ = Llvm.struct_set_body dimensions_t (Array.of_list [int_t; int_t]) false
     and _ = Llvm.struct_set_body value_t (Array.of_list [bool_t; (*void_p*)])    in
     {
       range_t = range_t;
@@ -88,7 +94,7 @@ let translate (globals, functions) =
   let build_function_names =
     Ast.StringMap.mapi (fun key (func: Ast.func_decl) ->
         (func, Llvm.define_function
-           (if (String.equal key "main") then "_main" else key)
+           (if (key = "main") then "_main" else key)
            (Llvm.function_type base_types.range_p (Array.of_list (List.map (fun a -> base_types.range_p) func.Ast.func_params)))
            base_module)
       ) functions in

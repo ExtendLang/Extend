@@ -17,12 +17,19 @@ let expand_file filename =
   let rec expand_imports processed_imports globals fns = function
       [] -> ([], globals, fns)
     | import :: imports ->
+      (* print_endline "--------";
+      print_endline ("Working on: " ^ import) ;
+      print_endline ("Already processed:"); *)
+      (* StringSet.iter (fun a -> print_endline a) processed_imports; *)
       let in_chan = open_in import in
       let (file_imports, file_globals, file_functions) = Parser.program Scanner.token (Lexing.from_channel (in_chan)) in
-      let new_proc = StringSet.add filename processed_imports and _ = close_in in_chan in
+      let new_proc = StringSet.add import processed_imports and _ = close_in in_chan in
+      (* print_endline ("Now I'm done with: ") ; *)
+      (* StringSet.iter (fun a -> print_endline a) new_proc; *)
       let first_im_hearing_about imp = not (StringSet.mem imp new_proc || List.mem imp imports) in
       let new_imports = StringSet.elements (StringSet.of_list (List.filter first_im_hearing_about file_imports)) in
-      StringSet.iter (fun a -> print_endline a) processed_imports;
+      (* print_endline ("First I'm hearing about:") ; *)
+      (* List.iter print_endline new_imports; *)
       expand_imports new_proc (globals @ file_globals) (fns @ file_functions) (imports @ new_imports) in
   expand_imports StringSet.empty [] [] [filename]
 

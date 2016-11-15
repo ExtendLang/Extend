@@ -13,7 +13,8 @@ type something = {
   status_p : Llvm.lltype;
   value_p : Llvm.lltype;
   int_t : Llvm.lltype;
-  bool_t : Llvm.lltype;
+  flags_t : Llvm.lltype;
+  char_t : Llvm.lltype;
   void_t : Llvm.lltype;
   (*void_p : Llvm.lltype;*)
 };;
@@ -28,7 +29,8 @@ let translate (globals, functions) =
     let range_t = Llvm.named_struct_type ctx "range"
     and subrange_t = Llvm.named_struct_type ctx "subrange"
     and int_t = Llvm.i32_type ctx
-    and bool_t = Llvm.i1_type ctx
+    and flags_t = Llvm.i8_type ctx
+    and char_t = Llvm.i8_type ctx
     and void_t = Llvm.void_type ctx
     and value_t = Llvm.named_struct_type ctx "value"
     and status_t = Llvm.named_struct_type ctx "status"
@@ -41,7 +43,7 @@ let translate (globals, functions) =
     (*and void_p = (Llvm.pointer_type void_t)*) in
     let _ = Llvm.struct_set_body range_t (Array.of_list [int_t; int_t; value_p; status_p; formula_p]) false
     and _ = Llvm.struct_set_body subrange_t (Array.of_list [range_p; int_t; int_t; int_t; int_t]) false
-    and _ = Llvm.struct_set_body value_t (Array.of_list [bool_t; (*void_p*)])    in
+    and _ = Llvm.struct_set_body value_t (Array.of_list [flags_t; ])    in
     {
       range_t = range_t;
       value_t = value_t;
@@ -56,7 +58,8 @@ let translate (globals, functions) =
       formula_p = formula_p;
 
       int_t = int_t;
-      bool_t = bool_t;
+      flags_t = flags_t;
+      char_t = char_t;
       void_t = void_t;
       (*void_p = void_p;*)
     }
@@ -89,6 +92,10 @@ let translate (globals, functions) =
             fun a b c -> base_types.range_p :: c
           ) desc.Ast.func_body [] in
         let struct_f = Llvm.struct_type context (Array.of_list scope) in
+        let struct_r = Llvm.build_malloc struct_f "_scope" builder in
+        let _ = Ast.StringMap.fold (
+            fun a b c -> (*Llvm.build_struct_gep c struct_r builder;*) c + 1
+          ) desc.Ast.func_body 0 in
         let res = Llvm.build_malloc base_types.range_t "ret" builder in
         Llvm.build_ret res builder; ()
       ) build_function_names in
@@ -96,7 +103,7 @@ let translate (globals, functions) =
 
 let build_this input =
   let ast_raw = Parser.program Scanner.token input in
-  let ast_imp_res = Transform.load_imports (Transform.expand_imports ast_raw) in
+  let ast_imp_res = Transform.expand_file ast_raw in
   let ast_expanded = Transform.expand_expressions ast_imp_res in
   let ast_mapped = Transform.create_maps ast_expanded in
   let modu = (translate ast_mapped) in

@@ -23,7 +23,7 @@ Library test_transf
   Modules: Transform
 
 Executable main
-  BuildDepends: str
+  BuildDepends: str, llvm, llvm.analysis
   CompiledObject: byte
   Path: src/main
   MainIs: main.ml

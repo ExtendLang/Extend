@@ -9,6 +9,6 @@ let load_file f =
 let dir = "./samples" in
   let children = Sys.readdir dir in
     Array.iter (
-      fun s -> let in_channel = open_in (dir ^ "/" ^ s) in
-        OUnit2.assert_equal ((Jsonify.jsonify (Lexing.from_channel in_channel)) ^ "\n") (load_file (dir ^ "_comp/" ^ s ^ ".out"))
+      fun s -> let in_file = (dir ^ "/" ^ s) in
+        OUnit2.assert_equal ((Ast.string_of_program (Transform.create_ast in_file)) ^ "\n") (load_file (dir ^ "_comp/" ^ s ^ ".out"))
     ) children;;

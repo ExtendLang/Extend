@@ -17,10 +17,12 @@ let expand_file filename =
   let rec expand_imports processed_imports globals fns = function
       [] -> ([], globals, fns)
     | import :: imports ->
-      let (file_imports, file_globals, file_functions) = Parser.program Scanner.token (Lexing.from_channel (open_in import)) in
-      let new_proc = StringSet.add filename processed_imports in
+      let in_chan = open_in import in
+      let (file_imports, file_globals, file_functions) = Parser.program Scanner.token (Lexing.from_channel (in_chan)) in
+      let new_proc = StringSet.add filename processed_imports and _ = close_in in_chan in
       let first_im_hearing_about imp = not (StringSet.mem imp new_proc || List.mem imp imports) in
       let new_imports = StringSet.elements (StringSet.of_list (List.filter first_im_hearing_about file_imports)) in
+      StringSet.iter (fun a -> print_endline a) processed_imports;
       expand_imports new_proc (globals @ file_globals) (fns @ file_functions) (imports @ new_imports) in
   expand_imports StringSet.empty [] [] [filename]
 

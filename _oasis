@@ -17,13 +17,13 @@ SourceRepository master
   Branch: master
   Browser: https://github.com/Neitsch/plt
 
-Library jsonify
-  BuildDepends: str, llvm, llvm.analysis
+Library test_transf
+  BuildDepends: str
   Path: src/main
-  Modules: Jsonify
+  Modules: Transform
 
 Executable main
-  BuildDepends: str, llvm, llvm.analysis
+  BuildDepends: str
   CompiledObject: byte
   Path: src/main
   MainIs: main.ml
@@ -33,19 +33,10 @@ Executable microc
   MainIs: microc.ml
   Path: src/microc
 
-Executable test
-  BuildDepends: oUnit, jsonify
-  MainIs: test.ml
-  Path: tests
-
 Executable compare
-  BuildDepends: oUnit, jsonify
+  BuildDepends: oUnit, test_transf
   MainIs: compare.ml
   Path: tests
-
-Test testcases
-  Type: Custom (0.0.1)
-  Command: $test
 
 Test testsamples
   Type: Custom (0.0.1)

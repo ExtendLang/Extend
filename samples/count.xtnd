@@ -1,6 +1,6 @@
-main([1,1] input) {
-  [29950] x; // 29950 is the limit if it goes recursive :-(
-  x[:1] = 1;
-  x[1:] = x[[-1],0] + 1;
+main() {
+  [29950,1] x; // 29950 is the limit if it goes recursive :-(
+  x[1,:1] = 1;
+  x[1:,1] = x[[-1],0] + 1;
   return x[-1,-1];
 }

@@ -85,9 +85,10 @@ let translate (globals, functions) =
   let build_function_body =
     Ast.StringMap.iter (fun key (desc, func) ->
         let builder = Llvm.builder_at_end context (Llvm.entry_block func) in
-        let vars = Ast.StringMap.fold (
-            fun a b c -> Ast.StringMap.add a (Llvm.build_malloc base_types.range_t a builder) c
-          ) desc.Ast.func_body Ast.StringMap.empty in
+        let scope = Ast.StringMap.fold (
+            fun a b c -> base_types.range_p :: c
+          ) desc.Ast.func_body [] in
+        let struct_f = Llvm.struct_type context (Array.of_list scope) in
         let res = Llvm.build_malloc base_types.range_t "ret" builder in
         Llvm.build_ret res builder; ()
       ) build_function_names in

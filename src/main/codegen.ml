@@ -28,20 +28,21 @@ let subrange_field_index = function
   | SubrangeCols -> 4
 
 type dimensions_field = DimensionRows | DimensionCols
-let subrange_field_index = function
+let dimensions_field_index = function
     DimensionRows -> 0
   | DimensionCols -> 1
 
-let create_get_subrange_dimensions ctx bt the_module =
-  let fn_def = Llvm.define_function "get_subrange_dimensions" (Llvm.function_type bt.dimensions_t (Array.of_list [bt.subrange_p])) the_module in
+let create_is_subrange_1x1 ctx bt the_module =
+  let fn_def = Llvm.define_function "is_subrange_1x1" (Llvm.function_type bt.bool_t (Array.of_list [bt.subrange_p])) the_module in
   let fn_bod = Llvm.builder_at_end ctx (Llvm.entry_block fn_def) in
-  let _ = Llvm.build_ret (Llvm.const_int bt.bool_t 0) fn_bod in
-  ()
-
-let create_deref_subrange ctx bt the_module =
-  let fn_def = Llvm.define_function "deref_subrange" (Llvm.function_type bt.bool_t (Array.of_list [bt.subrange_p])) the_module in
-  let fn_bod = Llvm.builder_at_end ctx (Llvm.entry_block fn_def) in
-  let _ = Llvm.build_ret (Llvm.const_int bt.bool_t 0) fn_bod in
+  let the_rows_pointer = Llvm.build_struct_gep (Llvm.param fn_def 0) (subrange_field_index SubrangeRows) "the_rows_pointer" fn_bod in
+  let the_rows = Llvm.build_load the_rows_pointer "the_rows" fn_bod in
+  let the_rows_pointer = Llvm.build_struct_gep (Llvm.param fn_def 0) (subrange_field_index SubrangeRows) "the_cols_pointer" fn_bod in
+  let the_cols = Llvm.build_load the_rows_pointer "the_cols" fn_bod in
+  let one_row = Llvm.build_icmp Llvm.Icmp.Eq the_rows (Llvm.const_int bt.int_t 1) "one_row" fn_bod in
+  let one_col = Llvm.build_icmp Llvm.Icmp.Eq the_cols (Llvm.const_int bt.int_t 1) "one_col" fn_bod in
+  let one_by_one = Llvm.build_and one_row one_col "one_by_one" fn_bod in
+  let _ = Llvm.build_ret one_by_one fn_bod in
   ()
 
 let translate (globals, functions) =
@@ -113,7 +114,7 @@ let translate (globals, functions) =
          (Array.of_list [inp])
          "" main_bod in
   let _ = Llvm.build_ret (Llvm.const_int base_types.int_t 0) main_bod in
-  create_deref_subrange context base_types base_module;
+  create_is_subrange_1x1 context base_types base_module;
   let build_function_body =
     Ast.StringMap.iter (fun key (desc, func) ->
         let builder = Llvm.builder_at_end context (Llvm.entry_block func) in

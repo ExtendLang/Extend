@@ -6,7 +6,7 @@ open Ast
 
 %token LSQBRACK RSQBRACK LPAREN RPAREN LBRACE RBRACE HASH
 %token COLON COMMA QUESTION GETS ASN SEMI PRECEDES UNDERSCORE
-%token SWITCH CASE DEFAULT
+%token SWITCH CASE DEFAULT SIZE
 %token PLUS MINUS TIMES DIVIDE MOD POWER LSHIFT RSHIFT
 %token EQ NOTEQ GT LT GTEQ LTEQ
 %token LOGNOT LOGAND LOGOR
@@ -26,34 +26,28 @@ open Ast
 %left PLUS MINUS BITOR BITXOR
 %left TIMES DIVIDE MOD LSHIFT RSHIFT BITAND
 %right POWER
-%right BITNOT LOGNOT NEG
+%right BITNOT LOGNOT NEG SIZE
 %left HASH LSQBRACK
 
 %start program
-%type <Ast.program> program
+%type <Ast.raw_program> program
 
 %%
 
 program:
-    imports globals func_decls EOF { (List.rev $1, List.rev $2, List.rev $3) }
+    program_piece EOF {  let (imp, glob, fnc) = $1 in (List.rev imp, List.rev glob, List.rev fnc) }
 
-imports:
-    /* nothing */ {[]}
-  | imports import {$2 :: $1}
+program_piece:
+    /* nothing */ {([],[],[])}
+  | program_piece import { let (imp, glob, fnc) = $1 in ($2 :: imp, glob, fnc) }
+  | program_piece global { let (imp, glob, fnc) = $1 in (imp, $2 :: glob, fnc) }
+  | program_piece func_decl { let (imp, glob, fnc) = $1 in (imp, glob, $2 :: fnc) }
 
 import:
     IMPORT LIT_STRING SEMI {$2}
 
-globals:
-    /* nothing */ {[]}
-  | globals global {$2 :: $1}
-
 global:
-    GLOBAL vardecl {$2}
-
-func_decls:
-    /* nothing */ {[]}
-  | func_decls func_decl {$2 :: $1}
+    GLOBAL varinit {$2}
 
 func_decl:
     ID LPAREN func_param_list RPAREN LBRACE opt_stmt_list ret_stmt RBRACE
@@ -80,14 +74,14 @@ stmt_list:
   | stmt_list stmt { $2 :: $1 }
 
 stmt:
-    vardecl { $1 } |  assign { $1 }
+    varinit { $1 } |  assign { $1 }
 
 ret_stmt:
     RETURN expr SEMI {$2}
 
-vardecl:
-    var_list SEMI { Vardecl((None, None), List.rev $1) }
-  | dim var_list SEMI { Vardecl($1, List.rev $2) }
+varinit:
+    var_list SEMI { Varinit((None, None), List.rev $1) }
+  | dim var_list SEMI { Varinit($1, List.rev $2) }
 
 var_list:
     ID varassign { [ ($1, $2)] }
@@ -136,9 +130,10 @@ op_expr:
   | expr LT expr        { BinOp($1, Lt, $3) }
   | expr GTEQ expr      { BinOp($1, GtEq, $3) }
   | expr LTEQ expr      { BinOp($1, LtEq, $3) }
-  | MINUS expr %prec NEG  { UnOp(Neg, $2) }
-  | LOGNOT expr           { UnOp(LogNot, $2) }
-  | BITNOT expr           { UnOp(BitNot, $2) }
+  | SIZE LPAREN expr RPAREN { UnOp(SizeOf, $3) }
+  | MINUS expr %prec NEG    { UnOp(Neg, $2) }
+  | LOGNOT expr             { UnOp(LogNot, $2) }
+  | BITNOT expr             { UnOp(BitNot, $2) }
 
 ternary_expr:
   /* commented out optional part for now */
@@ -167,11 +162,11 @@ func_expr:
     ID LPAREN opt_arg_list RPAREN { Call($1, $3) }
 
 range_expr:
-    LBRACE row_list RBRACE { LitRange(List.rev $2) }
+    LBRACE row_list RBRACE { allow_range_literal (LitRange(List.rev $2)) }
 
 row_list:
     col_list {[List.rev $1]}
-  | row_list SEMI col_list {$3 :: $1}
+  | row_list SEMI col_list {List.rev $3 :: $1}
 
 col_list:
     expr {[$1]}
@@ -187,7 +182,7 @@ arg_list:
 
 lhs_sel:
     /* nothing */                         { (None, None) }
-  | LSQBRACK lslice RSQBRACK              { (Some $2, None) }
+/* commented out: LSQBRACK lslice RSQBRACK { (Some $2, None) } */
   | LSQBRACK lslice COMMA lslice RSQBRACK { (Some $2, Some $4) }
 
 rhs_sel:
@@ -195,8 +190,8 @@ rhs_sel:
   | LSQBRACK rslice COMMA rslice RSQBRACK { (Some $2, Some $4) }
 
 lslice:
-    /* nothing */                         { (None, None) }
-  | lslice_val                            { (Some $1, None) }
+  /* commented out: nothing production { (None, None) } */
+    lslice_val                            { (Some $1, None) }
   | lslice_val COLON lslice_val           { (Some $1, Some $3) }
   | lslice_val COLON                      { (Some $1, Some DimensionEnd) }
   | COLON lslice_val                      { (Some DimensionStart, Some $2) }

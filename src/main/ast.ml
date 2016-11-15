@@ -1,7 +1,7 @@
 type op       = Plus | Minus | Times | Divide | Mod | Pow |
                 LShift | RShift | BitOr | BitAnd | BitXor |
                 Eq | NotEq | Gt | Lt | GtEq | LtEq | LogAnd | LogOr
-type unop     = Neg | LogNot | BitNot
+type unop     = Neg | LogNot | BitNot | SizeOf
 
 type expr     = LitInt of int |
                 LitFlt of float |
@@ -17,7 +17,10 @@ type expr     = LitInt of int |
                 Call of string * expr list |
                 Selection of expr * sel |
                 Precedence of expr * expr
-and  index    = Abs of expr | Rel of expr | DimensionStart | DimensionEnd
+and  index    = Abs of expr |
+                Rel of expr |
+                DimensionStart |
+                DimensionEnd
 and  slice    = index option * index option
 and  sel      = slice option * slice option
 and  case     = (expr list) option * expr
@@ -26,25 +29,56 @@ type dim      = expr option * expr option
 type var      = dim * string
 type assign   = string * sel * expr option
 type init     = string * expr option
-type stmt     = Assign of assign | Vardecl of dim * init list
+type stmt     = Assign of assign |
+                Varinit of dim * init list
 
-type func_decl = {
+type raw_func = {
     name: string;
     params: var list;
     body: stmt list;
     ret_val: dim * expr;
 }
 
-type listable = Inits of init list|
+type raw_program = string list * stmt list * raw_func list
+
+(* Desugared types below *)
+module StringMap = Map.Make(String)
+type formula  = {
+  formula_row_start: index;
+  formula_row_end: index option;
+  formula_col_start: index;
+  formula_col_end: index option;
+  formula_expr: expr;
+}
+
+type dim_expr = DimInt of int
+              | DimId of string
+
+type variable = {
+  var_rows: dim_expr;
+  var_cols: dim_expr;
+  var_formulas: formula list;
+}
+
+type func_decl = {
+  func_params: var list;
+  func_body: variable StringMap.t;
+  func_ret_val: dim * expr;
+}
+
+type program = (variable StringMap.t) * (func_decl StringMap.t)
+
+type listable = Inits of init list |
                 Vars of var list |
                 Stmts of stmt list |
-                Funcs of func_decl list |
+                RawFuncs of raw_func list |
                 Exprs of expr list |
                 Rows of (expr list) list |
                 Strings of string list |
-                Cases of case list
+                Cases of case list |
+                Formulas of formula list
 
-type program = string list * stmt list * func_decl list
+exception IllegalRangeLiteral of string
 
 let quote_string str =
   let escape_characters = Str.regexp "[\n \t \r \\ \"]" in
@@ -64,12 +98,7 @@ let string_of_op o = "\"" ^ (match o with
     LogAnd -> "&& " | LogOr -> "||" ) ^ "\""
 
 let string_of_unop = function
-    Neg -> "\"-\"" | LogNot -> "\"!\"" | BitNot -> "\"~\""
-
-let rec comma = function
-    [] -> ""
-  | [str] -> str
-  | str :: strs -> str ^ ", " ^ comma strs
+    Neg -> "\"-\"" | LogNot -> "\"!\"" | BitNot -> "\"~\"" | SizeOf -> "\"size\""
 
 let rec string_of_expr = function
     LitInt(l) ->          "{\"LitInt\":" ^ string_of_int l ^ "}"
@@ -77,8 +106,8 @@ let rec string_of_expr = function
   | LitString(s) ->       "{\"LitString\":" ^ quote_string s ^ "}"
   | LitRange(rowlist) ->  "{\"LitRange\": " ^ string_of_list (Rows rowlist) ^ "}"
   | Id(s) ->              "{\"Id\": " ^ quote_string s ^ "}"
-  | Empty ->              "{\"Empty\": null}"
-  | Wild ->               "{\"Wild\": null}"
+  | Empty ->              "\"Empty\""
+  | Wild ->               "\"Wild\""
   | BinOp(e1, o, e2) ->   "{\"BinOp\": {" ^
                             "\"expr1\": " ^ string_of_expr e1 ^ ", " ^
                             "\"operator\": " ^ string_of_op o ^ ", " ^
@@ -119,8 +148,8 @@ and string_of_index = function
     None -> "null"
   | Some(Abs(e)) -> "{\"Absolute\": " ^ string_of_expr e ^ "}"
   | Some(Rel(e)) -> "{\"Relative\": " ^ string_of_expr e ^ "}"
-  | Some(DimensionStart) -> "{\"DimensionStart\": null}"
-  | Some(DimensionEnd) -> "{\"DimensionEnd\": null}"
+  | Some(DimensionStart) -> "\"DimensionStart\""
+  | Some(DimensionEnd) -> "\"DimensionEnd\""
 
 and string_of_dim (d1,d2) = "{\"d1\": " ^ (match d1 with None -> "null" | Some e -> string_of_expr e) ^ ", " ^
                              "\"d2\": " ^ (match d2 with None -> "null" | Some e -> string_of_expr e) ^ "}"
@@ -131,7 +160,11 @@ and string_of_var (d, s) = "{\"Dimensions\": " ^ string_of_dim d ^ ", " ^
 and string_of_assign (s, selection, eo) =
     "{\"VarName\": " ^ quote_string s ^ ", " ^
      "\"Selection\": " ^ string_of_sel selection ^ ", " ^
-     "\"expr\": " ^ (match eo with None -> "null" | Some e -> string_of_expr e) ^ "}"
+    "\"expr\": " ^ (match eo with None -> "null" | Some e -> string_of_expr e) ^ "}"
+
+and string_of_varinit (d, inits) =
+  "{\"Dimensions\": " ^ string_of_dim d ^
+    ",\"Initializations\": " ^ string_of_list (Inits inits) ^ "}"
 
 and string_of_init (s, eo) =
     "{\"VarName\": " ^ quote_string s ^ ", " ^
@@ -139,32 +172,78 @@ and string_of_init (s, eo) =
 
 and string_of_stmt = function
     Assign(a) -> "{\"Assign\": " ^ string_of_assign a ^ "}"
-  | Vardecl(d, inits) -> "{\"Vardecl\": {\"Dimensions\": " ^ string_of_dim d ^
-                                       ",\"Initializations\": " ^ string_of_list (Inits inits) ^ "}}"
+  | Varinit(d, inits) -> "{\"Varinit\": " ^ string_of_varinit (d, inits) ^ "}"
 
 and string_of_range (d, e) = "{\"Dimensions\": " ^ string_of_dim d ^ ", " ^
                               "\"expr\": " ^ string_of_expr e ^ "}"
 
-and string_of_funcdecl fd =
+and string_of_raw_func fd =
     "{\"Name\": " ^ quote_string fd.name ^ "," ^
      "\"Params\": " ^ string_of_list (Vars fd.params) ^ "," ^
      "\"Stmts\": " ^ string_of_list (Stmts fd.body) ^ "," ^
      "\"ReturnVal\": " ^ string_of_range fd.ret_val ^ "}"
+
+and string_of_dimexpr = function
+    DimInt(i) -> string_of_int i
+  | DimId(s) -> quote_string s
+
+and string_of_formula f =
+  "{\"RowStart\": " ^ string_of_index (Some f.formula_row_start) ^ "," ^
+  "\"RowEnd\": " ^ string_of_index (f.formula_row_end) ^ "," ^
+  "\"ColumnStart\": " ^ string_of_index (Some f.formula_col_start) ^ "," ^
+  "\"ColumnEnd\": " ^ string_of_index (f.formula_col_end) ^ "," ^
+  "\"Formula\": " ^ string_of_expr f.formula_expr ^ "}"
 
 and string_of_list l =
   let stringrep = (match l with
     Inits (il) -> List.map string_of_init il
   | Vars(vl) -> List.map string_of_var vl
   | Stmts(sl) -> List.map string_of_stmt sl
-  | Funcs(fl) -> List.map string_of_funcdecl fl
+  | RawFuncs(fl) -> List.map string_of_raw_func fl
   | Exprs(el) -> List.map string_of_expr el
   | Rows(rl) -> List.map (fun (el : expr list) -> string_of_list (Exprs el)) rl
   | Strings(sl) -> List.map quote_string sl
-  | Cases(cl) -> List.map string_of_case cl)
-  in "[" ^ comma stringrep ^ "]"
+  | Cases(cl) -> List.map string_of_case cl
+  | Formulas(fl) -> List.map string_of_formula fl)
+  in "[" ^ String.concat ", " stringrep ^ "]"
 
-let string_of_program (imp, glb, fs) =
+let string_of_raw_program (imp, glb, fs) =
     "{\"Program\": {" ^
       "\"Imports\": " ^ string_of_list (Strings imp) ^ "," ^
       "\"Globals\": " ^ string_of_list (Stmts glb) ^ "," ^
-      "\"Functions\": " ^ string_of_list (Funcs fs) ^ "}}"
+      "\"Functions\": " ^ string_of_list (RawFuncs fs) ^ "}}"
+
+let string_of_variable v =
+  "{\"Rows\": " ^ string_of_dimexpr v.var_rows ^ "," ^
+  "\"Columns\": " ^ string_of_dimexpr v.var_cols ^ "," ^
+  "\"Formulas\": " ^ string_of_list (Formulas v.var_formulas) ^ "}"
+
+let string_of_map value_desc val_printing_fn m =
+  let f_key_val_list k v l = (
+    "{\"" ^ value_desc ^ "Name\": " ^ quote_string k ^ ", " ^
+    "\"" ^ value_desc ^ "Def\": " ^ val_printing_fn v ^ "}"
+  ) :: l in
+  "[" ^ String.concat ", " (List.rev (StringMap.fold f_key_val_list m [])) ^ "]"
+
+let string_of_funcdecl f =
+  "{\"Params\": " ^ string_of_list (Vars f.func_params) ^ "," ^
+  "\"Variables\": " ^ string_of_map "Variable" string_of_variable f.func_body ^ "," ^
+  "\"ReturnVal\": " ^ string_of_range f.func_ret_val ^ "}"
+
+let string_of_program (glb, fs) =
+  "{\"Program\": {" ^
+    "\"Globals\": " ^ string_of_map "Variable" string_of_variable glb ^ "," ^
+    "\"Functions\": " ^ string_of_map "Function" string_of_funcdecl fs ^ "}}"
+
+let allow_range_literal = function
+    LitRange(rowlist) ->
+      let rec check_range_literal rl =
+        List.for_all (fun exprs -> List.for_all check_basic_expr exprs) rl
+      and check_basic_expr = function
+          LitInt(_) | UnOp(Neg, LitInt(_)) | LitFlt(_) | UnOp(Neg, LitFlt(_)) | LitString(_) | Empty -> true
+        | LitRange(rl) -> check_range_literal rl
+        | _ -> false in
+
+      if check_range_literal rowlist then LitRange(rowlist)
+      else raise(IllegalRangeLiteral(string_of_expr (LitRange(rowlist))))
+  | e -> raise(IllegalRangeLiteral(string_of_expr e))

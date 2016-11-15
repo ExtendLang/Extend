@@ -1,0 +1,7 @@
+illegal_ranges() {
+//  r1 := {"Panic" + 2};
+//  r2 := {f(x)};
+//  r3 := {1 ? 2 : 3};
+  r4 := {"ok",{-"not ok"}};
+  return 0;
+}

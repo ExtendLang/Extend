@@ -1,0 +1,1 @@
+{"Program": {"Imports": [],"Globals": [],"Functions": [{"Name": "foo","Params": [{"Dimensions": {"d1": {"LitInt":1}, "d2": {"LitInt":1}}, "VarName": "arg"}],"Stmts": [],"ReturnVal": {"Dimensions": {"d1": {"LitInt":1}, "d2": {"LitInt":1}}, "expr": {"Id": "arg"}}}]}}

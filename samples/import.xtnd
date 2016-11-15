@@ -1,0 +1,7 @@
+import "./samples/fibonacci.xtnd";
+import "./samples/fibonacci.xtnd";
+import "./samples/import.xtnd";
+
+foo() {
+  return 0;
+}

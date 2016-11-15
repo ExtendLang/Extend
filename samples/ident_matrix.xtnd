@@ -1,0 +1,4 @@
+main() {
+  [3,3] ident := row() == column();
+  return ident;
+}

@@ -75,26 +75,42 @@ let translate (globals, functions) =
     my_struct*)
   let context = Llvm.global_context () in
   let setup_types ctx =
-    let range_t = Llvm.named_struct_type ctx "range"
-    and subrange_t = Llvm.named_struct_type ctx "subrange"
-    and int_t = Llvm.i32_type ctx
-    and flags_t = Llvm.i8_type ctx
-    and char_t = Llvm.i8_type ctx
-    and bool_t = Llvm.i1_type ctx
-    and void_t = Llvm.void_type ctx
-    and value_t = Llvm.named_struct_type ctx "value"
-    and dimensions_t = Llvm.named_struct_type ctx "dimensions"
-    and status_t = Llvm.named_struct_type ctx "status"
-    and formula_t = Llvm.named_struct_type ctx "formula" in
+    let range_t = Llvm.named_struct_type ctx "range" (*Range struct is a 2D Matrix of values*)
+    and subrange_t = Llvm.named_struct_type ctx "subrange" (*Subrange is a wrapper around a range to cut cells*)
+    and int_t = Llvm.i32_type ctx (*Integer*)
+    and flags_t = Llvm.i8_type ctx (*Flags for statuses*)
+    and char_t = Llvm.i8_type ctx (*Simple ASCII character*)
+    and bool_t = Llvm.i1_type ctx (*boolean 0 = false, 1 = true*)
+    and void_t = Llvm.void_type ctx (**)
+    and value_t = Llvm.named_struct_type ctx "value" (*Value encapsulates the content of a cell*)
+    and dimensions_t = Llvm.named_struct_type ctx "dimensions" (**)
+    and status_t = Llvm.named_struct_type ctx "status" (*Status indicates how a cell must be treated*)
+    and formula_t = Llvm.named_struct_type ctx "formula" in (*Formula is a hint on how to calculate the value of a cell*)
     let range_p = (Llvm.pointer_type range_t)
     and subrange_p = (Llvm.pointer_type subrange_t)
     and value_p = (Llvm.pointer_type value_t)
     and status_p = (Llvm.pointer_type status_t)
     and formula_p = (Llvm.pointer_type formula_t)
     (*and void_p = (Llvm.pointer_type void_t)*) in
-    let _ = Llvm.struct_set_body range_t (Array.of_list [int_t; int_t; value_p; status_p; formula_p]) false
-    and _ = Llvm.struct_set_body subrange_t (Array.of_list [range_p; int_t; int_t; int_t; int_t]) false
-    and _ = Llvm.struct_set_body value_t (Array.of_list [flags_t; ]) false
+    let _ = Llvm.struct_set_body range_t (Array.of_list [
+        int_t(*rows*);
+        int_t(*columns*);
+        value_p(*2D array of cell values*);
+        status_p(*2D array of calculation status for each cell*);
+        formula_p(*List of formulas for a cell range*)
+      ]) false
+    and _ = Llvm.struct_set_body subrange_t (Array.of_list [
+        range_p(*The target range*);
+        int_t(*row offset*);
+        int_t(*column offset*);
+        int_t(*row count*);
+        int_t(*column count*)
+      ]) false
+    and _ = Llvm.struct_set_body value_t (Array.of_list [
+        flags_t (*First bit indicates whether it is an int or a range*);
+        int_t (*Numeric value of the cell*);
+        subrange_p (*Range value of the cell if applicable*)
+      ]) false
     and _ = Llvm.struct_set_body dimensions_t (Array.of_list [int_t; int_t]) false in
     {
       range_t = range_t;

@@ -35,14 +35,15 @@ let dimensions_field_index = function
   | DimensionCols -> 1
 
 let create_is_subrange_1x1 ctx bt the_module =
+  let is_index_one fn builder idx =
+    let the_pointer = Llvm.build_struct_gep (Llvm.param fn 0) (subrange_field_index idx) "the_pointer" builder in
+    let the_value = Llvm.build_load the_pointer "the_value" builder in
+    let the_bool = Llvm.build_icmp Llvm.Icmp.Eq the_value (Llvm.const_int bt.int_t 1) "the_bool" builder in
+    the_bool in
   let fn_def = Llvm.define_function "is_subrange_1x1" (Llvm.function_type bt.bool_t (Array.of_list [bt.subrange_p])) the_module in
   let fn_bod = Llvm.builder_at_end ctx (Llvm.entry_block fn_def) in
-  let the_rows_pointer = Llvm.build_struct_gep (Llvm.param fn_def 0) (subrange_field_index SubrangeRows) "the_rows_pointer" fn_bod in
-  let the_rows = Llvm.build_load the_rows_pointer "the_rows" fn_bod in
-  let the_cols_pointer = Llvm.build_struct_gep (Llvm.param fn_def 0) (subrange_field_index SubrangeCols) "the_cols_pointer" fn_bod in
-  let the_cols = Llvm.build_load the_cols_pointer "the_cols" fn_bod in
-  let one_row = Llvm.build_icmp Llvm.Icmp.Eq the_rows (Llvm.const_int bt.int_t 1) "one_row" fn_bod in
-  let one_col = Llvm.build_icmp Llvm.Icmp.Eq the_cols (Llvm.const_int bt.int_t 1) "one_col" fn_bod in
+  let one_row = is_index_one fn_def fn_bod SubrangeRows in
+  let one_col = is_index_one fn_def fn_bod SubrangeCols in
   let one_by_one = Llvm.build_and one_row one_col "one_by_one" fn_bod in
   let _ = Llvm.build_ret one_by_one fn_bod in
   ()

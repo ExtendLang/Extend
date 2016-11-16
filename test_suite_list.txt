@@ -1,0 +1,45 @@
+List of Tests
+- using imports
+- declaring and using global variables
+- declaring and printing numbers
+- declaring and printing strings
+- declaring the empty type
+- declaring and printing a range in one dimension
+- declaring and printing a range in multiple dimensions
+- declaring and printing a range of strings
+- return the value of a bitwise NOT expression
+- return the value of a unary negation expression
+- return the value of a power exponent expression
+- return the value of a multiplication expression
+- return the value of a division expression
+- return the value of a modulo expression
+- return the value of a modulo expression
+- return the value of a bitwise left shift expression
+- return the value of a bitwise right shift expression
+- return the value of a bitwise AND expression
+- return the value of an addition expression
+- return the value of a subraction expression
+- return the value of a bitwise OR expression
+- return the value of a bitwise XOR expressiom
+- return the value of a logical NOT expression
+- return the value of a boolean equals expression
+- return the value of a boolean not equals expression
+- return the value of a < expression
+- return the value of a > expression
+- return the value of a <= expression
+- return the value of a >= expression
+- return the value of a logical && expression
+- return the value of a logical || expression
+- return the value of a simple ternary conditional expression
+- return the value of a simple switch case
+- declare a basic function that returns 0 upon call
+- Access a cell in a range via [x:y]
+- Access the range of cells via [x:]
+- Access the range of cells via [:y]
+- Access the relative range of cells via [:,[y]]
+- Access the cell via [x,] - more than one column
+- Access the cell via [x,] - one column
+- Access the selected range via [x:, y:]
+- Access the selected range via [x:a, y:z]
+- Access the cell of a single dimensional range via the # operator
+- Access the cell of a multidimensional range via the # operator

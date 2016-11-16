@@ -113,10 +113,11 @@ let create_main fnames ctx bt the_module =
          (Array.of_list [inp])
          "" main_bod in
   let argv = Llvm.param main_def 1 in
-  let argv_0 = Llvm.build_load argv "argv_0" main_bod in
-  let len_of_argv_0 = Llvm.build_call (Hashtbl.find extern_functions "strlen") [|argv_0|] "len_of_argv_0" main_bod in
-  let int_len_of_argv_0 = Llvm.build_intcast len_of_argv_0 bt.int_t "int_len_of_argv_0" main_bod in
-  let _ = Llvm.build_ret int_len_of_argv_0 main_bod in
+  let argv_1_addr = Llvm.build_in_bounds_gep argv [|Llvm.const_int bt.int_t 1|] "argv_1_addr" main_bod in
+  let argv_1 = Llvm.build_load argv_1_addr "argv_1" main_bod in
+  let len_of_argv_1 = Llvm.build_call (Hashtbl.find extern_functions "strlen") [|argv_1|] "len_of_argv_1" main_bod in
+  let int_len_of_argv_1 = Llvm.build_intcast len_of_argv_1 bt.int_t "int_len_of_argv_1" main_bod in
+  let _ = Llvm.build_ret int_len_of_argv_1 main_bod in
   ()
 
 let translate (globals, functions) =
@@ -189,9 +190,16 @@ let translate (globals, functions) =
            (Llvm.function_type base_types.subrange_p (Array.of_list (List.map (fun a -> base_types.subrange_p) func.Ast.func_params)))
            base_module)
       ) functions in
-  create_helper_functions context base_types base_module ;
+
+  (* Declare the external functions that we need to call *)
   create_extern_functions context base_types base_module ;
+
+  (* Define the internal helper functions we'll need to use *)
+  create_helper_functions context base_types base_module ;
+
+  (* Define the LLVM entry point for the program *)
   create_main build_function_names context base_types base_module ;
+
   let build_function_body =
     Ast.StringMap.iter (fun key (desc, func) ->
         let builder = Llvm.builder_at_end context (Llvm.entry_block func) in

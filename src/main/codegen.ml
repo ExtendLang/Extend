@@ -21,6 +21,8 @@ type something = {
   (*void_p : Llvm.lltype;*)
 };;
 
+let helper_functions = Hashtbl.create 10
+
 type subrange_field = BaseRangePtr | BaseOffsetRow | BaseOffsetCol | SubrangeRows | SubrangeCols
 let subrange_field_index = function
     BaseRangePtr -> 0
@@ -34,18 +36,37 @@ let dimensions_field_index = function
     DimensionRows -> 0
   | DimensionCols -> 1
 
-let create_is_subrange_1x1 ctx bt the_module =
-  let fn_def = Llvm.define_function "is_subrange_1x1" (Llvm.function_type bt.bool_t (Array.of_list [bt.subrange_p])) the_module in
+let create_is_subrange_1x1 fname ctx bt the_module =
+  let is_index_one fn builder idx =
+    let the_pointer = Llvm.build_struct_gep (Llvm.param fn 0) (subrange_field_index idx) "the_pointer" builder in
+    let the_value = Llvm.build_load the_pointer "the_value" builder in
+    let the_bool = Llvm.build_icmp Llvm.Icmp.Eq the_value (Llvm.const_int bt.int_t 1) "the_bool" builder in
+    the_bool in
+  let fn_def = Llvm.define_function fname (Llvm.function_type bt.bool_t (Array.of_list [bt.subrange_p])) the_module in
   let fn_bod = Llvm.builder_at_end ctx (Llvm.entry_block fn_def) in
-  let the_rows_pointer = Llvm.build_struct_gep (Llvm.param fn_def 0) (subrange_field_index SubrangeRows) "the_rows_pointer" fn_bod in
-  let the_rows = Llvm.build_load the_rows_pointer "the_rows" fn_bod in
-  let the_cols_pointer = Llvm.build_struct_gep (Llvm.param fn_def 0) (subrange_field_index SubrangeCols) "the_cols_pointer" fn_bod in
-  let the_cols = Llvm.build_load the_cols_pointer "the_cols" fn_bod in
-  let one_row = Llvm.build_icmp Llvm.Icmp.Eq the_rows (Llvm.const_int bt.int_t 1) "one_row" fn_bod in
-  let one_col = Llvm.build_icmp Llvm.Icmp.Eq the_cols (Llvm.const_int bt.int_t 1) "one_col" fn_bod in
+  let one_row = is_index_one fn_def fn_bod SubrangeRows in
+  let one_col = is_index_one fn_def fn_bod SubrangeCols in
   let one_by_one = Llvm.build_and one_row one_col "one_by_one" fn_bod in
   let _ = Llvm.build_ret one_by_one fn_bod in
-  ()
+  Hashtbl.add helper_functions fname fn_def
+
+let create_get_val fname ctx bt the_module =
+  let fn_def = Llvm.define_function fname (Llvm.function_type bt.int_t (Array.of_list [bt.range_p; bt.int_t; bt.int_t])) the_module in
+  let fn_bod = Llvm.builder_at_end ctx (Llvm.entry_block fn_def) in
+  let _ = Llvm.build_ret (Llvm.const_int bt.int_t (-1)) fn_bod in
+  Hashtbl.add helper_functions fname fn_def
+
+let create_deref_subrange fname ctx bt the_module =
+  let fn_def = Llvm.define_function fname (Llvm.function_type bt.int_t (Array.of_list [bt.subrange_p])) the_module in
+  let fn_bod = Llvm.builder_at_end ctx (Llvm.entry_block fn_def) in
+  let the_base_range_ptr = Llvm.build_struct_gep (Llvm.param fn_def 0) (subrange_field_index BaseRangePtr) "the_base_range_ptr" fn_bod in
+  let the_base_range = Llvm.build_load the_base_range_ptr "the_base_range" fn_bod in
+  let the_val = Llvm.build_call
+      (Hashtbl.find helper_functions "get_val")
+      (Array.of_list [the_base_range; (Llvm.const_int bt.int_t 0); (Llvm.const_int bt.int_t 0)])
+      "the_contents" fn_bod in
+  let _ = Llvm.build_ret the_val fn_bod in
+  Hashtbl.add helper_functions fname fn_def
 
 let translate (globals, functions) =
   (*let build_struct ctx (name, tl) =
@@ -120,7 +141,9 @@ let translate (globals, functions) =
          (Array.of_list [inp])
          "" main_bod in
   let _ = Llvm.build_ret (Llvm.const_int base_types.int_t 0) main_bod in
-  create_is_subrange_1x1 context base_types base_module;
+  create_is_subrange_1x1 "is_subrange_1x1" context base_types base_module;
+  create_get_val "get_val" context base_types base_module;
+  create_deref_subrange "deref_subrange" context base_types base_module;
   let build_function_body =
     Ast.StringMap.iter (fun key (desc, func) ->
         let builder = Llvm.builder_at_end context (Llvm.entry_block func) in

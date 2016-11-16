@@ -8,6 +8,7 @@ type something = {
   status_t : Llvm.lltype;
   value_t : Llvm.lltype;
   dimensions_t : Llvm.lltype;
+  number_t : Llvm.lltype;
   range_p : Llvm.lltype;
   subrange_p : Llvm.lltype;
   formula_p : Llvm.lltype;
@@ -85,6 +86,7 @@ let translate (globals, functions) =
     and value_t = Llvm.named_struct_type ctx "value"
     and dimensions_t = Llvm.named_struct_type ctx "dimensions"
     and status_t = Llvm.named_struct_type ctx "status"
+    and number_t = Llvm.i32_type ctx
     and formula_t = Llvm.named_struct_type ctx "formula" in
     let range_p = (Llvm.pointer_type range_t)
     and subrange_p = (Llvm.pointer_type subrange_t)
@@ -94,7 +96,7 @@ let translate (globals, functions) =
     (*and void_p = (Llvm.pointer_type void_t)*) in
     let _ = Llvm.struct_set_body range_t (Array.of_list [int_t; int_t; value_p; status_p; formula_p]) false
     and _ = Llvm.struct_set_body subrange_t (Array.of_list [range_p; int_t; int_t; int_t; int_t]) false
-    and _ = Llvm.struct_set_body value_t (Array.of_list [flags_t; ]) false
+    and _ = Llvm.struct_set_body value_t (Array.of_list [flags_t; number_t]) false
     and _ = Llvm.struct_set_body dimensions_t (Array.of_list [int_t; int_t]) false in
     {
       range_t = range_t;
@@ -103,6 +105,7 @@ let translate (globals, functions) =
       subrange_t = subrange_t;
       formula_t = formula_t;
       dimensions_t = dimensions_t;
+      number_t = number_t;
 
       range_p = range_p;
       subrange_p = subrange_p;

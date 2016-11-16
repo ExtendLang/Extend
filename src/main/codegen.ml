@@ -8,6 +8,7 @@ type something = {
   status_t : Llvm.lltype;
   value_t : Llvm.lltype;
   dimensions_t : Llvm.lltype;
+  number_t : Llvm.lltype;
   range_p : Llvm.lltype;
   subrange_p : Llvm.lltype;
   formula_p : Llvm.lltype;
@@ -86,6 +87,7 @@ let translate (globals, functions) =
     and dimensions_t = Llvm.named_struct_type ctx "dimensions" (**)
     and status_t = Llvm.named_struct_type ctx "status" (*Status indicates how a cell must be treated*)
     and formula_t = Llvm.named_struct_type ctx "formula" in (*Formula is a hint on how to calculate the value of a cell*)
+    and number_t = Llvm.i32_type ctx
     let range_p = (Llvm.pointer_type range_t)
     and subrange_p = (Llvm.pointer_type subrange_t)
     and value_p = (Llvm.pointer_type value_t)
@@ -108,7 +110,7 @@ let translate (globals, functions) =
       ]) false
     and _ = Llvm.struct_set_body value_t (Array.of_list [
         flags_t (*First bit indicates whether it is an int or a range*);
-        int_t (*Numeric value of the cell*);
+        number_t (*Numeric value of the cell*);
         subrange_p (*Range value of the cell if applicable*)
       ]) false
     and _ = Llvm.struct_set_body dimensions_t (Array.of_list [int_t; int_t]) false in
@@ -119,6 +121,7 @@ let translate (globals, functions) =
       subrange_t = subrange_t;
       formula_t = formula_t;
       dimensions_t = dimensions_t;
+      number_t = number_t;
 
       range_p = range_p;
       subrange_p = subrange_p;
@@ -139,12 +142,12 @@ let translate (globals, functions) =
     Ast.StringMap.mapi (fun key (func: Ast.func_decl) ->
         (func, Llvm.define_function
            (if (key = "main") then "_main" else key)
-           (Llvm.function_type base_types.range_p (Array.of_list (List.map (fun a -> base_types.range_p) func.Ast.func_params)))
+           (Llvm.function_type base_types.subrange_p (Array.of_list (List.map (fun a -> base_types.subrange_p) func.Ast.func_params)))
            base_module)
       ) functions in
   let main_def = Llvm.define_function "main" (Llvm.function_type base_types.int_t (Array.of_list [])) base_module in
   let main_bod = Llvm.builder_at_end context (Llvm.entry_block main_def) in
-  let inp = Llvm.build_alloca base_types.range_t "input_arg" main_bod in
+  let inp = Llvm.build_alloca base_types.subrange_t "input_arg" main_bod in
   (* Put input args in inp *)
   let _ = Llvm.build_call
          (
@@ -171,7 +174,7 @@ let translate (globals, functions) =
         let _ = Ast.StringMap.fold (
             fun a b c -> (*Llvm.build_struct_gep c struct_r builder;*) c + 1
           ) desc.Ast.func_body 0 in
-        let res = Llvm.build_malloc base_types.range_t "ret" builder in
+        let res = Llvm.build_malloc base_types.subrange_t "ret" builder in
         Llvm.build_ret res builder; ()
       ) build_function_names in
     base_module

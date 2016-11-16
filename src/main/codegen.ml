@@ -102,12 +102,12 @@ let translate (globals, functions) =
     Ast.StringMap.mapi (fun key (func: Ast.func_decl) ->
         (func, Llvm.define_function
            (if (key = "main") then "_main" else key)
-           (Llvm.function_type base_types.range_p (Array.of_list (List.map (fun a -> base_types.range_p) func.Ast.func_params)))
+           (Llvm.function_type base_types.subrange_p (Array.of_list (List.map (fun a -> base_types.subrange_p) func.Ast.func_params)))
            base_module)
       ) functions in
   let main_def = Llvm.define_function "main" (Llvm.function_type base_types.int_t (Array.of_list [])) base_module in
   let main_bod = Llvm.builder_at_end context (Llvm.entry_block main_def) in
-  let inp = Llvm.build_alloca base_types.range_t "input_arg" main_bod in
+  let inp = Llvm.build_alloca base_types.subrange_t "input_arg" main_bod in
   (* Put input args in inp *)
   let _ = Llvm.build_call
          (
@@ -132,7 +132,7 @@ let translate (globals, functions) =
         let _ = Ast.StringMap.fold (
             fun a b c -> (*Llvm.build_struct_gep c struct_r builder;*) c + 1
           ) desc.Ast.func_body 0 in
-        let res = Llvm.build_malloc base_types.range_t "ret" builder in
+        let res = Llvm.build_malloc base_types.subrange_t "ret" builder in
         Llvm.build_ret res builder; ()
       ) build_function_names in
     base_module

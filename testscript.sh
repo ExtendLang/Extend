@@ -25,7 +25,7 @@ for f in $(ls $TESTDIR); do
     echo "PASSED ($f)"
   else
     echo "FAILED ($f)"
-    if [ $PRINT == "-p" ]; then
+    if [[ $PRINT == "-p" ]]; then
       cat $RESULT_OUTPUT
     fi
   fi

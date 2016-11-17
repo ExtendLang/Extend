@@ -1,0 +1,4 @@
+main(){
+	/* Should return -33 */
+	return -33;
+}

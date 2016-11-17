@@ -41,3 +41,7 @@ Executable compare
 Test testsamples
   Type: Custom (0.0.1)
   Command: $compare
+
+Test testcompile
+  Type: Custom (0.0.1)
+  Command: sh ./testscript.sh

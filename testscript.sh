@@ -1,4 +1,8 @@
-PRINT=$1
+if [ "$#" -eq 1 ]; then
+  PRINT=$1
+else
+  PRINT="NOT"
+fi
 TESTDIR=./testcases
 TMP_DIR=./tmp
 INT_OUT=.i.out

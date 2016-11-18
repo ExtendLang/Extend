@@ -1,0 +1,5 @@
+global [2,2] foo;
+main() {
+  foo := 1;
+  return foo;
+}

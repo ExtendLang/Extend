@@ -1,0 +1,5 @@
+import "samples/gcd_func.xtnd";
+
+main(){
+  return gcd(70, 55);
+}

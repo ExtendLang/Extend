@@ -1,6 +1,8 @@
 
 (* Extend code generator *)
 
+exception NotImplemented
+
 type something = {
   range_t : Llvm.lltype;
   subrange_t : Llvm.lltype;
@@ -139,16 +141,16 @@ let create_main fnames ctx bt the_module =
          (Array.of_list [inp])
          "" main_bod in
   let str_format_str = Llvm.build_global_stringptr "%s\n" "fmt" main_bod in
-  let int_format_str = Llvm.build_global_stringptr "%u\n" "fmt" main_bod in
-  let argv = Llvm.param main_def 1 in
+  let int_format_str = Llvm.build_global_stringptr "%d\n" "fmt" main_bod in
+  (*let argv = Llvm.param main_def 1 in
   let argv_1_addr = Llvm.build_in_bounds_gep argv [|Llvm.const_int bt.int_t 1|] "argv_1_addr" main_bod in
   let argv_1 = Llvm.build_load argv_1_addr "argv_1" main_bod in
   let ns_ptr = Llvm.build_call (Hashtbl.find helper_functions "new_string") [|argv_1|] "ns_ptr" main_bod in
-  let ns_charptr = (ns_ptr => (string_field_index StringCharPtr)) "ns_charptr" main_bod in
-  let ns_strlen = (ns_ptr => (string_field_index StringLen)) "ns_charptr" main_bod in
-  let _ = Llvm.build_call (Hashtbl.find extern_functions "printf")  [| str_format_str ; argv_1 |] "" main_bod in
-  let _ = Llvm.build_call (Hashtbl.find extern_functions "printf")  [| int_format_str ; ns_strlen |] "" main_bod in
-  let _ = Llvm.build_call (Hashtbl.find extern_functions "printf")  [| str_format_str ; ns_charptr |] "" main_bod in
+  let ns_charptr_ptr = Llvm.build_struct_gep ns_ptr (string_field_index StringCharPtr) "ns_charptr_ptr" main_bod in
+  let ns_charptr = Llvm.build_load ns_charptr_ptr "ns_charptr" main_bod in*)
+  (*let _ = Llvm.build_call (Hashtbl.find extern_functions "printf")  [| str_format_str ; argv_1 |] "" main_bod in
+  let _ = Llvm.build_call (Hashtbl.find extern_functions "printf")  [| int_format_str ; int_len_of_argv_1 |] "" main_bod in
+  let _ = Llvm.build_call (Hashtbl.find extern_functions "printf")  [| str_format_str ; ns_charptr |] "" main_bod in*)
   let _ = Llvm.build_ret (Llvm.const_int bt.int_t 0) main_bod in
   ()
 
@@ -255,6 +257,23 @@ let translate (globals, functions) =
 
   let build_function_body =
     Ast.StringMap.iter (fun key (desc, func) ->
+        let rec expr_eval expr scope builder ctx helpers bt =
+          match expr with
+            Ast.Precedence(a,b) -> expr_eval a scope builder ctx helpers bt; expr_eval b scope builder ctx helpers bt;
+          | Ast.Call(fn,exl) -> let args = Array.of_list
+                (List.fold_left (fun a b -> (expr_eval b scope builder ctx helpers bt) :: a) [] exl) in
+              Llvm.build_call (Hashtbl.find helpers fn) args "" builder
+          | Ast.LitString(str) -> Llvm.build_global_stringptr str "" builder
+          | Ast.LitInt(i) -> Llvm.const_int bt.int_t i
+          | Ast.BinOp(ex1,op,ex2) ->
+              let val1 = (expr_eval ex1 scope builder ctx helpers bt)
+              and val2 = (expr_eval ex2 scope builder ctx helpers bt) in
+              (match op with
+                Ast.Plus -> Llvm.build_add val1 val2 "" builder
+              | Ast.Minus -> Llvm.build_sub val1 val2 "" builder
+              | _ -> raise NotImplemented)
+          | Ast.Id(name) -> Llvm.const_string ctx name
+          | _ -> raise NotImplemented in
         let builder = Llvm.builder_at_end context (Llvm.entry_block func) in
         let scope = Ast.StringMap.fold (
             fun a b c -> base_types.range_p :: c
@@ -262,8 +281,14 @@ let translate (globals, functions) =
         let struct_f = Llvm.struct_type context (Array.of_list scope) in
         let struct_r = Llvm.build_malloc struct_f "_scope" builder in
         let _ = Ast.StringMap.fold (
-            fun a b c -> (*Llvm.build_struct_gep c struct_r builder;*) c + 1
+            fun a b c ->
+              List.fold_left (fun a b ->
+                expr_eval b.Ast.formula_expr struct_r builder context extern_functions; a
+              ) () b.Ast.var_formulas
+            ; c + 1
           ) desc.Ast.func_body 0 in
+        let (dims, expr) = desc.Ast.func_ret_val in
+        let ret_v = expr_eval expr struct_r builder context extern_functions base_types in
         let res = Llvm.build_malloc base_types.subrange_t "ret" builder in
         Llvm.build_ret res builder; ()
       ) build_function_names in

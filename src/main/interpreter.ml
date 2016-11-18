@@ -102,7 +102,9 @@ let __row__ _ (Cell(r, c)) _ = ExtendNumber(r)
 
 let __column__ scope (Cell(r, c)) exprs = ExtendNumber(c)
 
-let builtins = List.fold_left2 (fun m fname f -> StringMap.add fname f m) StringMap.empty ["row";"column"] [__row__;__column__]
+let __printf__ scope (Cell(r, c)) exprs = let x = (List.hd (List.tl exprs)) in match x with LitString(str) -> print_string str; ExtendNumber(0)
+
+let builtins = List.fold_left2 (fun m fname f -> StringMap.add fname f m) StringMap.empty ["row";"column";"printf"] [__row__;__column__;__printf__]
 
 let rec evaluate scope cell e =
   let interpreter_variable_of_val v =
@@ -256,6 +258,7 @@ let rec evaluate scope cell e =
     Switch of expr option * case list |
     Call of string * expr list |
     Precedence of expr * expr *)
+  | Precedence(a,b) -> evaluate scope cell a; evaluate scope cell b
   | _ -> ExtendNumber(-1))
 
 and get_val rg cell =

@@ -90,14 +90,15 @@ let create_helper_functions ctx bt the_module =
     let src_char_ptr = Llvm.param fn_def 0 in
     let dst_char_ptr_ptr = Llvm.build_struct_gep the_string_ptr (string_field_index StringCharPtr) "dst_char_ptr_ptr" fn_bod in
     let string_len = Llvm.build_call (Hashtbl.find extern_functions "strlen") [|src_char_ptr|] "string_len" fn_bod in
+    let extra_byte = Llvm.build_add string_len (Llvm.const_int bt.long_t 1) "extra_byte" fn_bod in
     let strlen_ptr = Llvm.build_struct_gep the_string_ptr (string_field_index StringLen) "strlen_ptr" fn_bod in
     let refcount_ptr = Llvm.build_struct_gep the_string_ptr (string_field_index StringRefCount) "strlen_ptr" fn_bod in
-    let dst_char_ptr = Llvm.build_array_malloc bt.char_t string_len "dst_char_ptr" fn_bod in
+    let dst_char_ptr = Llvm.build_array_malloc bt.char_t extra_byte "dst_char_ptr" fn_bod in
     let str_format_str = Llvm.build_global_stringptr "%s\n" "fmt" fn_bod in
     let int_format_str = Llvm.build_global_stringptr "%u\n" "fmt" fn_bod in
     let _ = Llvm.build_store dst_char_ptr dst_char_ptr_ptr fn_bod in
     let _ = Llvm.build_call (Hashtbl.find extern_functions "llvm.memcpy.p0i8.p0i8.i64")
-        [| dst_char_ptr ; src_char_ptr ; string_len ; (Llvm.const_int bt.int_t 0) ; (Llvm.const_int bt.bool_t 0) |]
+        [| dst_char_ptr ; src_char_ptr ; extra_byte ; (Llvm.const_int bt.int_t 0) ; (Llvm.const_int bt.bool_t 0) |]
         "" fn_bod in
     let _ = Llvm.build_store string_len strlen_ptr fn_bod in
     let _ = Llvm.build_store (Llvm.const_int bt.int_t 1) refcount_ptr fn_bod in

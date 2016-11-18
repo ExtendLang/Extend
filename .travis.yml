@@ -3,6 +3,7 @@ sudo: false
 branches:
   only:
     - master
+    - travis-fix
 
 addons:
   apt:

@@ -53,6 +53,12 @@ let check_val rg (Cell(r, c)) =
     try CellMap.find (Cell(r,c)) !(rg.values)
     with Not_found -> (Uncalculated, White)
 
+let create_global_scope (globals, functions) =
+  {
+    interpreter_scope_functions = functions;
+    interpreter_scope_declared_variables = globals;
+    interpreter_scope_resolved_variables = ref StringMap.empty;
+  }
 
 let create_scope f args function_map =
   let add_argument m arg_name arg_val = StringMap.add arg_name arg_val m in
@@ -106,6 +112,7 @@ let rec evaluate scope cell e =
      interpreter_variable_ast_variable = {var_rows = DimInt(1);
                                           var_cols = DimInt(1);
                                           var_formulas = []}} in
+
   let range_of_val = function
       Range(r) -> r
     | v -> InterpreterVariable(interpreter_variable_of_val v) in
@@ -312,9 +319,6 @@ and string_of_cell scope rg (r,c) =
   "{" ^ quote_string (index_of_cell (Cell(r,c))) ^ ": " ^ string_of_val scope (get_val rg (Cell(r,c))) ^ "}"
 
 let interpret ast_mapped =
-  try
-    (let funcs = snd ast_mapped in
-     let mainfunc = StringMap.find "main" funcs in
-     let scope = create_scope mainfunc [] funcs in
-     (string_of_val scope (evaluate scope (Cell(0,0)) (snd mainfunc.func_ret_val))))
-  with Not_found -> "";
+  let global_scope = create_global_scope ast_mapped in
+  let main_args = [Empty] in
+  (string_of_val global_scope (evaluate global_scope (Cell(0,0)) (Call("main", main_args))))

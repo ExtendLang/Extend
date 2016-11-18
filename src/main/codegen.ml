@@ -16,6 +16,7 @@ type something = {
   status_p : Llvm.lltype;
   value_p : Llvm.lltype;
   string_p : Llvm.lltype;
+  string_p_p : Llvm.lltype;
   int_t : Llvm.lltype;
   long_t : Llvm.lltype;
   flags_t : Llvm.lltype;
@@ -94,7 +95,7 @@ let create_helper_functions ctx bt the_module =
     let string_len = Llvm.build_call (Hashtbl.find extern_functions "strlen") [|src_char_ptr|] "string_len" fn_bod in
     let extra_byte = Llvm.build_add string_len (Llvm.const_int bt.long_t 1) "extra_byte" fn_bod in
     let strlen_ptr = Llvm.build_struct_gep the_string_ptr (string_field_index StringLen) "strlen_ptr" fn_bod in
-    let refcount_ptr = Llvm.build_struct_gep the_string_ptr (string_field_index StringRefCount) "strlen_ptr" fn_bod in
+    let refcount_ptr = Llvm.build_struct_gep the_string_ptr (string_field_index StringRefCount) "refcount" fn_bod in
     let dst_char_ptr = Llvm.build_array_malloc bt.char_t extra_byte "dst_char_ptr" fn_bod in
     let _ = Llvm.build_store dst_char_ptr dst_char_ptr_ptr fn_bod in
     let _ = Llvm.build_call (Hashtbl.find extern_functions "llvm.memcpy.p0i8.p0i8.i64")
@@ -105,10 +106,40 @@ let create_helper_functions ctx bt the_module =
     let _ = Llvm.build_ret the_string_ptr fn_bod in
     Hashtbl.add helper_functions fname fn_def in
 
+  let create_box_args fname =
+    let (fn_def, fn_bod) = create_def_bod fname bt.string_p_p [bt.int_t; bt.char_p_p] in
+    let argc = Llvm.param fn_def 0 in
+    let argv = Llvm.param fn_def 1 in
+    let ret_val = Llvm.build_array_malloc bt.string_p argc "ret_val" fn_bod in
+    let i_ptr = Llvm.build_alloca bt.int_t "i_ptr" fn_bod in
+    let _ = Llvm.build_store (Llvm.const_int bt.int_t 0) i_ptr fn_bod in (* i = 0; *)
+    let pred_bb = Llvm.append_block ctx "while_pred" fn_def in
+    let body_bb = Llvm.append_block ctx "while_body" fn_def in
+    let merge_bb = Llvm.append_block ctx "merge" fn_def in
+    let _ = Llvm.build_br pred_bb fn_bod in
+    let pred_builder = Llvm.builder_at_end ctx pred_bb in
+    let i_val = Llvm.build_load i_ptr "i" pred_builder in
+    let pred_bool = Llvm.build_icmp Llvm.Icmp.Slt i_val argc "i_lt_argc" pred_builder in (* i < argc *)
+    let _ = Llvm.build_cond_br pred_bool body_bb merge_bb pred_builder in
+    let body_builder = Llvm.builder_at_end ctx body_bb in
+    let i_val = Llvm.build_load i_ptr "i" body_builder in
+    let argv_i_addr = Llvm.build_in_bounds_gep argv [|i_val|] "argv_i_addr" body_builder in
+    let argv_i = Llvm.build_load argv_i_addr "argv_i" body_builder in
+    let ns_ptr = Llvm.build_call (Hashtbl.find helper_functions "new_string") [|argv_i|] "ns_ptr" body_builder in
+    let dst = Llvm.build_in_bounds_gep ret_val [|i_val|] "dst" body_builder in
+    let _ = Llvm.build_store ns_ptr dst body_builder in
+    let i_plus_1 = Llvm.build_add i_val (Llvm.const_int bt.int_t 1) "i_plus_1" body_builder in
+    let _ = Llvm.build_store i_plus_1 i_ptr body_builder in
+    let _ = Llvm.build_br pred_bb body_builder in
+    let merge_builder = Llvm.builder_at_end ctx merge_bb in
+    let _ = Llvm.build_ret ret_val merge_builder in
+    Hashtbl.add helper_functions fname fn_def in
+
     create_is_subrange_1x1 "is_subrange_1x1";
     create_get_val "get_val";
     create_deref_subrange "deref_subrange";
     create_new_string "new_string";
+    create_box_args "box_args";
     ()
 
 
@@ -138,17 +169,7 @@ let create_main fnames ctx bt the_module =
          )
          (Array.of_list [inp])
          "" main_bod in
-  let str_format_str = Llvm.build_global_stringptr "%s\n" "fmt" main_bod in
-  let int_format_str = Llvm.build_global_stringptr "%u\n" "fmt" main_bod in
-  let argv = Llvm.param main_def 1 in
-  let argv_1_addr = Llvm.build_in_bounds_gep argv [|Llvm.const_int bt.int_t 1|] "argv_1_addr" main_bod in
-  let argv_1 = Llvm.build_load argv_1_addr "argv_1" main_bod in
-  let ns_ptr = Llvm.build_call (Hashtbl.find helper_functions "new_string") [|argv_1|] "ns_ptr" main_bod in
-  let ns_charptr = (ns_ptr => (string_field_index StringCharPtr)) "ns_charptr" main_bod in
-  let ns_strlen = (ns_ptr => (string_field_index StringLen)) "ns_charptr" main_bod in
-  let _ = Llvm.build_call (Hashtbl.find extern_functions "printf")  [| str_format_str ; argv_1 |] "" main_bod in
-  let _ = Llvm.build_call (Hashtbl.find extern_functions "printf")  [| int_format_str ; ns_strlen |] "" main_bod in
-  let _ = Llvm.build_call (Hashtbl.find extern_functions "printf")  [| str_format_str ; ns_charptr |] "" main_bod in
+  let boxed_args = Llvm.build_call (Hashtbl.find helper_functions "box_args") [|(Llvm.param main_def 0);(Llvm.param main_def 1)|] "args" main_bod in
   let _ = Llvm.build_ret (Llvm.const_int bt.int_t 0) main_bod in
   ()
 
@@ -181,6 +202,7 @@ let translate (globals, functions) =
     and char_p = (Llvm.pointer_type char_t)
     and string_p = (Llvm.pointer_type string_t)
     and char_p_p = (Llvm.pointer_type (Llvm.pointer_type char_t))
+    and string_p_p = (Llvm.pointer_type (Llvm.pointer_type string_t))
     (*and void_p = (Llvm.pointer_type void_t)*) in
     let _ = Llvm.struct_set_body range_t (Array.of_list [
         int_t(*rows*);
@@ -232,6 +254,7 @@ let translate (globals, functions) =
       char_t = char_t;
       void_t = void_t;
       char_p_p = char_p_p;
+      string_p_p = string_p_p;
       (*void_p = void_p;*)
     }
   and base_module = Llvm.create_module context "Extend" in

@@ -15,7 +15,6 @@ RES_OUT=.r.out
 LLVM_F=.ll
 mkdir -p $TMP_DIR
 for f in $(ls $TESTDIR/$INPUTS); do
-  echo $f
   INTERPRETER_TARGET=$TMP_DIR/$f$INT_OUT
   EXTEND_TARGET=$TMP_DIR/$f$LLVM_F
   EXTEND_FILE=$TESTDIR/$INPUTS/$f
@@ -25,7 +24,6 @@ for f in $(ls $TESTDIR/$INPUTS); do
   ./main.byte -i $EXTEND_FILE > $INTERPRETER_TARGET 2>&1
   ./main.byte -c $EXTEND_FILE > $EXTEND_TARGET 2>&1
   lli $EXTEND_TARGET arg1 > $COMPILED_OUTPUT 2>&1
-  echo "Comparing ($INTERPRETER_TARGET) and ($EXPECTED_OUTPUT)"
   diff $INTERPRETER_TARGET $EXPECTED_OUTPUT > $RESULT_OUTPUT 2>&1
   if [ $? -eq 0 ]; then
     echo "Interpreter: PASSED ($f)"
@@ -35,7 +33,6 @@ for f in $(ls $TESTDIR/$INPUTS); do
       cat $RESULT_OUTPUT
     fi
   fi
-  echo "Comparing ($COMPILED_OUTPUT) and ($EXPECTED_OUTPUT)"
   diff $COMPILED_OUTPUT $EXPECTED_OUTPUT > $RESULT_OUTPUT 2>&1
   if [ $? -eq 0 ]; then
     echo "Compiler: PASSED ($f)"

@@ -1,3 +1,3 @@
 main([1,1] args){
-	return 1 && 6;
+	return printf(1,toString( 1 && 6)+"\n") -> 0;
 }

@@ -21,5 +21,5 @@ let parse_ast filename =
 Arg.parse speclist parse_ast usage_message;
 if not !just_one_please then Arg.usage speclist usage_message else ();
 if !print_ast then print_endline (string_of_program !the_ast) else ();
-if !interpret_ast then print_endline (Interpreter.interpret !the_ast) else ();
+if !interpret_ast then (Interpreter.interpret !the_ast; ()) else ();
 if !compile_ast then print_endline (Llvm.string_of_llmodule (Codegen.translate !the_ast)) else ();

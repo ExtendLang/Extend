@@ -11,13 +11,13 @@
 @fmt.1 = private unnamed_addr constant [4 x i8] c"%u\0A\00"
 @fmt.2 = private unnamed_addr constant [4 x i8] c"%s\0A\00"
 @fmt.3 = private unnamed_addr constant [4 x i8] c"%d\0A\00"
-@0 = private unnamed_addr constant [13 x i8] c"Hello World\0A\00"
+@0 = private unnamed_addr constant [12 x i8] c"Hello World\00"
 
 define %subrange* @_main(%subrange*) {
 entry:
   %malloccall = tail call i8* @malloc(i32 0)
   %_scope = bitcast i8* %malloccall to {}*
-  %1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @0, i32 0, i32 0), i32 1)
+  %1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([12 x i8], [12 x i8]* @0, i32 0, i32 0), i32 1)
   %malloccall1 = tail call i8* @malloc(i32 ptrtoint (%subrange* getelementptr (%subrange, %subrange* null, i32 1) to i32))
   %ret = bitcast i8* %malloccall1 to %subrange*
   ret %subrange* %ret
@@ -80,7 +80,14 @@ define i32 @main(i32, i8**) {
 entry:
   %input_arg = alloca %subrange
   %2 = call %subrange* @_main(%subrange* %input_arg)
-  ret i32 0
+  %argv_1_addr = getelementptr inbounds i8*, i8** %1, i32 1
+  %argv_1 = load i8*, i8** %argv_1_addr
+  %len_of_argv_1 = call i64 @strlen(i8* %argv_1)
+  %int_len_of_argv_1 = trunc i64 %len_of_argv_1 to i32
+  %ns_ptr = call %string* @new_string(i8* %argv_1)
+  %ns_charptr_ptr = getelementptr inbounds %string, %string* %ns_ptr, i32 0, i32 0
+  %ns_charptr = load i8*, i8** %ns_charptr_ptr
+  ret i32 %int_len_of_argv_1
 }
 
 attributes #0 = { argmemonly nounwind }

@@ -2,5 +2,5 @@ main() {
   foo := 2;
   bar := 3;
   foobar := foo + bar;
-  return 0;
+  return printf(1,toString( 0)+"\n") -> 0;
 }

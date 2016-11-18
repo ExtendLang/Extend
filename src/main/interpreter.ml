@@ -38,10 +38,31 @@ and  subrange   = {
   subrange_dimensions:       dimen;
 }
 and interpreter_scope = {
+  interpreter_scope_builtins: (interpreter_scope -> cell -> expr list -> cell_value) StringMap.t;
   interpreter_scope_functions: func_decl StringMap.t;
   interpreter_scope_declared_variables: variable StringMap.t;
   interpreter_scope_resolved_variables: (interpreter_variable StringMap.t) ref
 }
+
+(* from http://stackoverflow.com/questions/243864/what-is-the-ocaml-idiom-equivalent-to-pythons-range-function without the infix *)
+let zero_until i =
+  let rec aux n acc =
+    if n < 0 then acc else aux (n-1) (n :: acc)
+  in aux (i-1) []
+
+(* from http://stackoverflow.com/questions/27930976/how-to-make-the-cartesian-product-of-two-lists-in-ocaml *)
+(* This is the tail-recursive version *)
+let cartesian l l' =
+  List.rev (List.fold_left (fun x a -> List.fold_left (fun y b -> (a,b) :: y) x l') [] l)
+
+(* from http://stackoverflow.com/questions/27386520/tail-recursive-list-map *)
+
+let tailrec_map f l =
+  let rec map_aux acc = function
+    | [] -> List.rev acc
+    | x :: xs -> map_aux (f x :: acc) xs
+  in
+  map_aux [] l
 
 let dimensions_of_range = function
     InterpreterVariable(v) -> v.interpreter_variable_dimensions
@@ -53,21 +74,23 @@ let check_val rg (Cell(r, c)) =
     try CellMap.find (Cell(r,c)) !(rg.values)
     with Not_found -> (Uncalculated, White)
 
-let create_global_scope (globals, functions) =
+let create_global_scope (globals, functions) builtins =
   {
+    interpreter_scope_builtins = builtins;
     interpreter_scope_functions = functions;
     interpreter_scope_declared_variables = globals;
     interpreter_scope_resolved_variables = ref StringMap.empty;
   }
 
-let create_scope f args function_map =
+let create_scope f args function_map builtins =
   let add_argument m arg_name arg_val = StringMap.add arg_name arg_val m in
   let inputs = List.fold_left2 add_argument StringMap.empty (List.map snd f.func_params) args in
-   {
-     interpreter_scope_functions = function_map;
-     interpreter_scope_declared_variables = f.func_body;
-     interpreter_scope_resolved_variables = ref inputs;
-   }
+  {
+    interpreter_scope_builtins = builtins;
+    interpreter_scope_functions = function_map;
+    interpreter_scope_declared_variables = f.func_body;
+    interpreter_scope_resolved_variables = ref inputs;
+  }
 
 let get_formula rg (Cell(r, c)) =
   let Dimensions(num_rows, num_cols) = rg.interpreter_variable_dimensions in
@@ -98,15 +121,33 @@ let get_formula rg (Cell(r, c)) =
     Some e -> e
   | None -> Empty
 
-let __row__ _ (Cell(r, c)) _ = ExtendNumber(r)
+let rec __row__ _ (Cell(r, c)) _ = ExtendNumber(r)
 
-let __column__ scope (Cell(r, c)) exprs = ExtendNumber(c)
+and __column__ _ (Cell(r, c)) _ = ExtendNumber(c)
 
-let __printf__ scope (Cell(r, c)) exprs = let x = (List.hd (List.tl exprs)) in match x with LitString(str) -> print_string str; ExtendNumber(0)
+and __printf__ scope cell exprs = (match (evaluate scope cell (List.hd (List.tl exprs))) with
+      ExtendString(s) -> print_string s
+    | _ -> ());
+  EmptyValue
 
-let builtins = List.fold_left2 (fun m fname f -> StringMap.add fname f m) StringMap.empty ["row";"column";"printf"] [__row__;__column__;__printf__]
+and __toString__ scope cell exprs = ExtendString(string_of_val scope (evaluate scope cell (List.hd exprs)))
 
-let rec evaluate scope cell e =
+and string_of_val scope = function
+       ExtendNumber(cv) -> string_of_int cv
+     | ExtendString(s) -> quote_string s
+     | EmptyValue -> "null"
+     | Uncalculated -> "huh?"
+     | Range(rg) ->
+       let Dimensions(rows, cols) = dimensions_of_range rg in
+       let row_list = zero_until rows in
+       let col_list = zero_until cols in
+       let cart = cartesian row_list col_list in
+       "[" ^ (String.concat ", " (tailrec_map (string_of_cell scope rg) cart)) ^ "]"
+
+and string_of_cell scope rg (r,c) =
+     "{" ^ quote_string (index_of_cell (Cell(r,c))) ^ ": " ^ string_of_val scope (get_val rg (Cell(r,c))) ^ "}"
+
+and evaluate scope cell e =
   let interpreter_variable_of_val v =
     {interpreter_variable_dimensions = Dimensions(1,1);
      interpreter_variable_scope = scope;
@@ -121,14 +162,17 @@ let rec evaluate scope cell e =
 
   let eval_binop op = function
       (ExtendNumber(n1), ExtendNumber(n2)) -> (match op with
-        Plus -> ExtendNumber(n1 + n2)
-      | Minus -> ExtendNumber(n1 - n2)
-      | Times -> ExtendNumber(n1 * n2)
-      | Divide -> ExtendNumber(n1 / n2)
-      | Mod -> ExtendNumber(n1 mod n2)
-      | Eq -> if n1 = n2 then ExtendNumber(1) else ExtendNumber(0)
-      | Gt -> if n1 > n2 then ExtendNumber(1) else ExtendNumber(0)
-      | _ -> EmptyValue)
+          Plus -> ExtendNumber(n1 + n2)
+        | Minus -> ExtendNumber(n1 - n2)
+        | Times -> ExtendNumber(n1 * n2)
+        | Divide -> ExtendNumber(n1 / n2)
+        | Mod -> ExtendNumber(n1 mod n2)
+        | Eq -> if n1 = n2 then ExtendNumber(1) else ExtendNumber(0)
+        | Gt -> if n1 > n2 then ExtendNumber(1) else ExtendNumber(0)
+        | _ -> EmptyValue)
+    | (ExtendString(s1), ExtendString(s2)) -> (match op with
+          Plus -> ExtendString(s1 ^ s2)
+        | _ -> EmptyValue)
     | _ -> EmptyValue in
 
   let eval_unop op v = (match op with
@@ -246,19 +290,19 @@ let rec evaluate scope cell e =
                           base_offset = Cell(row_start, col_start)}))
         | _ -> EmptyValue)
   | Call(fname, exprs) ->
-    if StringMap.mem fname builtins then
-      (StringMap.find fname builtins) scope cell exprs
+    if StringMap.mem fname scope.interpreter_scope_builtins then
+      (StringMap.find fname scope.interpreter_scope_builtins) scope cell exprs
     else
       let f = StringMap.find fname scope.interpreter_scope_functions in
       let args = List.map (fun e -> interpreter_variable_of_val (evaluate scope (Cell(0,0)) e)) exprs in
-      let f_scope = create_scope f args scope.interpreter_scope_functions in
+      let f_scope = create_scope f args scope.interpreter_scope_functions scope.interpreter_scope_builtins in
       evaluate f_scope (Cell(0,0)) (snd f.func_ret_val)
 
 (*  LitRange of (expr list) list |
     Switch of expr option * case list |
     Call of string * expr list |
     Precedence of expr * expr *)
-  | Precedence(a,b) -> evaluate scope cell a; evaluate scope cell b
+  | Precedence(a,b) -> ignore (evaluate scope cell a); evaluate scope cell b
   | _ -> ExtendNumber(-1))
 
 and get_val rg cell =
@@ -286,42 +330,12 @@ and get_val rg cell =
 
 (* All stub code below this point *)
 
-(* from http://stackoverflow.com/questions/243864/what-is-the-ocaml-idiom-equivalent-to-pythons-range-function without the infix *)
-let zero_until i =
-  let rec aux n acc =
-    if n < 0 then acc else aux (n-1) (n :: acc)
-  in aux (i-1) []
-
-(* from http://stackoverflow.com/questions/27930976/how-to-make-the-cartesian-product-of-two-lists-in-ocaml *)
-(* This is the tail-recursive version *)
-let cartesian l l' =
-  List.rev (List.fold_left (fun x a -> List.fold_left (fun y b -> (a,b) :: y) x l') [] l)
-
-(* from http://stackoverflow.com/questions/27386520/tail-recursive-list-map *)
-
-let tailrec_map f l =
-  let rec map_aux acc = function
-    | [] -> List.rev acc
-    | x :: xs -> map_aux (f x :: acc) xs
-  in
-  map_aux [] l
-
-let rec string_of_val scope = function
-    ExtendNumber(cv) -> string_of_int cv
-  | ExtendString(s) -> quote_string s
-  | EmptyValue -> "null"
-  | Uncalculated -> "huh?"
-  | Range(rg) ->
-    let Dimensions(rows, cols) = dimensions_of_range rg in
-    let row_list = zero_until rows in
-    let col_list = zero_until cols in
-    let cart = cartesian row_list col_list in
-    "[" ^ (String.concat ", " (tailrec_map (string_of_cell scope rg) cart)) ^ "]"
-
-and string_of_cell scope rg (r,c) =
-  "{" ^ quote_string (index_of_cell (Cell(r,c))) ^ ": " ^ string_of_val scope (get_val rg (Cell(r,c))) ^ "}"
-
 let interpret ast_mapped =
-  let global_scope = create_global_scope ast_mapped in
+  let builtins = List.fold_left2
+      (fun m fname f -> StringMap.add fname f m)
+      StringMap.empty
+      ["row";"column";"printf";"toString"]
+      [__row__;__column__;__printf__;__toString__] in
+  let global_scope = create_global_scope ast_mapped builtins in
   let main_args = [Empty] in
   (string_of_val global_scope (evaluate global_scope (Cell(0,0)) (Call("main", main_args))))

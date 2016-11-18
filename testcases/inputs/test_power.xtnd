@@ -1,0 +1,4 @@
+main(){
+	/* Should return 216 */
+	return printf(1,toString( 6**3)+"\n") -> 0;
+}

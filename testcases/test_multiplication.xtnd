@@ -1,4 +1,0 @@
-main(){
-	/* Should evaluate to 35 */
-	return 7 * 5;
-}

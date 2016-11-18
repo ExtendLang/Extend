@@ -1,0 +1,4 @@
+main(){
+	/* Should return empty */
+	return printf(1,toString( empty / 5)+"\n") -> 0;
+}

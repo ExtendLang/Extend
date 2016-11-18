@@ -1,4 +1,0 @@
-main(){
-	/* Should return empty */
-	return empty**5;
-}

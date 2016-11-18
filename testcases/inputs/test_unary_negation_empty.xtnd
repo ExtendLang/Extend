@@ -1,0 +1,3 @@
+main(){
+	return printf(1,toString( -empty)+"\n") -> 0;
+}

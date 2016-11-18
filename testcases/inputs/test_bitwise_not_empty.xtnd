@@ -1,4 +1,4 @@
 main([1,1] args){
 	/* Should return empty */
-	return ~empty;
+	return printf(1,toString( ~empty)+"\n") -> 0;
 }

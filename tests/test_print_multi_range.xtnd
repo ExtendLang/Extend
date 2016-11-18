@@ -1,4 +1,0 @@
-main() {
-  [5,5] foo := 1;
-  return foo;
-}

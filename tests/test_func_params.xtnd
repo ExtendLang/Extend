@@ -1,6 +1,0 @@
-main() {
-  return foo("string");
-}
-[1,1] foo([1,1] arg) {
-  return arg;
-}

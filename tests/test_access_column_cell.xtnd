@@ -1,4 +1,0 @@
-main() {
-  [4,1] foo := "string";
-  return foo[1,0];
-}

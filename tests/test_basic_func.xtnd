@@ -1,6 +1,0 @@
-main() {
-  foo := 2;
-  bar := 3;
-  foobar := foo + bar;
-  return 0;
-}

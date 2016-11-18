@@ -45,4 +45,6 @@ for f in $(ls $TESTDIR/$INPUTS); do
       cat $RESULT_OUTPUT
     fi
   fi
+  cat $EXTEND_TARGET
+  cat $RESULT_OUTPUT
 done

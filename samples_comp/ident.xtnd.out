@@ -1,0 +1,1 @@
+{"Program": {"Globals": [],"Functions": [{"FunctionName": "main", "FunctionDef": {"Params": [{"Dimensions": {"d1": {"LitInt":1}, "d2": {"LitInt":1}}, "VarName": "args"}],"Variables": [],"ReturnVal": {"Dimensions": {"d1": null, "d2": null}, "expr": {"Id": "args"}}}}]}}

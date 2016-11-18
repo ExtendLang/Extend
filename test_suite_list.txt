@@ -11,7 +11,7 @@ List of Tests
 - declaring and printing a range in multiple dimensions
 - declaring and printing a range of strings
 
-Operation Tests(with numbers and with empty, so 2 tests each)
+Operation Tests(with numbers and with empty, so 2 tests each)(DONE)
 - return the value of a bitwise NOT expression
 - return the value of a unary negation expression
 - return the value of a power exponent expression
@@ -71,7 +71,6 @@ Dependency Application
 - illustrate function dependency with one or more functions that use each other
 
 Built-in
-- demonstrate the usage of the iEmpty Function
 - demonstrate the usage of the size function
 - demonstrate the usage of the row function
 - demonstrate the usage of the column function

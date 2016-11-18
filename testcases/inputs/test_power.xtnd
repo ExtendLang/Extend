@@ -1,0 +1,4 @@
+main(){
+	/* Should return 216 */
+	return 6**3;
+}

@@ -9,6 +9,8 @@ let load_file f =
 let dir = "./samples" in
   let children = Sys.readdir dir in
     Array.iter (
-      fun s -> let in_file = (dir ^ "/" ^ s) in
+    fun s -> let in_file = (dir ^ "/" ^ s) in
+      try
         OUnit2.assert_equal ((Ast.string_of_program (Transform.create_ast in_file)) ^ "\n") (load_file (dir ^ "_comp/" ^ s ^ ".out"))
+      with OUnitTest.OUnit_failure(err_msg) -> print_endline ("Failure in " ^ s ^ ": " ^ err_msg) ; raise (OUnitTest.OUnit_failure(err_msg))
     ) children;;

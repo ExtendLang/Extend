@@ -56,7 +56,6 @@ let cartesian l l' =
   List.rev (List.fold_left (fun x a -> List.fold_left (fun y b -> (a,b) :: y) x l') [] l)
 
 (* from http://stackoverflow.com/questions/27386520/tail-recursive-list-map *)
-
 let tailrec_map f l =
   let rec map_aux acc = function
     | [] -> List.rev acc
@@ -271,6 +270,17 @@ and evaluate scope cell e =
         EmptyValue -> EmptyValue
       | ExtendNumber(0) -> (evaluate scope cell false_exp)
       | _ -> (evaluate scope cell true_exp))
+  | Switch(eo, cases) -> let match_val = (match eo with
+        Some e -> (evaluate scope cell e)
+      | None -> ExtendNumber(1)) in
+    let is_expr_match e = (ExtendNumber(1) = (eval_binop Eq (match_val, (evaluate scope cell e)))) in
+    let is_match = function
+        (Some exprs, _) -> List.exists is_expr_match exprs
+      | (None, _) -> true in
+    (try
+      let matching_case = List.find is_match cases in
+      (evaluate scope cell (snd matching_case))
+    with Not_found -> EmptyValue)
   | Id(s) -> find_variable s
   | Selection(expr, sel) ->
     let rng = range_of_val (evaluate scope cell expr) in
@@ -300,8 +310,7 @@ and evaluate scope cell e =
 
 (*  LitRange of (expr list) list |
     Switch of expr option * case list |
-    Call of string * expr list |
-    Precedence of expr * expr *)
+    Call of string * expr list *)
   | Precedence(a,b) -> ignore (evaluate scope cell a); evaluate scope cell b
   | _ -> ExtendNumber(-1))
 
@@ -338,4 +347,4 @@ let interpret ast_mapped =
       [__row__;__column__;__printf__;__toString__] in
   let global_scope = create_global_scope ast_mapped builtins in
   let main_args = [Empty] in
-  (string_of_val global_scope (evaluate global_scope (Cell(0,0)) (Call("main", main_args))))
+  ignore (string_of_val global_scope (evaluate global_scope (Cell(0,0)) (Call("main", main_args))))

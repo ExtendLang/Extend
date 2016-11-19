@@ -1,4 +1,4 @@
-main(){
+main([1,n] args){
 	/* Should return -33 */
 	return printf(1,toString( -33)+"\n") -> 0;
 }

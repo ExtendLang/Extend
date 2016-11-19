@@ -1,0 +1,7 @@
+global [2,2] foo;
+global [2,2] bar;
+main() {
+  foo := 1;
+  bar := foo;
+  return printf(1,toString( bar)+"\n") -> 0;
+}

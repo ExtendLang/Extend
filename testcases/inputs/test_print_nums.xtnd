@@ -1,0 +1,4 @@
+main() {
+  foo := 1;
+  return printf(1,toString( foo)+"\n") -> 0;
+}

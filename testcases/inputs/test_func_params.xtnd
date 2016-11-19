@@ -1,4 +1,4 @@
-main() {
+main([1,n] args) {
   return printf(1,toString( foo("string"))+"\n") -> 0;
 }
 [1,1] foo([1,1] arg) {

@@ -134,7 +134,7 @@ and __toString__ scope cell exprs = ExtendString(string_of_val scope (evaluate s
 and string_of_val scope = function
        ExtendNumber(cv) -> string_of_int cv
      | ExtendString(s) -> quote_string s
-     | EmptyValue -> "null"
+     | EmptyValue -> "empty"
      | Uncalculated -> "huh?"
      | Range(rg) ->
        let Dimensions(rows, cols) = dimensions_of_range rg in
@@ -166,11 +166,35 @@ and evaluate scope cell e =
         | Times -> ExtendNumber(n1 * n2)
         | Divide -> ExtendNumber(n1 / n2)
         | Mod -> ExtendNumber(n1 mod n2)
+        | Pow -> ExtendNumber(int_of_float (float_of_int n1 ** float_of_int n2))
+        | BitAnd -> ExtendNumber(n1 land n2)
+        | BitOr -> ExtendNumber(n1 lor n2)
+        | BitXor -> ExtendNumber(n1 lxor n2)
+        | LShift -> ExtendNumber(n1 lsl n2)
+        | RShift -> ExtendNumber(n1 asr n2)
         | Eq -> if n1 = n2 then ExtendNumber(1) else ExtendNumber(0)
+        | NotEq -> if n1 = n2 then ExtendNumber(0) else ExtendNumber(1)
         | Gt -> if n1 > n2 then ExtendNumber(1) else ExtendNumber(0)
-        | _ -> EmptyValue)
+        | Lt -> if n1 < n2 then ExtendNumber(1) else ExtendNumber(0)
+        | GtEq -> if n1 >= n2 then ExtendNumber(1) else ExtendNumber(0)
+        | LtEq -> if n1 <= n2 then ExtendNumber(1) else ExtendNumber(0)
+        | LogAnd -> if (n1 != 0 && n2 != 0) then ExtendNumber(1) else ExtendNumber(0)
+        | LogOr -> if (n1 != 0 || n2 != 0) then ExtendNumber(1) else ExtendNumber(0)
+        )
     | (ExtendString(s1), ExtendString(s2)) -> (match op with
           Plus -> ExtendString(s1 ^ s2)
+        | _ -> EmptyValue)
+    | (EmptyValue, ExtendNumber(n1)) -> (match op with
+          Eq -> ExtendNumber(0)
+        | NotEq -> ExtendNumber(1)
+        | _ -> EmptyValue)
+    | (ExtendNumber(n1), EmptyValue) -> (match op with
+          Eq -> ExtendNumber(0)
+        | NotEq -> ExtendNumber(1)
+        | _ -> EmptyValue)
+    | (EmptyValue, EmptyValue) -> (match op with
+          Eq -> ExtendNumber(1)
+        | NotEq -> ExtendNumber(0)
         | _ -> EmptyValue)
     | _ -> EmptyValue in
 
@@ -178,6 +202,12 @@ and evaluate scope cell e =
         Neg -> (match v with
             ExtendNumber(n) -> ExtendNumber(-n)
           | _ -> EmptyValue )
+      | BitNot -> (match v with
+            ExtendNumber(n) -> ExtendNumber(lnot n)
+          | _ -> EmptyValue )
+      | LogNot -> (match v with
+            ExtendNumber(0) | EmptyValue -> ExtendNumber(1)
+          | _ -> ExtendNumber(0) )
       | SizeOf ->
         let Dimensions(r,c) = dimensions_of_range (range_of_val v) in
         Range(InterpreterVariable({interpreter_variable_dimensions = Dimensions(1,2);
@@ -188,7 +218,7 @@ and evaluate scope cell e =
                                    interpreter_variable_ast_variable = {var_rows = DimInt(1);
                                                                         var_cols = DimInt(2);
                                                                         var_formulas = []}}))
-      | _ -> EmptyValue) in
+      ) in
 
   let create_interpreter_variable v =
     let resolve_dimension = function

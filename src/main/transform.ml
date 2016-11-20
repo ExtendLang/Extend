@@ -185,7 +185,9 @@ let create_maps (imports, globals, functions) =
   (vds_of_stmts globals, map_of_list (List.map fd_of_raw_func functions))
 
 let check_semantics (globals, functions) =
-  let check_variable locals params v =
+  let check_function _ f =
+    let locals = f.func_body in
+    let params = List.map snd f.func_params in
     let rec check_expr = function
         BinOp(e1,_,e2) -> check_expr e1 ; check_expr e2
       | UnOp(_, e) -> check_expr e
@@ -227,15 +229,15 @@ let check_semantics (globals, functions) =
     let check_dim = function
         DimInt(_) -> ()
       | DimId(s) -> check_expr (Id(s)) in
+    let check_variable v =
+      check_dim v.var_rows ;
+      check_dim v.var_cols ;
+      List.iter check_formula v.var_formulas in
 
-    check_dim v.var_rows ;
-    check_dim v.var_cols ;
-    List.iter check_formula v.var_formulas in
+    StringMap.iter (fun _ v -> check_variable v) f.func_body ;
+    check_expr (snd f.func_ret_val)
 
-  let check_function _ f =
-    let params = List.map snd f.func_params in
-    StringMap.iter (fun _ v -> check_variable f.func_body params v) f.func_body in
-  StringMap.iter check_function functions
+  in StringMap.iter check_function functions
 
 let create_ast filename =
   let ast_imp_res = expand_file filename in

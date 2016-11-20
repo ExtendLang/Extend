@@ -333,17 +333,19 @@ and evaluate scope cell e =
     let Dimensions(rows, cols) = dimensions_of_range rng in
     let (row_slice, col_slice) = (match sel with
           (Some rs, Some cs) -> (rs, cs)
-        | (Some sl, None) -> if rows = 1
-          then ((Some(Abs(LitInt(0))),Some(Abs(LitInt(1)))), sl)
+        | (Some sl, None) ->
+          if rows = 1      then ((Some(Abs(LitInt(0))),Some(Abs(LitInt(1)))), sl)
           else if cols = 1 then (sl, (Some(Abs(LitInt(0))),Some(Abs(LitInt(1)))))
           else raise(InvalidIndex("Only one slice supplied but neither dimension length is one in " ^ string_of_expr expr))
         | _ -> ((None, None), (None, None))) in
-       (match ((resolve_rhs_slice rows cell_row row_slice), (resolve_rhs_slice cols cell_col col_slice)) with
-          ((Some row_start, Some row_end), (Some col_start, Some col_end)) ->
-          Range(Subrange({base_range = rng;
-                          subrange_dimensions = Dimensions(row_end - row_start, col_end - col_start);
-                          base_offset = Cell(row_start, col_start)}))
-        | _ -> EmptyValue)
+    (match ((resolve_rhs_slice rows cell_row row_slice), (resolve_rhs_slice cols cell_col col_slice)) with
+       ((Some row_start, Some row_end), (Some col_start, Some col_end)) ->
+       if row_end > row_start && col_end > col_start then
+         Range(Subrange({base_range = rng;
+                         subrange_dimensions = Dimensions(row_end - row_start, col_end - col_start);
+                         base_offset = Cell(row_start, col_start)}))
+       else EmptyValue
+     | _ -> EmptyValue)
   | Call(fname, exprs) ->
     if StringMap.mem fname scope.interpreter_scope_builtins then
       (StringMap.find fname scope.interpreter_scope_builtins) scope cell exprs

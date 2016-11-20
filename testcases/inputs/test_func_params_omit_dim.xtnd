@@ -1,0 +1,6 @@
+main() {
+  return printf(1,toString( foo("string"))+"\n") -> 0;
+}
+foo([1,1] arg) {
+  return printf(1,toString( arg)+"\n") -> 0;
+}

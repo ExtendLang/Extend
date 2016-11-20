@@ -18,7 +18,6 @@ mkdir -p $TMP_DIR
 lli --version
 
 for f in $(ls $TESTDIR/$INPUTS); do
-  echo $f
   INTERPRETER_TARGET=$TMP_DIR/$f$INT_OUT
   EXTEND_TARGET=$TMP_DIR/$f$LLVM_F
   EXTEND_FILE=$TESTDIR/$INPUTS/$f
@@ -38,7 +37,6 @@ for f in $(ls $TESTDIR/$INPUTS); do
       cat $RESULT_OUTPUT
     fi
   fi
-  echo "Comparing ($COMPILED_OUTPUT) and ($EXPECTED_OUTPUT)"
   diff $COMPILED_OUTPUT $EXPECTED_OUTPUT > $RESULT_OUTPUT 2>&1
   if [ $? -eq 0 ]; then
     echo "Compiler: PASSED ($f)"

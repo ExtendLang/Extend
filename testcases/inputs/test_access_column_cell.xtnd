@@ -1,0 +1,4 @@
+main() {
+  [4,1] foo := "string";
+  return printf(1,toString( foo[1,0])+"\n") -> 0;
+}

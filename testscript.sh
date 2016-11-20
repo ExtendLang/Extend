@@ -68,6 +68,7 @@ for f in $(ls $TESTDIR/$INPUTS); do
   ./main.byte -i $EXTEND_FILE > $INTERPRETER_TARGET 2>&1
   ./main.byte -c $EXTEND_FILE > $EXTEND_TARGET 2>&1
   lli-3.8 $EXTEND_TARGET arg1 > $COMPILED_OUTPUT 2>&1
+  echo "Comparing ($INTERPRETER_TARGET) and ($EXPECTED_OUTPUT)"
   diff $INTERPRETER_TARGET $EXPECTED_OUTPUT > $RESULT_OUTPUT 2>&1
   if [ $? -eq 0 ]; then
     counteri=$((counteri+1))

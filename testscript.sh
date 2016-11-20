@@ -14,6 +14,9 @@ EXP_OUT=.exp
 RES_OUT=.r.out
 LLVM_F=.ll
 mkdir -p $TMP_DIR
+
+lli --version
+
 for f in $(ls $TESTDIR/$INPUTS); do
   echo $f
   INTERPRETER_TARGET=$TMP_DIR/$f$INT_OUT
@@ -24,7 +27,7 @@ for f in $(ls $TESTDIR/$INPUTS); do
   RESULT_OUTPUT=$TMP_DIR/$f$RES_OUT
   ./main.byte -i $EXTEND_FILE > $INTERPRETER_TARGET 2>&1
   ./main.byte -c $EXTEND_FILE > $EXTEND_TARGET 2>&1
-  lli $EXTEND_TARGET arg1 > $COMPILED_OUTPUT 2>&1
+  lli-3.8 $EXTEND_TARGET arg1 > $COMPILED_OUTPUT 2>&1
   echo "Comparing ($INTERPRETER_TARGET) and ($EXPECTED_OUTPUT)"
   diff $INTERPRETER_TARGET $EXPECTED_OUTPUT > $RESULT_OUTPUT 2>&1
   if [ $? -eq 0 ]; then

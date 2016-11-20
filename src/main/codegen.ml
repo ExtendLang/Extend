@@ -308,7 +308,7 @@ let translate (globals, functions) =
         let _ = Ast.StringMap.fold (
             fun a b c ->
               List.fold_left (fun a b ->
-                expr_eval b.Ast.formula_expr struct_r builder context extern_functions; a
+                expr_eval b.Ast.formula_expr struct_r builder context extern_functions base_types; a
               ) () b.Ast.var_formulas
             ; c + 1
           ) desc.Ast.func_body 0 in

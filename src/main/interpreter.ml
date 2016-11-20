@@ -41,7 +41,9 @@ and interpreter_scope = {
   interpreter_scope_builtins: (interpreter_scope -> cell -> expr list -> cell_value) StringMap.t;
   interpreter_scope_functions: func_decl StringMap.t;
   interpreter_scope_declared_variables: variable StringMap.t;
-  interpreter_scope_resolved_variables: (interpreter_variable StringMap.t) ref
+  interpreter_scope_resolved_variables: (interpreter_variable StringMap.t) ref;
+  interpreter_scope_declared_globals: variable StringMap.t;
+  interpreter_scope_resolved_globals: (interpreter_variable StringMap.t) ref;
 }
 
 (* from http://stackoverflow.com/questions/243864/what-is-the-ocaml-idiom-equivalent-to-pythons-range-function without the infix *)
@@ -77,11 +79,13 @@ let create_global_scope (globals, functions) builtins =
   {
     interpreter_scope_builtins = builtins;
     interpreter_scope_functions = functions;
-    interpreter_scope_declared_variables = globals;
+    interpreter_scope_declared_variables = StringMap.empty;
     interpreter_scope_resolved_variables = ref StringMap.empty;
+    interpreter_scope_declared_globals = globals;
+    interpreter_scope_resolved_globals = ref StringMap.empty;
   }
 
-let create_scope f args function_map builtins =
+let create_scope f args function_map builtins old_scope =
   let add_argument m arg_name arg_val = StringMap.add arg_name arg_val m in
   let inputs = List.fold_left2 add_argument StringMap.empty (List.map snd f.func_params) args in
   {
@@ -89,6 +93,8 @@ let create_scope f args function_map builtins =
     interpreter_scope_functions = function_map;
     interpreter_scope_declared_variables = f.func_body;
     interpreter_scope_resolved_variables = ref inputs;
+    interpreter_scope_declared_globals = old_scope.interpreter_scope_declared_globals;
+    interpreter_scope_resolved_globals = old_scope.interpreter_scope_resolved_globals;
   }
 
 let get_formula rg (Cell(r, c)) =
@@ -255,12 +261,21 @@ and evaluate scope cell e =
 
   let find_variable s =
     let v =
-      if StringMap.mem s !(scope.interpreter_scope_resolved_variables)
-      then StringMap.find s !(scope.interpreter_scope_resolved_variables)
+      if ((StringMap.mem s scope.interpreter_scope_declared_variables) || (StringMap.mem s !(scope.interpreter_scope_resolved_variables)))
+      then
+        if StringMap.mem s !(scope.interpreter_scope_resolved_variables)
+        then StringMap.find s !(scope.interpreter_scope_resolved_variables)
+        else
+          let new_var = create_interpreter_variable (StringMap.find s scope.interpreter_scope_declared_variables) in
+          scope.interpreter_scope_resolved_variables := StringMap.add s new_var !(scope.interpreter_scope_resolved_variables) ;
+          new_var
       else
-        let new_var = create_interpreter_variable (StringMap.find s scope.interpreter_scope_declared_variables) in
-        scope.interpreter_scope_resolved_variables := StringMap.add s new_var !(scope.interpreter_scope_resolved_variables) ;
-        new_var in
+        if StringMap.mem s !(scope.interpreter_scope_resolved_globals)
+        then StringMap.find s !(scope.interpreter_scope_resolved_globals)
+        else
+          let new_var = create_interpreter_variable (StringMap.find s scope.interpreter_scope_declared_globals) in
+          scope.interpreter_scope_resolved_globals := StringMap.add s new_var !(scope.interpreter_scope_resolved_globals) ;
+          new_var in
     Range(InterpreterVariable(v)) in
 
   let resolve_rhs_slice dimension_len cell_index sl =
@@ -335,7 +350,7 @@ and evaluate scope cell e =
     else
       let f = StringMap.find fname scope.interpreter_scope_functions in
       let args = List.map (fun e -> interpreter_variable_of_val (evaluate scope (Cell(0,0)) e)) exprs in
-      let f_scope = create_scope f args scope.interpreter_scope_functions scope.interpreter_scope_builtins in
+      let f_scope = create_scope f args scope.interpreter_scope_functions scope.interpreter_scope_builtins scope in
       evaluate f_scope (Cell(0,0)) (snd f.func_ret_val)
 
 (*  LitRange of (expr list) list |

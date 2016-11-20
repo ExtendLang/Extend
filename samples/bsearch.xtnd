@@ -9,11 +9,11 @@ bsearch(list, val) {
     );
 }
 
-main() {
+main([1,n] args) {
   [1000,2] array;
   array[0,0] = 0;
   array[1:,0] = array[[-1],] + 2;
   array[1:,1] = array[[-1],] + 1;
   array[0,1] = 10;
-  return array[bsearch(array[:,0],50),1];
+  return printf(1, toString(array[bsearch(array[:,0],50),1]) + "\n");
 }

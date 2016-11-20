@@ -1,4 +1,4 @@
-main(){
+main([1,n] args){
 	/* Should evaluate to empty */
 	return printf(1,toString( empty * 5)+"\n") -> 0;
 }

@@ -1,4 +1,4 @@
-main(){
+main([1,n] args){
 	/* Should evaluate to 35 */
 	return printf(1,toString( 7 * 5)+"\n") -> 0;
 }

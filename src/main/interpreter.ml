@@ -56,7 +56,6 @@ let cartesian l l' =
   List.rev (List.fold_left (fun x a -> List.fold_left (fun y b -> (a,b) :: y) x l') [] l)
 
 (* from http://stackoverflow.com/questions/27386520/tail-recursive-list-map *)
-
 let tailrec_map f l =
   let rec map_aux acc = function
     | [] -> List.rev acc
@@ -135,7 +134,7 @@ and __toString__ scope cell exprs = ExtendString(string_of_val scope (evaluate s
 and string_of_val scope = function
        ExtendNumber(cv) -> string_of_int cv
      | ExtendString(s) -> quote_string s
-     | EmptyValue -> "null"
+     | EmptyValue -> "empty"
      | Uncalculated -> "huh?"
      | Range(rg) ->
        let Dimensions(rows, cols) = dimensions_of_range rg in
@@ -167,11 +166,35 @@ and evaluate scope cell e =
         | Times -> ExtendNumber(n1 * n2)
         | Divide -> ExtendNumber(n1 / n2)
         | Mod -> ExtendNumber(n1 mod n2)
+        | Pow -> ExtendNumber(int_of_float (float_of_int n1 ** float_of_int n2))
+        | BitAnd -> ExtendNumber(n1 land n2)
+        | BitOr -> ExtendNumber(n1 lor n2)
+        | BitXor -> ExtendNumber(n1 lxor n2)
+        | LShift -> ExtendNumber(n1 lsl n2)
+        | RShift -> ExtendNumber(n1 asr n2)
         | Eq -> if n1 = n2 then ExtendNumber(1) else ExtendNumber(0)
+        | NotEq -> if n1 = n2 then ExtendNumber(0) else ExtendNumber(1)
         | Gt -> if n1 > n2 then ExtendNumber(1) else ExtendNumber(0)
-        | _ -> EmptyValue)
+        | Lt -> if n1 < n2 then ExtendNumber(1) else ExtendNumber(0)
+        | GtEq -> if n1 >= n2 then ExtendNumber(1) else ExtendNumber(0)
+        | LtEq -> if n1 <= n2 then ExtendNumber(1) else ExtendNumber(0)
+        | LogAnd -> if (n1 != 0 && n2 != 0) then ExtendNumber(1) else ExtendNumber(0)
+        | LogOr -> if (n1 != 0 || n2 != 0) then ExtendNumber(1) else ExtendNumber(0)
+        )
     | (ExtendString(s1), ExtendString(s2)) -> (match op with
           Plus -> ExtendString(s1 ^ s2)
+        | _ -> EmptyValue)
+    | (EmptyValue, ExtendNumber(n1)) -> (match op with
+          Eq -> ExtendNumber(0)
+        | NotEq -> ExtendNumber(1)
+        | _ -> EmptyValue)
+    | (ExtendNumber(n1), EmptyValue) -> (match op with
+          Eq -> ExtendNumber(0)
+        | NotEq -> ExtendNumber(1)
+        | _ -> EmptyValue)
+    | (EmptyValue, EmptyValue) -> (match op with
+          Eq -> ExtendNumber(1)
+        | NotEq -> ExtendNumber(0)
         | _ -> EmptyValue)
     | _ -> EmptyValue in
 
@@ -179,6 +202,12 @@ and evaluate scope cell e =
         Neg -> (match v with
             ExtendNumber(n) -> ExtendNumber(-n)
           | _ -> EmptyValue )
+      | BitNot -> (match v with
+            ExtendNumber(n) -> ExtendNumber(lnot n)
+          | _ -> EmptyValue )
+      | LogNot -> (match v with
+            ExtendNumber(0) | EmptyValue -> ExtendNumber(1)
+          | _ -> ExtendNumber(0) )
       | SizeOf ->
         let Dimensions(r,c) = dimensions_of_range (range_of_val v) in
         Range(InterpreterVariable({interpreter_variable_dimensions = Dimensions(1,2);
@@ -189,7 +218,7 @@ and evaluate scope cell e =
                                    interpreter_variable_ast_variable = {var_rows = DimInt(1);
                                                                         var_cols = DimInt(2);
                                                                         var_formulas = []}}))
-      | _ -> EmptyValue) in
+      ) in
 
   let create_interpreter_variable v =
     let resolve_dimension = function
@@ -271,6 +300,17 @@ and evaluate scope cell e =
         EmptyValue -> EmptyValue
       | ExtendNumber(0) -> (evaluate scope cell false_exp)
       | _ -> (evaluate scope cell true_exp))
+  | Switch(eo, cases) -> let match_val = (match eo with
+        Some e -> (evaluate scope cell e)
+      | None -> ExtendNumber(1)) in
+    let is_expr_match e = (ExtendNumber(1) = (eval_binop Eq (match_val, (evaluate scope cell e)))) in
+    let is_match = function
+        (Some exprs, _) -> List.exists is_expr_match exprs
+      | (None, _) -> true in
+    (try
+      let matching_case = List.find is_match cases in
+      (evaluate scope cell (snd matching_case))
+    with Not_found -> EmptyValue)
   | Id(s) -> find_variable s
   | Selection(expr, sel) ->
     let rng = range_of_val (evaluate scope cell expr) in
@@ -300,8 +340,7 @@ and evaluate scope cell e =
 
 (*  LitRange of (expr list) list |
     Switch of expr option * case list |
-    Call of string * expr list |
-    Precedence of expr * expr *)
+    Call of string * expr list *)
   | Precedence(a,b) -> ignore (evaluate scope cell a); evaluate scope cell b
   | _ -> ExtendNumber(-1))
 
@@ -338,4 +377,4 @@ let interpret ast_mapped =
       [__row__;__column__;__printf__;__toString__] in
   let global_scope = create_global_scope ast_mapped builtins in
   let main_args = [Empty] in
-  (string_of_val global_scope (evaluate global_scope (Cell(0,0)) (Call("main", main_args))))
+  ignore (string_of_val global_scope (evaluate global_scope (Cell(0,0)) (Call("main", main_args))))

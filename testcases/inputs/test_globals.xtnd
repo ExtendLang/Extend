@@ -1,5 +1,5 @@
 global [2,2] foo;
-main() {
-  foo := 1;
+main([1,n] args) {
+  foo = 1;
   return printf(1,toString( foo)+"\n") -> 0;
 }

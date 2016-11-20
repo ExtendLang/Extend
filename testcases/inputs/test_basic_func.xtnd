@@ -1,4 +1,4 @@
-main() {
+main([1,n] args) {
   foo := 2;
   bar := 3;
   foobar := foo + bar;

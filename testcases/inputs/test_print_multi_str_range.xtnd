@@ -1,4 +1,4 @@
-main() {
+main([1,n] args) {
   [1,5] foo := "string";
   return printf(1,toString( foo)+"\n") -> 0;
 }

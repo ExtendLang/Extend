@@ -1,1 +1,5 @@
-import "samples/gcd.xtnd";
+import "samples/gcd_func.xtnd";
+
+main([1,n] args) {
+  return printf(1, toString(gcd(70, 55)) + "\n") -> 0;
+}

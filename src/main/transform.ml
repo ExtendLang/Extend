@@ -3,6 +3,7 @@ open Ast
 exception IllegalExpression of string;;
 exception DuplicateDefinition of string;;
 exception UnknownVariable of string;;
+exception UnknownFunction of string;;
 exception LogicError of string;;
 
 let idgen =
@@ -183,8 +184,61 @@ let create_maps (imports, globals, functions) =
 
   (vds_of_stmts globals, map_of_list (List.map fd_of_raw_func functions))
 
+let check_semantics (globals, functions) =
+  let check_variable locals params v =
+    let rec check_expr = function
+        BinOp(e1,_,e2) -> check_expr e1 ; check_expr e2
+      | UnOp(_, e) -> check_expr e
+      | Ternary(cond, e1, e2) -> check_expr cond ; check_expr e1 ; check_expr e2
+      | Id(s) -> if (List.mem s params || StringMap.mem s locals || StringMap.mem s globals) then () else raise(UnknownVariable(s))
+      | Switch(Some e, cases) -> check_expr e ; List.iter check_case cases
+      | Switch(None, cases) -> List.iter check_case cases
+      | Call(fname, args) ->
+        if (StringMap.mem fname functions) then
+          (List.iter check_expr args ;
+           ()) (* Also need to check number of arguments provided here *)
+        else raise(UnknownFunction(fname))
+      | Selection(e, sel) -> check_expr e ; check_sel sel
+      | Precedence(e1, e2) -> check_expr e1 ; check_expr e2
+      | LitInt(_) | LitFlt(_) | LitRange(_) | LitString(_) | Empty | Wild -> ()
+    and check_case = function
+        (Some conds, e) -> List.iter check_expr conds ; check_expr e
+      | (None, e) -> check_expr e
+    and check_sel = function
+        (None, None) -> ()
+      | (Some sl1, None) -> check_slice sl1
+      | (None, Some sl2) -> check_slice sl2
+      | (Some sl1, Some sl2) -> check_slice sl1 ; check_slice sl2
+    and check_slice = function
+        (None, None) -> ()
+      | (Some i1, None) -> check_index i1
+      | (None, Some i2) -> check_index i2
+      | (Some i1, Some i2) -> check_index i1 ; check_index i2
+    and check_index = function
+        Abs(e) -> check_expr e
+      | Rel(e) -> check_expr e
+      | _ -> () in
+    let check_formula f =
+      check_index f.formula_row_start ;
+      (match f.formula_row_end with Some i -> check_index i | None -> ()) ;
+      check_index f.formula_col_start ;
+      (match f.formula_col_end with Some i -> check_index i | None -> ()) ;
+      check_expr f.formula_expr in
+    let check_dim = function
+        DimInt(_) -> ()
+      | DimId(s) -> check_expr (Id(s)) in
+
+    check_dim v.var_rows ;
+    check_dim v.var_cols ;
+    List.iter check_formula v.var_formulas in
+
+  let check_function _ f =
+    let params = List.map snd f.func_params in
+    StringMap.iter (fun _ v -> check_variable f.func_body params v) f.func_body in
+  StringMap.iter check_function functions
+
 let create_ast filename =
   let ast_imp_res = expand_file filename in
   let ast_expanded = expand_expressions ast_imp_res in
   let ast_mapped = create_maps ast_expanded in
-  ast_mapped
+  check_semantics ast_mapped ; ast_mapped

@@ -355,9 +355,7 @@ and evaluate scope cell e =
       let f_scope = create_scope f args scope.interpreter_scope_functions scope.interpreter_scope_builtins scope in
       evaluate f_scope (Cell(0,0)) (snd f.func_ret_val)
 
-(*  LitRange of (expr list) list |
-    Switch of expr option * case list |
-    Call of string * expr list *)
+(*  LitRange of (expr list) list *)
   | Precedence(a,b) -> ignore (evaluate scope cell a); evaluate scope cell b
   | _ -> ExtendNumber(-1))
 

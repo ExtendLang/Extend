@@ -1,0 +1,8 @@
+foo([m,n] arg) {
+	return "I was called with an argument with " + toString(m) + " rows and " + toString(n) + " columns.";
+}
+
+main([1,1] args) {
+	[42,17] x;
+	return printf(1,foo(x)+"\n") -> 0;
+}

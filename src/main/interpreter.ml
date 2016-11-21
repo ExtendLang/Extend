@@ -354,7 +354,7 @@ and evaluate scope cell e =
       (StringMap.find fname scope.interpreter_scope_builtins) scope cell exprs
     else
       let f = StringMap.find fname scope.interpreter_scope_functions in
-      let args = List.map (fun e -> interpreter_variable_of_val (evaluate scope (Cell(0,0)) e)) exprs in
+      let args = List.map (fun e -> interpreter_variable_of_val (evaluate scope cell e)) exprs in
       let f_scope = create_scope f args scope.interpreter_scope_functions scope.interpreter_scope_builtins scope in
       evaluate f_scope (Cell(0,0)) (snd f.func_ret_val)
 

@@ -119,10 +119,27 @@ let expand_expressions (imports, globals, functions) =
   | Varinit(d, inits) -> expand_varinit (d, inits) in
 
   let expand_stmt_list stmts = List.concat (List.map expand_stmt stmts) in
+
+  let expand_param_dim sizeid pos = function
+      Id(s) -> [Varinit(one_by_one, [(s, None)]);
+                Assign(s, zero_comma_zero, Some (Selection(Id(sizeid), (Some(Some(pos), None), None))))]
+    | LitInt(_) -> [] (* Make assertions here *)
+    | e -> raise (IllegalExpression("Illegal expression (" ^ string_of_expr e ^ ") in function signature")) in
+
+  let expand_param = function
+      ((Some row_e, Some col_e), param_name) -> let sizevar = idgen() in
+      Varinit(one_by_one, [(sizevar, None)]) ::
+      Assign(sizevar, entire_range, Some(UnOp(SizeOf,Id(param_name)))) ::
+      (expand_param_dim sizevar abs_zero row_e @ expand_param_dim sizevar abs_one col_e )
+    | ((None, None), _) -> []
+    | (d, param_name) -> raise (IllegalExpression("Illegal signature (" ^ string_of_dim d ^ ") for parameter " ^ param_name)) in
+
+  let expand_param_list params = List.concat (List.map expand_param params) in
+
   let expand_function f = {
     name = f.name;
     params = f.params;
-    body = expand_stmt_list f.body;
+    body = expand_stmt_list f.body @ expand_param_list f.params;
     ret_val = f.ret_val} in
   (imports, expand_stmt_list globals, List.map expand_function functions);;
 

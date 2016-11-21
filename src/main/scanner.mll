@@ -48,6 +48,7 @@ rule token = parse
 | '#'             { HASH }
 | "empty"         { EMPTY }
 | "size"          { SIZE }
+| "type"          { TYPE }
 | "switch"        { SWITCH }
 | "case"          { CASE }
 | "default"       { DEFAULT }

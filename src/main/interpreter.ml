@@ -204,27 +204,29 @@ and evaluate scope cell e =
         | _ -> EmptyValue)
     | _ -> EmptyValue in
 
-  let eval_unop op v = (match op with
-        Neg -> (match v with
-            ExtendNumber(n) -> ExtendNumber(-n)
-          | _ -> EmptyValue )
-      | BitNot -> (match v with
-            ExtendNumber(n) -> ExtendNumber(lnot n)
-          | _ -> EmptyValue )
-      | LogNot -> (match v with
-            ExtendNumber(0) | EmptyValue -> ExtendNumber(1)
-          | _ -> ExtendNumber(0) )
-      | SizeOf ->
-        let Dimensions(r,c) = dimensions_of_range (range_of_val v) in
-        Range(InterpreterVariable({interpreter_variable_dimensions = Dimensions(1,2);
-                                   interpreter_variable_scope = scope;
-                                   values = ref (CellMap.add (Cell(0,0)) (ExtendNumber(r), Black)
-                                                   (CellMap.add (Cell(0,1)) (ExtendNumber(c), Black)
-                                                      CellMap.empty));
-                                   interpreter_variable_ast_variable = {var_rows = DimInt(1);
-                                                                        var_cols = DimInt(2);
-                                                                        var_formulas = []}}))
-      ) in
+  let eval_unop op v = match (op, v) with
+      (Neg, ExtendNumber(n)) -> ExtendNumber(-n)
+    | (Neg, _) -> EmptyValue
+    | (BitNot, ExtendNumber(n)) -> ExtendNumber(lnot n)
+    | (BitNot, _) -> EmptyValue
+    | (LogNot, ExtendNumber(0)) -> ExtendNumber(1)
+    | (LogNot, EmptyValue) -> EmptyValue
+    | (LogNot, _) -> ExtendNumber(0)
+    | (SizeOf, _)->
+      let Dimensions(r,c) = dimensions_of_range (range_of_val v) in
+      Range(InterpreterVariable({interpreter_variable_dimensions = Dimensions(1,2);
+                                 interpreter_variable_scope = scope;
+                                 values = ref (CellMap.add (Cell(0,0)) (ExtendNumber(r), Black)
+                                                 (CellMap.add (Cell(0,1)) (ExtendNumber(c), Black)
+                                                    CellMap.empty));
+                                 interpreter_variable_ast_variable = {var_rows = DimInt(1);
+                                                                      var_cols = DimInt(2);
+                                                                      var_formulas = []}}))
+    | (TypeOf, ExtendNumber(_)) -> ExtendString("Number")
+    | (TypeOf, ExtendString(_)) -> ExtendString("String")
+    | (TypeOf, EmptyValue) -> ExtendString("Empty")
+    | (TypeOf, Range(_)) -> ExtendString("Range")
+    | (TypeOf, _) -> EmptyValue in
 
   let create_interpreter_variable v =
     let resolve_dimension = function

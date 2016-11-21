@@ -120,27 +120,44 @@ let expand_expressions (imports, globals, functions) =
 
   let expand_stmt_list stmts = List.concat (List.map expand_stmt stmts) in
 
-  let expand_param_dim sizeid pos = function
-      Id(s) -> [Varinit(one_by_one, [(s, None)]);
-                Assign(s, zero_comma_zero, Some (Selection(Id(sizeid), (Some(Some(pos), None), None))))]
-    | LitInt(_) -> [] (* Make assertions here *)
-    | e -> raise (IllegalExpression("Illegal expression (" ^ string_of_expr e ^ ") in function signature")) in
+  let expand_params params =
+    let needs_sizevar = function
+        ((None, None), _) -> false
+      | _ -> true in
+    let params_with_sizevar = List.map (fun x -> (idgen(), x)) (List.filter needs_sizevar params) in
+    let expanded_args = List.map (fun (sv, ((rv, cv), s)) -> ((sv, s), [((sv, abs_zero), rv); ((sv, abs_one), cv)])) params_with_sizevar in
+    let (sizes, inits) = (List.map fst expanded_args, List.concat (List.map snd expanded_args)) in
+    let add_item (varset, (assertlist, initlist)) ((sizevar, pos), var) =
+      (match var with
+         Some Id(s) ->
+         if StringSet.mem s varset then
+           (* We've seen this variable before; don't initialize it, just assert it *)
+           (varset, (BinOp(Id(s), Eq, Selection(Id(sizevar), (Some(Some(pos), None), None))) :: assertlist, initlist))
+         else
+           (* We're seeing a string for the first time; don't assert it, just create it *)
+           (StringSet.add s varset, (assertlist,
+                                     Assign(s, zero_comma_zero, Some (Selection(Id(sizevar), (Some(Some(pos), None), None)))) ::
+                                     Varinit(one_by_one, [(s, None)]) ::
+                                     initlist))
+       | Some LitInt(i) -> (* Seeing a number; don't do anything besides create an assertion *)
+         (varset, (BinOp(LitInt(i), Eq, Selection(Id(sizevar), (Some(Some(pos), None), None))) :: assertlist, initlist))
+       | Some e -> raise (IllegalExpression("Illegal expression (" ^ string_of_expr e ^ ") in function signature"))
+       | _ -> raise (IllegalExpression("Cannot supply a single dimension in function signature"))) in
+    let (rev_assertions, rev_inits) = snd (List.fold_left add_item (StringSet.empty, ([], [])) inits) in
+    let create_sizevar (sizevar,arg) = [
+      Varinit(one_by_one, [(sizevar, None)]);
+      Assign(sizevar, entire_range, Some(UnOp(SizeOf,Id(arg))))] in
+    (List.concat (List.map create_sizevar sizes), List.rev rev_assertions, List.rev rev_inits) in
 
-  let expand_param = function
-      ((Some row_e, Some col_e), param_name) -> let sizevar = idgen() in
-      Varinit(one_by_one, [(sizevar, None)]) ::
-      Assign(sizevar, entire_range, Some(UnOp(SizeOf,Id(param_name)))) ::
-      (expand_param_dim sizevar abs_zero row_e @ expand_param_dim sizevar abs_one col_e )
-    | ((None, None), _) -> []
-    | (d, param_name) -> raise (IllegalExpression("Illegal signature (" ^ string_of_dim d ^ ") for parameter " ^ param_name)) in
-
-  let expand_param_list params = List.concat (List.map expand_param params) in
-
-  let expand_function f = {
-    name = f.name;
-    params = f.params;
-    body = expand_stmt_list f.body @ expand_param_list f.params;
-    ret_val = f.ret_val} in
+  let expand_function f =
+    let (new_sizevars, assertions, size_inits) = expand_params f.params in
+    {
+      name = f.name;
+      params = f.params;
+      raw_asserts = assertions;
+      body = new_sizevars @ size_inits @ expand_stmt_list f.body;
+      ret_val = f.ret_val
+    } in
   (imports, expand_stmt_list globals, List.map expand_function functions);;
 
 let create_maps (imports, globals, functions) =
@@ -197,6 +214,7 @@ let create_maps (imports, globals, functions) =
       func_params = f.params;
       func_body = vds_of_stmts f.body;
       func_ret_val = f.ret_val;
+      func_asserts = f.raw_asserts;
     }) in
 
   (vds_of_stmts globals, map_of_list (List.map fd_of_raw_func functions))

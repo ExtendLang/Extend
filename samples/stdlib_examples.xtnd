@@ -1,25 +1,10 @@
-wtf(arg) {
-  return arg;
-}
+import "./samples/stdlib.xtnd";
 
 main([1,n] args) {
-  [1,2] foo;
-  foo[0,0] = "A";
-  foo[0,1] = "B";
-  [1,2] cols_1, cols_2, cols_3, cols_4;
-  cols_1[0,0] = wtf(foo[0,0]);
-  cols_1[0,1] = wtf(foo[0,1]);
-  cols_2[0,0] = wtf(foo[0,[0]]);
-  cols_2[0,1] = wtf(foo[0,[0]]);
-  cols_3[0,0] = foo[0,0];
-  cols_3[0,1] = foo[0,1];
-  cols_4[0,0] = foo[0,[0]];
-  cols_4[0,1] = foo[0,[0]];
-
+  [4,4] lower_triangular := row() > column() ? row() - column() : "Not numeric";
   return
-    printf(1,toString(cols_1) + "\n") ->
-    printf(1,toString(cols_2) + "\n") ->
-    printf(1,toString(cols_3) + "\n") ->
-    printf(1,toString(cols_4) + "\n") ->
-        0;
+    printf(1, toString(lower_triangular) + "\n") ->
+    printf(1, toString(sum(lower_triangular)) + "\n") ->
+    printf(1, toString(max(lower_triangular)) + "\n") ->
+    0;
 }

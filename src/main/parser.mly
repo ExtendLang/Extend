@@ -55,6 +55,7 @@ func_decl:
       name = $1;
       params = $3;
       body = $6;
+      raw_asserts = [];
       ret_val = ((None, None), $7)
     } }
   | ret_dim ID LPAREN func_param_list RPAREN LBRACE opt_stmt_list ret_stmt RBRACE
@@ -62,6 +63,7 @@ func_decl:
       name = $2;
       params = $4;
       body = $7;
+      raw_asserts = [];
       ret_val = ($1, $8);
     } }
 
@@ -142,6 +144,7 @@ ternary_expr:
 
 switch_expr:
     SWITCH LPAREN switch_cond RPAREN LBRACE case_list RBRACE { Switch($3, List.rev $6) }
+  | SWITCH LBRACE case_list RBRACE { Switch(None, List.rev $3) }
 
 switch_cond:
     /* nothing */ { None }

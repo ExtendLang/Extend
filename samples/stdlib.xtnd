@@ -1,0 +1,23 @@
+transpose([m,n] rng) {
+  [n,m] ret := rng[column(),row()];
+  return ret;
+}
+
+
+sumcol([m,1] rng) {
+  /* Returns the sum of the values in the range, skipping any values that are non-numeric */
+  [m,1] numbers := type(#rng) == "Number" ? #rng : 0;
+  [m,1] running_sum;
+  running_sum[0,0] = #numbers;
+  running_sum[1:,0] = running_sum[[-1],] + #numbers;
+  return running_sum[-1];
+}
+
+do_nothing(rng) {
+  return rng;
+}
+
+sum([m,n] range) {
+  [1,n] column_sums := sumcol(range[:,]);
+  return sumcol(transpose(column_sums));
+}

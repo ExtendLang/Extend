@@ -189,6 +189,7 @@ and evaluate scope cell e =
         )
     | (ExtendString(s1), ExtendString(s2)) -> (match op with
           Plus -> ExtendString(s1 ^ s2)
+        | Eq -> if s1 = s2 then ExtendNumber(1) else ExtendNumber(0)
         | _ -> EmptyValue)
     | (EmptyValue, ExtendNumber(n1)) -> (match op with
           Eq -> ExtendNumber(0)

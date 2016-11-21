@@ -212,11 +212,11 @@ let check_semantics (globals, functions) =
       | Id(s) -> if (List.mem s params || StringMap.mem s locals || StringMap.mem s globals) then () else raise(UnknownVariable(s))
       | Switch(Some e, cases) -> check_expr e ; List.iter check_case cases
       | Switch(None, cases) -> List.iter check_case cases
-      | Call(fname, args) -> () (* Commented out because this would break builtins *)
-        (* if (StringMap.mem fname functions) then
-          (List.iter check_expr args ;
-           ()) (* Also need to check number of arguments provided here *)
-        else raise(UnknownFunction(fname)) *)
+      | Call(fname, args) ->  (* Commented out because this would break builtins *)
+                               (* if (StringMap.mem fname functions) then *)
+          List.iter check_expr args
+        (* () *) (* Also need to check number of arguments provided here *)
+      (* else raise(UnknownFunction(fname)) *)
       | Selection(e, sel) -> check_expr e ; check_sel sel
       | Precedence(e1, e2) -> check_expr e1 ; check_expr e2
       | LitInt(_) | LitFlt(_) | LitRange(_) | LitString(_) | Empty | Wild -> ()

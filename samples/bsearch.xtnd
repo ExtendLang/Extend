@@ -1,12 +1,13 @@
-bsearch(list, val) {
-  num_rows := size(list)[0];
+bsearch([num_rows, 1] list, val) {
   mid := (num_rows - 1) / 2;
-  return
-    list[mid] == val ? mid : (
-      list[mid] > val ?
-        (mid > 0 ? bsearch(list[:mid], val) : empty) :
-        (num_rows > 1 ? mid + 1 + bsearch(list[mid+1:], val) : empty)
-    );
+  return switch() {
+    case list[mid] == val:
+      mid;
+    case list[mid] > val:
+      mid > 0 ? bsearch(list[:mid], val) : empty;
+    case list[mid] < val:
+      num_rows > 1 ? mid + 1 + bsearch(list[mid+1:], val) : empty;
+  };
 }
 
 main([1,n] args) {
@@ -15,5 +16,5 @@ main([1,n] args) {
   array[1:,0] = array[[-1],] + 2;
   array[1:,1] = array[[-1],] + 1;
   array[0,1] = 10;
-  return printf(1, toString(array[bsearch(array[:,0],50),1]) + "\n");
+  return printf(1, toString(array[bsearch(array[:,0],300),1]) + "\n");
 }

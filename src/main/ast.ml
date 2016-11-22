@@ -16,7 +16,8 @@ type expr     = LitInt of int |
                 Switch of expr option * case list |
                 Call of string * expr list |
                 Selection of expr * sel |
-                Precedence of expr * expr
+                Precedence of expr * expr |
+                Extern of string * expr list
 and  index    = Abs of expr |
                 Rel of expr |
                 DimensionStart |

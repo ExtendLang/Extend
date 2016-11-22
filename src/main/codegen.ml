@@ -267,7 +267,7 @@ let translate (globals, functions) =
     Ast.StringMap.mapi (fun key (func: Ast.func_decl) ->
         (func, Llvm.define_function
            (if (key = "main") then "_main" else key)
-           (Llvm.function_type base_types.subrange_p (Array.of_list (List.map (fun a -> base_types.subrange_p) func.Ast.func_params)))
+           (Llvm.function_type base_types.value_p (Array.of_list (List.map (fun a -> base_types.subrange_p) func.Ast.func_params)))
            base_module)
       ) functions in
 
@@ -314,7 +314,7 @@ let translate (globals, functions) =
           ) desc.Ast.func_body 0 in
         let (dims, expr) = desc.Ast.func_ret_val in
         let ret_v = expr_eval expr struct_r builder context extern_functions base_types in
-        let res = Llvm.build_malloc base_types.subrange_t "ret" builder in
+        let res = Llvm.build_malloc base_types.subrange_p "ret" builder in
         Llvm.build_ret res builder; ()
       ) build_function_names in
     base_module

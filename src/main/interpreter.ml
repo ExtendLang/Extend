@@ -7,6 +7,7 @@ type mark_color = White |
                   Black
 exception         Cyclic of string
 exception         InvalidIndex of string
+exception         AssertionFailure of string
 
 let index_of_cell (Cell(r,c)) =
   "[" ^ string_of_int r ^ "," ^ string_of_int c ^ "]"
@@ -356,6 +357,10 @@ and evaluate scope cell e =
       let f = StringMap.find fname scope.interpreter_scope_functions in
       let args = List.map (fun e -> interpreter_variable_of_val (evaluate scope cell e)) exprs in
       let f_scope = create_scope f args scope.interpreter_scope_functions scope.interpreter_scope_builtins scope in
+      let check_assertion a =
+        (if (evaluate f_scope (Cell(0,0)) a) = ExtendNumber(1) then ()
+         else raise(AssertionFailure("Assertion failed: " ^ string_of_expr a))) in
+      List.iter check_assertion f.func_asserts ;
       evaluate f_scope (Cell(0,0)) (snd f.func_ret_val)
 
 (*  LitRange of (expr list) list *)

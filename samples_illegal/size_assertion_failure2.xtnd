@@ -1,0 +1,9 @@
+foo([m,n] x, [n,p] y) {
+  return x;
+}
+
+main(args) {
+  [2,4] x;
+  [3,3] y;
+  return foo(x,y);
+}

@@ -1,0 +1,9 @@
+foo(x) {
+  x := "hi";
+  return x;
+}
+
+main(args) {
+  [2,4] x;
+  return foo(x);
+}

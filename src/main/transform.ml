@@ -220,14 +220,15 @@ let create_maps (imports, globals, functions) =
   (vds_of_stmts globals, map_of_list (List.map fd_of_raw_func functions))
 
 let check_semantics (globals, functions) =
-  let check_function _ f =
+  let check_function fname f =
     let locals = f.func_body in
     let params = List.map snd f.func_params in
+    List.iter (fun param -> if StringMap.mem param locals then raise(DuplicateDefinition(fname ^ "(): " ^ param)) else ()) params ;
     let rec check_expr = function
         BinOp(e1,_,e2) -> check_expr e1 ; check_expr e2
       | UnOp(_, e) -> check_expr e
       | Ternary(cond, e1, e2) -> check_expr cond ; check_expr e1 ; check_expr e2
-      | Id(s) -> if (List.mem s params || StringMap.mem s locals || StringMap.mem s globals) then () else raise(UnknownVariable(s))
+      | Id(s) -> if (List.mem s params || StringMap.mem s locals || StringMap.mem s globals) then () else raise(UnknownVariable(fname ^ "(): " ^ s))
       | Switch(Some e, cases) -> check_expr e ; List.iter check_case cases
       | Switch(None, cases) -> List.iter check_case cases
       | Call(fname, args) ->  (* Commented out because this would break builtins *)

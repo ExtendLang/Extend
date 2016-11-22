@@ -177,7 +177,7 @@ let create_main fnames ctx bt the_module =
   let _ = Llvm.build_ret (Llvm.const_int bt.int_t 0) main_bod in
   ()
 
-let translate (globals, functions) =
+let translate (globals, functions, externs) =
   (*let build_struct ctx (name, tl) =
     let my_struct = Llvm.named_struct_type ctx name in
     let _ = Llvm.struct_set_body my_struct (Array.of_list tl) false in

@@ -15,15 +15,15 @@ module StringSet = Set.Make (String);;
 let importSet = StringSet.empty;;
 
 let expand_file filename =
-  let rec expand_imports processed_imports globals fns = function
-      [] -> ([], globals, fns)
+  let rec expand_imports processed_imports globals fns exts = function
+      [] -> ([], globals, fns, exts)
     | import :: imports ->
       (* print_endline "--------";
       print_endline ("Working on: " ^ import) ;
       print_endline ("Already processed:"); *)
       (* StringSet.iter (fun a -> print_endline a) processed_imports; *)
       let in_chan = open_in import in
-      let (file_imports, file_globals, file_functions) = Parser.program Scanner.token (Lexing.from_channel (in_chan)) in
+      let (file_imports, file_globals, file_functions, file_externs) = Parser.program Scanner.token (Lexing.from_channel (in_chan)) in
       let new_proc = StringSet.add import processed_imports and _ = close_in in_chan in
       (* print_endline ("Now I'm done with: ") ; *)
       (* StringSet.iter (fun a -> print_endline a) new_proc; *)
@@ -31,10 +31,10 @@ let expand_file filename =
       let new_imports = StringSet.elements (StringSet.of_list (List.filter first_im_hearing_about file_imports)) in
       (* print_endline ("First I'm hearing about:") ; *)
       (* List.iter print_endline new_imports; *)
-      expand_imports new_proc (globals @ file_globals) (fns @ file_functions) (imports @ new_imports) in
-  expand_imports StringSet.empty [] [] [filename]
+      expand_imports new_proc (globals @ file_globals) (fns @ file_functions) (exts @ file_externs) (imports @ new_imports) in
+  expand_imports StringSet.empty [] [] [] [filename]
 
-let expand_expressions (imports, globals, functions) =
+let expand_expressions (imports, globals, functions, externs) =
   let lit_zero = LitInt(0) in let abs_zero = Abs(lit_zero) in
   let lit_one  = LitInt(1) in let abs_one  = Abs(lit_one)  in
   let one_by_one = (Some lit_one, Some lit_one) in
@@ -158,9 +158,9 @@ let expand_expressions (imports, globals, functions) =
       body = new_sizevars @ size_inits @ expand_stmt_list f.body;
       ret_val = f.ret_val
     } in
-  (imports, expand_stmt_list globals, List.map expand_function functions);;
+  (imports, expand_stmt_list globals, List.map expand_function functions, externs);;
 
-let create_maps (imports, globals, functions) =
+let create_maps (imports, globals, functions, externs) =
   let map_of_list list_of_tuples =
     (*  map_of_list: Take a list of the form [("foo", 2); ("bar", 3)]
         and create a StringMap using the first value of the tuple as
@@ -217,9 +217,14 @@ let create_maps (imports, globals, functions) =
       func_asserts = f.raw_asserts;
     }) in
 
-  (vds_of_stmts globals, map_of_list (List.map fd_of_raw_func functions))
+  let tupleize_library (Library(lib_name, lib_fns)) =
+    List.map (fun ext_fn -> (ext_fn.extern_fn_name, {ext_fn with extern_fn_libname = lib_name})) lib_fns in
 
-let check_semantics (globals, functions) =
+  (vds_of_stmts globals,
+   map_of_list (List.map fd_of_raw_func functions),
+   map_of_list (List.concat (List.map tupleize_library externs)))
+
+let check_semantics (globals, functions, externs) =
   let check_function fname f =
     let locals = f.func_body in
     let params = List.map snd f.func_params in

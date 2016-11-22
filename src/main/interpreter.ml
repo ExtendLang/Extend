@@ -76,7 +76,7 @@ let check_val rg (Cell(r, c)) =
     try CellMap.find (Cell(r,c)) !(rg.values)
     with Not_found -> (Uncalculated, White)
 
-let create_global_scope (globals, functions) builtins =
+let create_global_scope (globals, functions, externs) builtins =
   {
     interpreter_scope_builtins = builtins;
     interpreter_scope_functions = functions;

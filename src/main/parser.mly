@@ -11,7 +11,7 @@ open Ast
 %token EQ NOTEQ GT LT GTEQ LTEQ
 %token LOGNOT LOGAND LOGOR
 %token BITNOT BITXOR BITAND BITOR
-%token EMPTY RETURN IMPORT GLOBAL
+%token EMPTY RETURN IMPORT GLOBAL EXTERN
 %token <int> LIT_INT
 %token <float> LIT_FLOAT
 %token <string> LIT_STRING
@@ -26,8 +26,8 @@ open Ast
 %left PLUS MINUS BITOR BITXOR
 %left TIMES DIVIDE MOD LSHIFT RSHIFT BITAND
 %right POWER
-%right BITNOT LOGNOT NEG SIZE
-%left HASH LSQBRACK
+%right BITNOT LOGNOT NEG
+%left LSQBRACK
 
 %start program
 %type <Ast.raw_program> program
@@ -35,19 +35,47 @@ open Ast
 %%
 
 program:
-    program_piece EOF {  let (imp, glob, fnc) = $1 in (List.rev imp, List.rev glob, List.rev fnc) }
+    program_piece EOF {  let (imp, glob, fnc, ext) = $1 in (List.rev imp, List.rev glob, List.rev fnc, List.rev ext) }
 
 program_piece:
-    /* nothing */ {([],[],[])}
-  | program_piece import { let (imp, glob, fnc) = $1 in ($2 :: imp, glob, fnc) }
-  | program_piece global { let (imp, glob, fnc) = $1 in (imp, $2 :: glob, fnc) }
-  | program_piece func_decl { let (imp, glob, fnc) = $1 in (imp, glob, $2 :: fnc) }
+    /* nothing */ {([],[],[],[])}
+  | program_piece import      { let (imp, glob, fnc, ext) = $1 in ($2 :: imp, glob, fnc, ext) }
+  | program_piece global      { let (imp, glob, fnc, ext) = $1 in (imp, $2 :: glob, fnc, ext) }
+  | program_piece func_decl   { let (imp, glob, fnc, ext) = $1 in (imp, glob, $2 :: fnc, ext) }
+  | program_piece extern      { let (imp, glob, fnc, ext) = $1 in (imp, glob, fnc, $2 :: ext) }
 
 import:
     IMPORT LIT_STRING SEMI {$2}
 
 global:
     GLOBAL varinit {$2}
+
+extern:
+    EXTERN LIT_STRING LBRACE opt_extern_list RBRACE {(Library($2, $4))}
+
+opt_extern_list:
+    /* nothing */ { [] }
+  | extern_list { List.rev $1 }
+
+extern_list:
+    extern_fn { [$1] }
+  | extern_list extern_fn { $2 :: $1 }
+
+extern_fn:
+    ID LPAREN func_param_list RPAREN SEMI
+    { {
+      extern_fn_name = $1;
+      extern_fn_params = $3;
+      extern_fn_libname = "";
+      extern_ret_val = (None, None);
+    } }
+  | ret_dim ID LPAREN func_param_list RPAREN SEMI
+    { {
+      extern_fn_name = $2;
+      extern_fn_params = $4;
+      extern_fn_libname = "";
+      extern_ret_val = $1;
+    } }
 
 func_decl:
     ID LPAREN func_param_list RPAREN LBRACE opt_stmt_list ret_stmt RBRACE

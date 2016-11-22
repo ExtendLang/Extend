@@ -4,7 +4,7 @@ let print_ast = ref false
 let interpret_ast = ref false
 let compile_ast = ref false
 
-let the_ast = ref (StringMap.empty, StringMap.empty)
+let the_ast = ref (StringMap.empty, StringMap.empty, StringMap.empty)
 let just_one_please = ref false
 
 let speclist = [("-p", Arg.Set print_ast, "Print the AST");

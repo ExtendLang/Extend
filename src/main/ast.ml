@@ -1,7 +1,7 @@
 type op       = Plus | Minus | Times | Divide | Mod | Pow |
                 LShift | RShift | BitOr | BitAnd | BitXor |
                 Eq | NotEq | Gt | Lt | GtEq | LtEq | LogAnd | LogOr
-type unop     = Neg | LogNot | BitNot | SizeOf
+type unop     = Neg | LogNot | BitNot | SizeOf | TypeOf
 
 type expr     = LitInt of int |
                 LitFlt of float |
@@ -36,6 +36,7 @@ type raw_func = {
     name: string;
     params: var list;
     body: stmt list;
+    raw_asserts: expr list;
     ret_val: dim * expr;
 }
 
@@ -63,6 +64,7 @@ type variable = {
 type func_decl = {
   func_params: var list;
   func_body: variable StringMap.t;
+  func_asserts: expr list;
   func_ret_val: dim * expr;
 }
 
@@ -98,7 +100,7 @@ let string_of_op o = "\"" ^ (match o with
     LogAnd -> "&& " | LogOr -> "||" ) ^ "\""
 
 let string_of_unop = function
-    Neg -> "\"-\"" | LogNot -> "\"!\"" | BitNot -> "\"~\"" | SizeOf -> "\"size\""
+    Neg -> "\"-\"" | LogNot -> "\"!\"" | BitNot -> "\"~\"" | SizeOf -> "\"size\"" | TypeOf -> "\"type\""
 
 let rec string_of_expr = function
     LitInt(l) ->          "{\"LitInt\":" ^ string_of_int l ^ "}"
@@ -181,6 +183,7 @@ and string_of_raw_func fd =
     "{\"Name\": " ^ quote_string fd.name ^ "," ^
      "\"Params\": " ^ string_of_list (Vars fd.params) ^ "," ^
      "\"Stmts\": " ^ string_of_list (Stmts fd.body) ^ "," ^
+     "\"Assertions\": " ^ string_of_list (Exprs fd.raw_asserts) ^ "," ^
      "\"ReturnVal\": " ^ string_of_range fd.ret_val ^ "}"
 
 and string_of_dimexpr = function
@@ -228,6 +231,7 @@ let string_of_map value_desc val_printing_fn m =
 let string_of_funcdecl f =
   "{\"Params\": " ^ string_of_list (Vars f.func_params) ^ "," ^
   "\"Variables\": " ^ string_of_map "Variable" string_of_variable f.func_body ^ "," ^
+  "\"Assertions\": " ^ string_of_list (Exprs f.func_asserts) ^ "," ^
   "\"ReturnVal\": " ^ string_of_range f.func_ret_val ^ "}"
 
 let string_of_program (glb, fs) =

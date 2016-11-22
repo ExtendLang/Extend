@@ -3,6 +3,7 @@ open Ast
 exception IllegalExpression of string;;
 exception DuplicateDefinition of string;;
 exception UnknownVariable of string;;
+exception UnknownFunction of string;;
 exception LogicError of string;;
 
 let idgen =
@@ -118,11 +119,45 @@ let expand_expressions (imports, globals, functions) =
   | Varinit(d, inits) -> expand_varinit (d, inits) in
 
   let expand_stmt_list stmts = List.concat (List.map expand_stmt stmts) in
-  let expand_function f = {
-    name = f.name;
-    params = f.params;
-    body = expand_stmt_list f.body;
-    ret_val = f.ret_val} in
+
+  let expand_params params =
+    let needs_sizevar = function
+        ((None, None), _) -> false
+      | _ -> true in
+    let params_with_sizevar = List.map (fun x -> (idgen(), x)) (List.filter needs_sizevar params) in
+    let expanded_args = List.map (fun (sv, ((rv, cv), s)) -> ((sv, s), [((sv, abs_zero), rv); ((sv, abs_one), cv)])) params_with_sizevar in
+    let (sizes, inits) = (List.map fst expanded_args, List.concat (List.map snd expanded_args)) in
+    let add_item (varset, (assertlist, initlist)) ((sizevar, pos), var) =
+      (match var with
+         Some Id(s) ->
+         if StringSet.mem s varset then
+           (* We've seen this variable before; don't initialize it, just assert it *)
+           (varset, (BinOp(Id(s), Eq, Selection(Id(sizevar), (Some(Some(pos), None), None))) :: assertlist, initlist))
+         else
+           (* We're seeing a string for the first time; don't assert it, just create it *)
+           (StringSet.add s varset, (assertlist,
+                                     Assign(s, zero_comma_zero, Some (Selection(Id(sizevar), (Some(Some(pos), None), None)))) ::
+                                     Varinit(one_by_one, [(s, None)]) ::
+                                     initlist))
+       | Some LitInt(i) -> (* Seeing a number; don't do anything besides create an assertion *)
+         (varset, (BinOp(LitInt(i), Eq, Selection(Id(sizevar), (Some(Some(pos), None), None))) :: assertlist, initlist))
+       | Some e -> raise (IllegalExpression("Illegal expression (" ^ string_of_expr e ^ ") in function signature"))
+       | _ -> raise (IllegalExpression("Cannot supply a single dimension in function signature"))) in
+    let (rev_assertions, rev_inits) = snd (List.fold_left add_item (StringSet.empty, ([], [])) inits) in
+    let create_sizevar (sizevar,arg) = [
+      Varinit(one_by_one, [(sizevar, None)]);
+      Assign(sizevar, entire_range, Some(UnOp(SizeOf,Id(arg))))] in
+    (List.concat (List.map create_sizevar sizes), List.rev rev_assertions, List.rev rev_inits) in
+
+  let expand_function f =
+    let (new_sizevars, assertions, size_inits) = expand_params f.params in
+    {
+      name = f.name;
+      params = f.params;
+      raw_asserts = assertions;
+      body = new_sizevars @ size_inits @ expand_stmt_list f.body;
+      ret_val = f.ret_val
+    } in
   (imports, expand_stmt_list globals, List.map expand_function functions);;
 
 let create_maps (imports, globals, functions) =
@@ -179,12 +214,69 @@ let create_maps (imports, globals, functions) =
       func_params = f.params;
       func_body = vds_of_stmts f.body;
       func_ret_val = f.ret_val;
+      func_asserts = f.raw_asserts;
     }) in
 
   (vds_of_stmts globals, map_of_list (List.map fd_of_raw_func functions))
+
+let check_semantics (globals, functions) =
+  let check_function fname f =
+    let locals = f.func_body in
+    let params = List.map snd f.func_params in
+    List.iter (fun param -> if StringMap.mem param locals then raise(DuplicateDefinition(fname ^ "(): " ^ param)) else ()) params ;
+    let rec check_expr = function
+        BinOp(e1,_,e2) -> check_expr e1 ; check_expr e2
+      | UnOp(_, e) -> check_expr e
+      | Ternary(cond, e1, e2) -> check_expr cond ; check_expr e1 ; check_expr e2
+      | Id(s) -> if (List.mem s params || StringMap.mem s locals || StringMap.mem s globals) then () else raise(UnknownVariable(fname ^ "(): " ^ s))
+      | Switch(Some e, cases) -> check_expr e ; List.iter check_case cases
+      | Switch(None, cases) -> List.iter check_case cases
+      | Call(fname, args) ->  (* Commented out because this would break builtins *)
+                               (* if (StringMap.mem fname functions) then *)
+          List.iter check_expr args
+        (* () *) (* Also need to check number of arguments provided here *)
+      (* else raise(UnknownFunction(fname)) *)
+      | Selection(e, sel) -> check_expr e ; check_sel sel
+      | Precedence(e1, e2) -> check_expr e1 ; check_expr e2
+      | LitInt(_) | LitFlt(_) | LitRange(_) | LitString(_) | Empty | Wild -> ()
+    and check_case = function
+        (Some conds, e) -> List.iter check_expr conds ; check_expr e
+      | (None, e) -> check_expr e
+    and check_sel = function
+        (None, None) -> ()
+      | (Some sl1, None) -> check_slice sl1
+      | (None, Some sl2) -> check_slice sl2
+      | (Some sl1, Some sl2) -> check_slice sl1 ; check_slice sl2
+    and check_slice = function
+        (None, None) -> ()
+      | (Some i1, None) -> check_index i1
+      | (None, Some i2) -> check_index i2
+      | (Some i1, Some i2) -> check_index i1 ; check_index i2
+    and check_index = function
+        Abs(e) -> check_expr e
+      | Rel(e) -> check_expr e
+      | _ -> () in
+    let check_formula f =
+      check_index f.formula_row_start ;
+      (match f.formula_row_end with Some i -> check_index i | None -> ()) ;
+      check_index f.formula_col_start ;
+      (match f.formula_col_end with Some i -> check_index i | None -> ()) ;
+      check_expr f.formula_expr in
+    let check_dim = function
+        DimInt(_) -> ()
+      | DimId(s) -> check_expr (Id(s)) in
+    let check_variable v =
+      check_dim v.var_rows ;
+      check_dim v.var_cols ;
+      List.iter check_formula v.var_formulas in
+
+    StringMap.iter (fun _ v -> check_variable v) f.func_body ;
+    check_expr (snd f.func_ret_val)
+
+  in StringMap.iter check_function functions
 
 let create_ast filename =
   let ast_imp_res = expand_file filename in
   let ast_expanded = expand_expressions ast_imp_res in
   let ast_mapped = create_maps ast_expanded in
-  ast_mapped
+  check_semantics ast_mapped ; ast_mapped

@@ -6,7 +6,7 @@ open Ast
 
 %token LSQBRACK RSQBRACK LPAREN RPAREN LBRACE RBRACE HASH
 %token COLON COMMA QUESTION GETS ASN SEMI PRECEDES UNDERSCORE
-%token SWITCH CASE DEFAULT SIZE
+%token SWITCH CASE DEFAULT SIZE TYPE
 %token PLUS MINUS TIMES DIVIDE MOD POWER LSHIFT RSHIFT
 %token EQ NOTEQ GT LT GTEQ LTEQ
 %token LOGNOT LOGAND LOGOR
@@ -55,6 +55,7 @@ func_decl:
       name = $1;
       params = $3;
       body = $6;
+      raw_asserts = [];
       ret_val = ((None, None), $7)
     } }
   | ret_dim ID LPAREN func_param_list RPAREN LBRACE opt_stmt_list ret_stmt RBRACE
@@ -62,6 +63,7 @@ func_decl:
       name = $2;
       params = $4;
       body = $7;
+      raw_asserts = [];
       ret_val = ($1, $8);
     } }
 
@@ -96,7 +98,7 @@ assign:
 
 expr:
     expr rhs_sel        { Selection($1, $2) }
-  | HASH expr           { Selection($2, (None, None)) }
+  | HASH ID             { Selection(Id($2), (None, None)) }
   | op_expr             { $1 }
   | ternary_expr        { $1 }
   | switch_expr         { $1 }
@@ -125,12 +127,13 @@ op_expr:
   | expr BITAND expr    { BinOp($1, BitAnd, $3) }
   | expr BITOR expr     { BinOp($1, BitOr, $3) }
   | expr EQ expr        { BinOp($1, Eq, $3) }
-  | expr NOTEQ expr     { BinOp($1, NotEq, $3) }
+  | expr NOTEQ expr     { UnOp(LogNot,(BinOp($1, Eq, $3))) }
   | expr GT expr        { BinOp($1, Gt, $3) }
   | expr LT expr        { BinOp($1, Lt, $3) }
   | expr GTEQ expr      { BinOp($1, GtEq, $3) }
   | expr LTEQ expr      { BinOp($1, LtEq, $3) }
   | SIZE LPAREN expr RPAREN { UnOp(SizeOf, $3) }
+  | TYPE LPAREN expr RPAREN { UnOp(TypeOf, $3) }
   | MINUS expr %prec NEG    { UnOp(Neg, $2) }
   | LOGNOT expr             { UnOp(LogNot, $2) }
   | BITNOT expr             { UnOp(BitNot, $2) }
@@ -141,6 +144,7 @@ ternary_expr:
 
 switch_expr:
     SWITCH LPAREN switch_cond RPAREN LBRACE case_list RBRACE { Switch($3, List.rev $6) }
+  | SWITCH LBRACE case_list RBRACE { Switch(None, List.rev $3) }
 
 switch_cond:
     /* nothing */ { None }

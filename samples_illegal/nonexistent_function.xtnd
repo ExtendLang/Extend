@@ -1,0 +1,4 @@
+main([1,n] args) {
+  [2,2] foo := printf(42);
+  return foo;
+}

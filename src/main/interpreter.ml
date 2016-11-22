@@ -7,6 +7,7 @@ type mark_color = White |
                   Black
 exception         Cyclic of string
 exception         InvalidIndex of string
+exception         AssertionFailure of string
 
 let index_of_cell (Cell(r,c)) =
   "[" ^ string_of_int r ^ "," ^ string_of_int c ^ "]"
@@ -189,6 +190,7 @@ and evaluate scope cell e =
         )
     | (ExtendString(s1), ExtendString(s2)) -> (match op with
           Plus -> ExtendString(s1 ^ s2)
+        | Eq -> if s1 = s2 then ExtendNumber(1) else ExtendNumber(0)
         | _ -> EmptyValue)
     | (EmptyValue, ExtendNumber(n1)) -> (match op with
           Eq -> ExtendNumber(0)
@@ -204,27 +206,29 @@ and evaluate scope cell e =
         | _ -> EmptyValue)
     | _ -> EmptyValue in
 
-  let eval_unop op v = (match op with
-        Neg -> (match v with
-            ExtendNumber(n) -> ExtendNumber(-n)
-          | _ -> EmptyValue )
-      | BitNot -> (match v with
-            ExtendNumber(n) -> ExtendNumber(lnot n)
-          | _ -> EmptyValue )
-      | LogNot -> (match v with
-            ExtendNumber(0) | EmptyValue -> ExtendNumber(1)
-          | _ -> ExtendNumber(0) )
-      | SizeOf ->
-        let Dimensions(r,c) = dimensions_of_range (range_of_val v) in
-        Range(InterpreterVariable({interpreter_variable_dimensions = Dimensions(1,2);
-                                   interpreter_variable_scope = scope;
-                                   values = ref (CellMap.add (Cell(0,0)) (ExtendNumber(r), Black)
-                                                   (CellMap.add (Cell(0,1)) (ExtendNumber(c), Black)
-                                                      CellMap.empty));
-                                   interpreter_variable_ast_variable = {var_rows = DimInt(1);
-                                                                        var_cols = DimInt(2);
-                                                                        var_formulas = []}}))
-      ) in
+  let eval_unop op v = match (op, v) with
+      (Neg, ExtendNumber(n)) -> ExtendNumber(-n)
+    | (Neg, _) -> EmptyValue
+    | (BitNot, ExtendNumber(n)) -> ExtendNumber(lnot n)
+    | (BitNot, _) -> EmptyValue
+    | (LogNot, ExtendNumber(0)) -> ExtendNumber(1)
+    | (LogNot, EmptyValue) -> EmptyValue
+    | (LogNot, _) -> ExtendNumber(0)
+    | (SizeOf, _)->
+      let Dimensions(r,c) = dimensions_of_range (range_of_val v) in
+      Range(InterpreterVariable({interpreter_variable_dimensions = Dimensions(1,2);
+                                 interpreter_variable_scope = scope;
+                                 values = ref (CellMap.add (Cell(0,0)) (ExtendNumber(r), Black)
+                                                 (CellMap.add (Cell(0,1)) (ExtendNumber(c), Black)
+                                                    CellMap.empty));
+                                 interpreter_variable_ast_variable = {var_rows = DimInt(1);
+                                                                      var_cols = DimInt(2);
+                                                                      var_formulas = []}}))
+    | (TypeOf, ExtendNumber(_)) -> ExtendString("Number")
+    | (TypeOf, ExtendString(_)) -> ExtendString("String")
+    | (TypeOf, EmptyValue) -> ExtendString("Empty")
+    | (TypeOf, Range(_)) -> ExtendString("Range")
+    | (TypeOf, _) -> EmptyValue in
 
   let create_interpreter_variable v =
     let resolve_dimension = function
@@ -333,29 +337,33 @@ and evaluate scope cell e =
     let Dimensions(rows, cols) = dimensions_of_range rng in
     let (row_slice, col_slice) = (match sel with
           (Some rs, Some cs) -> (rs, cs)
-        | (Some sl, None) -> if rows = 1
-          then ((Some(Abs(LitInt(0))),Some(Abs(LitInt(1)))), sl)
+        | (Some sl, None) ->
+          if rows = 1      then ((Some(Abs(LitInt(0))),Some(Abs(LitInt(1)))), sl)
           else if cols = 1 then (sl, (Some(Abs(LitInt(0))),Some(Abs(LitInt(1)))))
           else raise(InvalidIndex("Only one slice supplied but neither dimension length is one in " ^ string_of_expr expr))
         | _ -> ((None, None), (None, None))) in
-       (match ((resolve_rhs_slice rows cell_row row_slice), (resolve_rhs_slice cols cell_col col_slice)) with
-          ((Some row_start, Some row_end), (Some col_start, Some col_end)) ->
-          Range(Subrange({base_range = rng;
-                          subrange_dimensions = Dimensions(row_end - row_start, col_end - col_start);
-                          base_offset = Cell(row_start, col_start)}))
-        | _ -> EmptyValue)
+    (match ((resolve_rhs_slice rows cell_row row_slice), (resolve_rhs_slice cols cell_col col_slice)) with
+       ((Some row_start, Some row_end), (Some col_start, Some col_end)) ->
+       if row_end > row_start && col_end > col_start then
+         Range(Subrange({base_range = rng;
+                         subrange_dimensions = Dimensions(row_end - row_start, col_end - col_start);
+                         base_offset = Cell(row_start, col_start)}))
+       else EmptyValue
+     | _ -> EmptyValue)
   | Call(fname, exprs) ->
     if StringMap.mem fname scope.interpreter_scope_builtins then
       (StringMap.find fname scope.interpreter_scope_builtins) scope cell exprs
     else
       let f = StringMap.find fname scope.interpreter_scope_functions in
-      let args = List.map (fun e -> interpreter_variable_of_val (evaluate scope (Cell(0,0)) e)) exprs in
+      let args = List.map (fun e -> interpreter_variable_of_val (evaluate scope cell e)) exprs in
       let f_scope = create_scope f args scope.interpreter_scope_functions scope.interpreter_scope_builtins scope in
+      let check_assertion a =
+        (if (evaluate f_scope (Cell(0,0)) a) = ExtendNumber(1) then ()
+         else raise(AssertionFailure("Assertion failed: " ^ string_of_expr a))) in
+      List.iter check_assertion f.func_asserts ;
       evaluate f_scope (Cell(0,0)) (snd f.func_ret_val)
 
-(*  LitRange of (expr list) list |
-    Switch of expr option * case list |
-    Call of string * expr list *)
+(*  LitRange of (expr list) list *)
   | Precedence(a,b) -> ignore (evaluate scope cell a); evaluate scope cell b
   | _ -> ExtendNumber(-1))
 

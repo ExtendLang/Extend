@@ -1,4 +1,4 @@
-main() {
+main([1,n] args) {
   [3,3] ident := row() == column();
-  return ident;
+  return printf(1, toString(ident) + "\n") -> 0;
 }

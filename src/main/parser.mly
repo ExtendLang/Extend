@@ -6,7 +6,7 @@ open Ast
 
 %token LSQBRACK RSQBRACK LPAREN RPAREN LBRACE RBRACE HASH
 %token COLON COMMA QUESTION GETS ASN SEMI PRECEDES UNDERSCORE
-%token SWITCH CASE DEFAULT SIZE TYPE
+%token SWITCH CASE DEFAULT SIZE TYPE ROW COLUMN
 %token PLUS MINUS TIMES DIVIDE MOD POWER LSHIFT RSHIFT
 %token EQ NOTEQ GT LT GTEQ LTEQ
 %token LOGNOT LOGAND LOGOR
@@ -162,6 +162,8 @@ op_expr:
   | expr LTEQ expr      { BinOp($1, LtEq, $3) }
   | SIZE LPAREN expr RPAREN { UnOp(SizeOf, $3) }
   | TYPE LPAREN expr RPAREN { UnOp(TypeOf, $3) }
+  | ROW LPAREN RPAREN       { UnOp(Row, Empty)}
+  | COLUMN LPAREN RPAREN    { UnOp(Column, Empty)}
   | MINUS expr %prec NEG    { UnOp(Neg, $2) }
   | LOGNOT expr             { UnOp(LogNot, $2) }
   | BITNOT expr             { UnOp(BitNot, $2) }

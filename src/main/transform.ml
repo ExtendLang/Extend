@@ -4,6 +4,7 @@ exception IllegalExpression of string;;
 exception DuplicateDefinition of string;;
 exception UnknownVariable of string;;
 exception UnknownFunction of string;;
+exception WrongNumberArgs of string;;
 exception LogicError of string;;
 
 let idgen =
@@ -13,6 +14,8 @@ let idgen =
 
 module StringSet = Set.Make (String);;
 let importSet = StringSet.empty;;
+
+let builtin_signatures = [("row", 0); ("column", 0); ("printf", 2); ("toString", 1)]
 
 let expand_file filename =
   let rec expand_imports processed_imports globals fns exts = function
@@ -160,19 +163,19 @@ let expand_expressions (imports, globals, functions, externs) =
     } in
   (imports, expand_stmt_list globals, List.map expand_function functions, externs);;
 
-let create_maps (imports, globals, functions, externs) =
-  let map_of_list list_of_tuples =
-    (*  map_of_list: Take a list of the form [("foo", 2); ("bar", 3)]
-        and create a StringMap using the first value of the tuple as
-        the key and the second value of the tuple as the value. Raises
-        an exception if the key appears more than once in the list. *)
-    let rec aux acc = function
-        [] -> acc
-      | t :: ts ->
-        if (StringMap.mem (fst t) acc) then raise(DuplicateDefinition(fst t))
-        else aux (StringMap.add (fst t) (snd t) acc) ts in
-    aux StringMap.empty list_of_tuples in
+let map_of_list list_of_tuples =
+  (*  map_of_list: Take a list of the form [("foo", 2); ("bar", 3)]
+      and create a StringMap using the first value of the tuple as
+      the key and the second value of the tuple as the value. Raises
+      an exception if the key appears more than once in the list. *)
+  let rec aux acc = function
+      [] -> acc
+    | t :: ts ->
+      if (StringMap.mem (fst t) acc) then raise(DuplicateDefinition(fst t))
+      else aux (StringMap.add (fst t) (snd t) acc) ts in
+  aux StringMap.empty list_of_tuples
 
+let create_maps (imports, globals, functions, externs) =
   let vd_of_vi = function
     (*  vd_of_vi--- Take a bare Varinit from the previous transformations
         and return a (string, variable) pair    *)
@@ -225,10 +228,23 @@ let create_maps (imports, globals, functions, externs) =
    map_of_list (List.concat (List.map tupleize_library externs)))
 
 let check_semantics (globals, functions, externs) =
+  let fn_signatures = map_of_list
+      (builtin_signatures @
+       (StringMap.fold (fun s f l -> (s, List.length f.func_params) :: l) functions []) @
+       (StringMap.fold (fun s f l -> (s, List.length f.extern_fn_params) :: l) externs [])) in
   let check_function fname f =
+    if StringMap.mem fname externs then raise(DuplicateDefinition(fname ^ "() is defined as both an external and local function")) else ();
     let locals = f.func_body in
     let params = List.map snd f.func_params in
-    List.iter (fun param -> if StringMap.mem param locals then raise(DuplicateDefinition(fname ^ "(): " ^ param)) else ()) params ;
+    List.iter
+      (fun param ->
+         if StringMap.mem param locals then raise(DuplicateDefinition(param ^ " is defined multiple times in " ^ fname ^ "()"))
+         else ())
+      params ;
+    let check_call called_fname num_args =
+      if not (StringMap.mem called_fname fn_signatures) then raise(UnknownFunction(called_fname))
+      else if num_args != StringMap.find called_fname fn_signatures then raise(WrongNumberArgs(called_fname))
+      else () in
     let rec check_expr = function
         BinOp(e1,_,e2) -> check_expr e1 ; check_expr e2
       | UnOp(_, e) -> check_expr e
@@ -236,11 +252,9 @@ let check_semantics (globals, functions, externs) =
       | Id(s) -> if (List.mem s params || StringMap.mem s locals || StringMap.mem s globals) then () else raise(UnknownVariable(fname ^ "(): " ^ s))
       | Switch(Some e, cases) -> check_expr e ; List.iter check_case cases
       | Switch(None, cases) -> List.iter check_case cases
-      | Call(fname, args) ->  (* Commented out because this would break builtins *)
-                               (* if (StringMap.mem fname functions) then *)
-          List.iter check_expr args
-        (* () *) (* Also need to check number of arguments provided here *)
-      (* else raise(UnknownFunction(fname)) *)
+      | Call(called_fname, args) ->
+        check_call called_fname (List.length args) ;
+        List.iter check_expr args
       | Selection(e, sel) -> check_expr e ; check_sel sel
       | Precedence(e1, e2) -> check_expr e1 ; check_expr e2
       | LitInt(_) | LitFlt(_) | LitRange(_) | LitString(_) | Empty | Wild -> ()

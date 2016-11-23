@@ -49,6 +49,8 @@ rule token = parse
 | "empty"         { EMPTY }
 | "size"          { SIZE }
 | "type"          { TYPE }
+| "row"           { ROW }
+| "column"        { COLUMN }
 | "switch"        { SWITCH }
 | "case"          { CASE }
 | "default"       { DEFAULT }

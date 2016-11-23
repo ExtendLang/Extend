@@ -19,6 +19,10 @@ isNumber(x) {
   return type(x) == "Number";
 }
 
+isEmpty(x) {
+  return type(x) == "Empty";
+}
+
 sum_column([m,1] rng) {
   /* Returns the sum of the values in the column, skipping any values that are non-numeric */
   [m,1] numbers := isNumber(#rng) ? #rng : 0;
@@ -67,4 +71,20 @@ max_row(rng) {
 max([m,n] rng) {
   [1,n] column_maxs := max_column(rng[:,]);
   return max_row(column_maxs);
+}
+
+colRange(start, end) {
+  [end-start, 1] ret;
+  ret[0,0] = start;
+  ret[1:,0] = ret[[-1]] + 1;
+  return ret;
+}
+
+match([num_rows, 1] list, val) {
+  [num_rows, 1] amt_to_add, final_index;
+  amt_to_add[0,0] = val == #list ? 0 : 1;
+  amt_to_add[1:,0] = (amt_to_add[[-1]] == 0 || val == #list) ? 0 : 1;
+  final_index[0,0] = 0;
+  final_index[1:,0] = final_index[[-1]] + amt_to_add[[-1]];
+  return amt_to_add[-1] == 0 ? final_index[-1] : empty;
 }

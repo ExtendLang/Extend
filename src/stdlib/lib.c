@@ -57,10 +57,12 @@ int assertSingle(subrange_p range) {
 
 value_p extend_sin(subrange_p range) {
 	double val;
-	if(!assertSingle(range)) return NULL;
+	value_p result = malloc(sizeof(struct value_t));
+	result->flags = (char)0;
+	if(!assertSingle(range)) return result;
 	value_p initial = get_val(range->range, range->offsetRow, range->offsetCol);
 	val = sin(initial->numericVal.val);
-	value_p result = malloc(sizeof(struct value_t));
 	result->numericVal.val = val;
+	result->flags = (char)1;
 	return result;
 }

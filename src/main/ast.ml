@@ -135,6 +135,9 @@ let rec string_of_expr = function
   | Precedence(e1, e2) -> "{\"Precedence\": { " ^
                             "\"prior_expr\": " ^ string_of_expr e1 ^ ", " ^
                             "\"dependent_expr\": " ^ string_of_expr e2 ^ "}}"
+  | Extern(f, arguments) -> "{\"Extern\": {" ^
+                            "\"function\": " ^ quote_string f ^ ", " ^
+                            "\"arguments\": " ^ string_of_list (Exprs arguments) ^ "}}"
 
 and string_of_case (el, e) =
     "{\"Cases\": " ^ (match el with None -> "null" | Some es -> string_of_list (Exprs es)) ^ ", " ^

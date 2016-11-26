@@ -236,6 +236,12 @@ let check_semantics (globals, functions) =
           List.iter check_expr args
         (* () *) (* Also need to check number of arguments provided here *)
       (* else raise(UnknownFunction(fname)) *)
+      (* TODO *)
+      | Extern(fname, args) ->  (* Commented out because this would break builtins *)
+                               (* if (StringMap.mem fname functions) then *)
+          List.iter check_expr args
+        (* () *) (* Also need to check number of arguments provided here *)
+      (* else raise(UnknownFunction(fname)) *)
       | Selection(e, sel) -> check_expr e ; check_sel sel
       | Precedence(e1, e2) -> check_expr e1 ; check_expr e2
       | LitInt(_) | LitFlt(_) | LitRange(_) | LitString(_) | Empty | Wild -> ()

@@ -334,6 +334,24 @@ let translate (globals, functions, externs) =
     }
   and base_module = Llvm.create_module context "Extend" in
   let base_types = setup_types context in
+  let build_externs =
+    Ast.StringMap.fold
+    (fun key (b: Ast.extern_func) a ->
+      Ast.StringMap.add
+      b.Ast.extern_fn_name
+      (
+        Llvm.define_function
+        b.Ast.extern_fn_name
+        (
+          Llvm.function_type base_types.subrange_p (Array.of_list (List.map (fun a -> base_types.subrange_p) b.Ast.extern_fn_params))
+        )
+        base_module
+      )
+      a
+    )
+    externs
+    Ast.StringMap.empty
+     in
   let build_function_names =
     Ast.StringMap.mapi (fun key (func: Ast.func_decl) ->
         (func, Llvm.define_function
@@ -357,9 +375,16 @@ let translate (globals, functions, externs) =
           (*print_endline (Ast.string_of_expr expr);*)
           match expr with
             Ast.Precedence(a,b) -> expr_eval a scope builder ctx extern helpers bt; expr_eval b scope builder ctx extern helpers bt;
-          | Ast.Call(fn,exl) -> let args = Array.of_list
+          | Ast.Call(fn,exl) ->
+              let args = Array.of_list
                 (List.rev (List.fold_left (fun a b -> (expr_eval b scope builder ctx extern helpers bt) :: a) [] exl)) in
-              Llvm.build_call (Hashtbl.find helpers fn) args "" builder
+              Llvm.build_call (
+                try Hashtbl.find helpers fn
+                with Not_found -> (
+                    try Ast.StringMap.find fn build_externs
+                    with Not_found -> let (a,b) = Ast.StringMap.find fn build_function_names in b
+                  )
+              ) args "" builder
           | Ast.LitString(str) ->
               let boxxx = Llvm.build_call
               (Hashtbl.find helpers "new_string")

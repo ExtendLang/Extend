@@ -55,6 +55,17 @@ int assertSingle(subrange_p range) {
 	return (range->subrangeRow == 1 && range->subrangeCol == 1);
 }
 
+subrange_p extend_abc() {
+	printf("Fun1\n");
+	subrange_p result = malloc(sizeof(struct subrange_t));
+	return result;
+}
+subrange_p _extend_abc() {
+	printf("Fun2\n");
+	subrange_p result = malloc(sizeof(struct subrange_t));
+	return result;
+}
+/*
 value_p extend_sin(subrange_p range) {
 	double val;
 	value_p result = malloc(sizeof(struct value_t));
@@ -66,3 +77,4 @@ value_p extend_sin(subrange_p range) {
 	result->flags = (char)1;
 	return result;
 }
+*/

@@ -340,7 +340,7 @@ let translate (globals, functions, externs) =
       Ast.StringMap.add
       b.Ast.extern_fn_name
       (
-        Llvm.define_function
+        Llvm.declare_function
         b.Ast.extern_fn_name
         (
           Llvm.function_type base_types.subrange_p (Array.of_list (List.map (fun a -> base_types.subrange_p) b.Ast.extern_fn_params))
@@ -359,7 +359,8 @@ let translate (globals, functions, externs) =
            (Llvm.function_type base_types.subrange_p (Array.of_list (List.map (fun a -> base_types.subrange_p) func.Ast.func_params)))
            base_module)
       ) functions in
-
+  let build_public_functions =
+    Ast.StringMap.union (fun k a b -> Some(a)) (Ast.StringMap.map (fun (b, c) -> c) build_function_names) build_externs in
   (* Declare the external functions that we need to call *)
   create_extern_functions context base_types base_module ;
 
@@ -379,11 +380,7 @@ let translate (globals, functions, externs) =
               let args = Array.of_list
                 (List.rev (List.fold_left (fun a b -> (expr_eval b scope builder ctx extern helpers bt) :: a) [] exl)) in
               Llvm.build_call (
-                try Hashtbl.find helpers fn
-                with Not_found -> (
-                    try Ast.StringMap.find fn build_externs
-                    with Not_found -> let (a,b) = Ast.StringMap.find fn build_function_names in b
-                  )
+                Ast.StringMap.find fn build_public_functions
               ) args "" builder
           | Ast.LitString(str) ->
               let boxxx = Llvm.build_call

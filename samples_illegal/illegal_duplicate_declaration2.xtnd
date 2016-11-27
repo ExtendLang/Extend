@@ -1,0 +1,8 @@
+foo([m,n] m) {
+  return m;
+}
+
+main(args) {
+  [2,4] x;
+  return foo(x);
+}

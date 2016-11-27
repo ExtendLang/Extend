@@ -6,12 +6,12 @@ open Ast
 
 %token LSQBRACK RSQBRACK LPAREN RPAREN LBRACE RBRACE HASH
 %token COLON COMMA QUESTION GETS ASN SEMI PRECEDES UNDERSCORE
-%token SWITCH CASE DEFAULT SIZE
+%token SWITCH CASE DEFAULT SIZE TYPE ROW COLUMN
 %token PLUS MINUS TIMES DIVIDE MOD POWER LSHIFT RSHIFT
 %token EQ NOTEQ GT LT GTEQ LTEQ
 %token LOGNOT LOGAND LOGOR
 %token BITNOT BITXOR BITAND BITOR
-%token EMPTY RETURN IMPORT GLOBAL
+%token EMPTY RETURN IMPORT GLOBAL EXTERN
 %token <int> LIT_INT
 %token <float> LIT_FLOAT
 %token <string> LIT_STRING
@@ -26,8 +26,8 @@ open Ast
 %left PLUS MINUS BITOR BITXOR
 %left TIMES DIVIDE MOD LSHIFT RSHIFT BITAND
 %right POWER
-%right BITNOT LOGNOT NEG SIZE
-%left HASH LSQBRACK
+%right BITNOT LOGNOT NEG
+%left LSQBRACK
 
 %start program
 %type <Ast.raw_program> program
@@ -35,13 +35,14 @@ open Ast
 %%
 
 program:
-    program_piece EOF {  let (imp, glob, fnc) = $1 in (List.rev imp, List.rev glob, List.rev fnc) }
+    program_piece EOF {  let (imp, glob, fnc, ext) = $1 in (List.rev imp, List.rev glob, List.rev fnc, List.rev ext) }
 
 program_piece:
-    /* nothing */ {([],[],[])}
-  | program_piece import { let (imp, glob, fnc) = $1 in ($2 :: imp, glob, fnc) }
-  | program_piece global { let (imp, glob, fnc) = $1 in (imp, $2 :: glob, fnc) }
-  | program_piece func_decl { let (imp, glob, fnc) = $1 in (imp, glob, $2 :: fnc) }
+    /* nothing */ {([],[],[],[])}
+  | program_piece import      { let (imp, glob, fnc, ext) = $1 in ($2 :: imp, glob, fnc, ext) }
+  | program_piece global      { let (imp, glob, fnc, ext) = $1 in (imp, $2 :: glob, fnc, ext) }
+  | program_piece func_decl   { let (imp, glob, fnc, ext) = $1 in (imp, glob, $2 :: fnc, ext) }
+  | program_piece extern      { let (imp, glob, fnc, ext) = $1 in (imp, glob, fnc, $2 :: ext) }
 
 import:
     IMPORT LIT_STRING SEMI {$2}
@@ -49,12 +50,40 @@ import:
 global:
     GLOBAL varinit {$2}
 
+extern:
+    EXTERN LIT_STRING LBRACE opt_extern_list RBRACE {(Library($2, $4))}
+
+opt_extern_list:
+    /* nothing */ { [] }
+  | extern_list { List.rev $1 }
+
+extern_list:
+    extern_fn { [$1] }
+  | extern_list extern_fn { $2 :: $1 }
+
+extern_fn:
+    ID LPAREN func_param_list RPAREN SEMI
+    { {
+      extern_fn_name = $1;
+      extern_fn_params = $3;
+      extern_fn_libname = "";
+      extern_ret_val = (None, None);
+    } }
+  | ret_dim ID LPAREN func_param_list RPAREN SEMI
+    { {
+      extern_fn_name = $2;
+      extern_fn_params = $4;
+      extern_fn_libname = "";
+      extern_ret_val = $1;
+    } }
+
 func_decl:
     ID LPAREN func_param_list RPAREN LBRACE opt_stmt_list ret_stmt RBRACE
     { {
       name = $1;
       params = $3;
       body = $6;
+      raw_asserts = [];
       ret_val = ((None, None), $7)
     } }
   | ret_dim ID LPAREN func_param_list RPAREN LBRACE opt_stmt_list ret_stmt RBRACE
@@ -62,6 +91,7 @@ func_decl:
       name = $2;
       params = $4;
       body = $7;
+      raw_asserts = [];
       ret_val = ($1, $8);
     } }
 
@@ -96,7 +126,7 @@ assign:
 
 expr:
     expr rhs_sel        { Selection($1, $2) }
-  | HASH expr           { Selection($2, (None, None)) }
+  | HASH ID             { Selection(Id($2), (None, None)) }
   | op_expr             { $1 }
   | ternary_expr        { $1 }
   | switch_expr         { $1 }
@@ -125,12 +155,15 @@ op_expr:
   | expr BITAND expr    { BinOp($1, BitAnd, $3) }
   | expr BITOR expr     { BinOp($1, BitOr, $3) }
   | expr EQ expr        { BinOp($1, Eq, $3) }
-  | expr NOTEQ expr     { BinOp($1, NotEq, $3) }
+  | expr NOTEQ expr     { UnOp(LogNot,(BinOp($1, Eq, $3))) }
   | expr GT expr        { BinOp($1, Gt, $3) }
   | expr LT expr        { BinOp($1, Lt, $3) }
   | expr GTEQ expr      { BinOp($1, GtEq, $3) }
   | expr LTEQ expr      { BinOp($1, LtEq, $3) }
   | SIZE LPAREN expr RPAREN { UnOp(SizeOf, $3) }
+  | TYPE LPAREN expr RPAREN { UnOp(TypeOf, $3) }
+  | ROW LPAREN RPAREN       { UnOp(Row, Empty)}
+  | COLUMN LPAREN RPAREN    { UnOp(Column, Empty)}
   | MINUS expr %prec NEG    { UnOp(Neg, $2) }
   | LOGNOT expr             { UnOp(LogNot, $2) }
   | BITNOT expr             { UnOp(BitNot, $2) }
@@ -141,6 +174,7 @@ ternary_expr:
 
 switch_expr:
     SWITCH LPAREN switch_cond RPAREN LBRACE case_list RBRACE { Switch($3, List.rev $6) }
+  | SWITCH LBRACE case_list RBRACE { Switch(None, List.rev $3) }
 
 switch_cond:
     /* nothing */ { None }

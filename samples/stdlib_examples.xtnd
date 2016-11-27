@@ -1,0 +1,10 @@
+import "./samples/stdlib.xtnd";
+
+main([1,n] args) {
+  [4,4] lower_triangular := row() > column() ? row() - column() : "Not numeric";
+  return
+    printf(1, toString(lower_triangular) + "\n") ->
+    printf(1, toString(sum(lower_triangular)) + "\n") ->
+    printf(1, toString(max(lower_triangular)) + "\n") ->
+    0;
+}

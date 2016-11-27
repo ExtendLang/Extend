@@ -76,7 +76,7 @@ let check_val rg (Cell(r, c)) =
     try CellMap.find (Cell(r,c)) !(rg.values)
     with Not_found -> (Uncalculated, White)
 
-let create_global_scope (globals, functions) builtins =
+let create_global_scope (globals, functions, externs) builtins =
   {
     interpreter_scope_builtins = builtins;
     interpreter_scope_functions = functions;
@@ -127,11 +127,7 @@ let get_formula rg (Cell(r, c)) =
     Some e -> e
   | None -> Empty
 
-let rec __row__ _ (Cell(r, c)) _ = ExtendNumber(r)
-
-and __column__ _ (Cell(r, c)) _ = ExtendNumber(c)
-
-and __printf__ scope cell exprs = (match (evaluate scope cell (List.hd (List.tl exprs))) with
+let rec __printf__ scope cell exprs = (match (evaluate scope cell (List.hd (List.tl exprs))) with
       ExtendString(s) -> print_string s
     | _ -> ());
   EmptyValue
@@ -154,11 +150,12 @@ and string_of_cell scope rg (r,c) =
      "{" ^ quote_string (index_of_cell (Cell(r,c))) ^ ": " ^ string_of_val scope (get_val rg (Cell(r,c))) ^ "}"
 
 and evaluate scope cell e =
-  let interpreter_variable_of_val v =
-    {interpreter_variable_dimensions = Dimensions(1,1);
-     interpreter_variable_scope = scope;
-     values = ref (CellMap.add (Cell(0,0)) (v, Black) CellMap.empty);
-     interpreter_variable_ast_variable = {var_rows = DimInt(1);
+  let interpreter_variable_of_val v = 
+      {
+        interpreter_variable_dimensions = Dimensions(1,1);
+        interpreter_variable_scope = scope;
+        values = ref (CellMap.add (Cell(0,0)) (v, Black) CellMap.empty);
+        interpreter_variable_ast_variable = {var_rows = DimInt(1);
                                           var_cols = DimInt(1);
                                           var_formulas = []}} in
 
@@ -214,6 +211,10 @@ and evaluate scope cell e =
     | (LogNot, ExtendNumber(0)) -> ExtendNumber(1)
     | (LogNot, EmptyValue) -> EmptyValue
     | (LogNot, _) -> ExtendNumber(0)
+    | (Row, EmptyValue) -> let Cell(r,c) = cell in ExtendNumber(r)
+    | (Row, _) -> EmptyValue
+    | (Column, EmptyValue) -> let Cell(r,c) = cell in ExtendNumber(c)
+    | (Column, _) -> EmptyValue
     | (SizeOf, _)->
       let Dimensions(r,c) = dimensions_of_range (range_of_val v) in
       Range(InterpreterVariable({interpreter_variable_dimensions = Dimensions(1,2);
@@ -230,12 +231,13 @@ and evaluate scope cell e =
     | (TypeOf, Range(_)) -> ExtendString("Range")
     | (TypeOf, _) -> EmptyValue in
 
+
   let create_interpreter_variable v =
     let resolve_dimension = function
         DimInt(i) -> i
       | DimId(s) -> (match (evaluate scope (Cell(0,0)) (Id(s))) with
             ExtendNumber(i) -> i
-          | _ -> raise (InvalidIndex(s))) in
+          | v -> raise (InvalidIndex(s ^ " evaluates to " ^ (string_of_val scope v)))) in
 
     let resolve_formula_index dim_length = function
         Abs(e) -> (match (evaluate scope (Cell(0,0)) e) with
@@ -359,7 +361,8 @@ and evaluate scope cell e =
       let f_scope = create_scope f args scope.interpreter_scope_functions scope.interpreter_scope_builtins scope in
       let check_assertion a =
         (if (evaluate f_scope (Cell(0,0)) a) = ExtendNumber(1) then ()
-         else raise(AssertionFailure("Assertion failed: " ^ string_of_expr a))) in
+         else (print_endline ("While trying to call " ^ fname ^ "() with arguments " ^ string_of_list (Exprs exprs) ^ "\n");
+               raise(AssertionFailure("Assertion failed: " ^ string_of_expr a)))) in
       List.iter check_assertion f.func_asserts ;
       evaluate f_scope (Cell(0,0)) (snd f.func_ret_val)
 
@@ -396,8 +399,8 @@ let interpret ast_mapped =
   let builtins = List.fold_left2
       (fun m fname f -> StringMap.add fname f m)
       StringMap.empty
-      ["row";"column";"printf";"toString"]
-      [__row__;__column__;__printf__;__toString__] in
+      ["printf";"toString"]
+      [__printf__;__toString__] in
   let global_scope = create_global_scope ast_mapped builtins in
-  let main_args = [Empty] in
+  let main_args = [LitString("interpreter")] in
   ignore (string_of_val global_scope (evaluate global_scope (Cell(0,0)) (Call("main", main_args))))

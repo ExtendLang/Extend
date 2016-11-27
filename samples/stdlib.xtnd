@@ -1,3 +1,15 @@
+extern "math.o" {
+  [1,1] sin([1,1] theta);
+}
+
+extern "fileio.o" {
+  open(filename, mode);
+  close(handle);
+  read(handle, max_bytes);
+  readline(handle);
+  write(handle, str);
+}
+
 transpose([m,n] rng) {
   [n,m] ret := rng[column(),row()];
   return ret;
@@ -5,6 +17,10 @@ transpose([m,n] rng) {
 
 isNumber(x) {
   return type(x) == "Number";
+}
+
+isEmpty(x) {
+  return type(x) == "Empty";
 }
 
 sum_column([m,1] rng) {
@@ -55,4 +71,20 @@ max_row(rng) {
 max([m,n] rng) {
   [1,n] column_maxs := max_column(rng[:,]);
   return max_row(column_maxs);
+}
+
+colRange(start, end) {
+  [end-start, 1] ret;
+  ret[0,0] = start;
+  ret[1:,0] = ret[[-1]] + 1;
+  return ret;
+}
+
+match([num_rows, 1] list, val) {
+  [num_rows, 1] amt_to_add, final_index;
+  amt_to_add[0,0] = val == #list ? 0 : 1;
+  amt_to_add[1:,0] = (amt_to_add[[-1]] == 0 || val == #list) ? 0 : 1;
+  final_index[0,0] = 0;
+  final_index[1:,0] = final_index[[-1]] + amt_to_add[[-1]];
+  return amt_to_add[-1] == 0 ? final_index[-1] : empty;
 }

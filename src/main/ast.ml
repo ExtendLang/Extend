@@ -1,7 +1,7 @@
 type op       = Plus | Minus | Times | Divide | Mod | Pow |
                 LShift | RShift | BitOr | BitAnd | BitXor |
                 Eq | NotEq | Gt | Lt | GtEq | LtEq | LogAnd | LogOr
-type unop     = Neg | LogNot | BitNot | SizeOf | TypeOf
+type unop     = Neg | LogNot | BitNot | SizeOf | TypeOf | Row | Column
 
 type expr     = LitInt of int |
                 LitFlt of float |
@@ -16,8 +16,7 @@ type expr     = LitInt of int |
                 Switch of expr option * case list |
                 Call of string * expr list |
                 Selection of expr * sel |
-                Precedence of expr * expr |
-                Extern of string * expr list
+                Precedence of expr * expr
 and  index    = Abs of expr |
                 Rel of expr |
                 DimensionStart |
@@ -41,7 +40,15 @@ type raw_func = {
     ret_val: dim * expr;
 }
 
-type raw_program = string list * stmt list * raw_func list
+type extern_func = {
+    extern_fn_name: string;
+    extern_fn_params: var list;
+    extern_fn_libname: string;
+    extern_ret_val: dim;
+}
+
+type library  = Library of string * extern_func list
+type raw_program = string list * stmt list * raw_func list * library list
 
 (* Desugared types below *)
 module StringMap = Map.Make(String)
@@ -69,12 +76,14 @@ type func_decl = {
   func_ret_val: dim * expr;
 }
 
-type program = (variable StringMap.t) * (func_decl StringMap.t)
+type program = (variable StringMap.t) * (func_decl StringMap.t) * (extern_func StringMap.t)
 
 type listable = Inits of init list |
                 Vars of var list |
                 Stmts of stmt list |
                 RawFuncs of raw_func list |
+                Externs of extern_func list |
+                Libraries of library list |
                 Exprs of expr list |
                 Rows of (expr list) list |
                 Strings of string list |
@@ -101,7 +110,8 @@ let string_of_op o = "\"" ^ (match o with
     LogAnd -> "&& " | LogOr -> "||" ) ^ "\""
 
 let string_of_unop = function
-    Neg -> "\"-\"" | LogNot -> "\"!\"" | BitNot -> "\"~\"" | SizeOf -> "\"size\"" | TypeOf -> "\"type\""
+    Neg -> "\"-\"" | LogNot -> "\"!\"" | BitNot -> "\"~\"" |
+    SizeOf -> "\"size\"" | TypeOf -> "\"type\"" | Row -> "\"row\"" | Column -> "\"column\""
 
 let rec string_of_expr = function
     LitInt(l) ->          "{\"LitInt\":" ^ string_of_int l ^ "}"
@@ -135,9 +145,6 @@ let rec string_of_expr = function
   | Precedence(e1, e2) -> "{\"Precedence\": { " ^
                             "\"prior_expr\": " ^ string_of_expr e1 ^ ", " ^
                             "\"dependent_expr\": " ^ string_of_expr e2 ^ "}}"
-  | Extern(f, arguments) -> "{\"Extern\": {" ^
-                            "\"function\": " ^ quote_string f ^ ", " ^
-                            "\"arguments\": " ^ string_of_list (Exprs arguments) ^ "}}"
 
 and string_of_case (el, e) =
     "{\"Cases\": " ^ (match el with None -> "null" | Some es -> string_of_list (Exprs es)) ^ ", " ^
@@ -190,6 +197,16 @@ and string_of_raw_func fd =
      "\"Assertions\": " ^ string_of_list (Exprs fd.raw_asserts) ^ "," ^
      "\"ReturnVal\": " ^ string_of_range fd.ret_val ^ "}"
 
+and string_of_extern_func fd =
+  "{\"Name\": " ^ quote_string fd.extern_fn_name ^ "," ^
+  "\"Params\": " ^ string_of_list (Vars fd.extern_fn_params) ^ "," ^
+  "\"Library\": " ^ quote_string fd.extern_fn_libname ^ "," ^
+  "\"ReturnDim\": " ^ string_of_dim fd.extern_ret_val ^ "}"
+
+and string_of_library (Library(lib_name, lib_fns)) =
+  "{\"LibraryName\": " ^ quote_string lib_name ^ "," ^
+  "\"ExternalFunctions\": " ^ string_of_list (Externs lib_fns) ^ "}"
+
 and string_of_dimexpr = function
     DimInt(i) -> string_of_int i
   | DimId(s) -> quote_string s
@@ -207,6 +224,8 @@ and string_of_list l =
   | Vars(vl) -> List.map string_of_var vl
   | Stmts(sl) -> List.map string_of_stmt sl
   | RawFuncs(fl) -> List.map string_of_raw_func fl
+  | Externs(efl) -> List.map string_of_extern_func efl
+  | Libraries(libl) -> List.map string_of_library libl
   | Exprs(el) -> List.map string_of_expr el
   | Rows(rl) -> List.map (fun (el : expr list) -> string_of_list (Exprs el)) rl
   | Strings(sl) -> List.map quote_string sl
@@ -214,10 +233,11 @@ and string_of_list l =
   | Formulas(fl) -> List.map string_of_formula fl)
   in "[" ^ String.concat ", " stringrep ^ "]"
 
-let string_of_raw_program (imp, glb, fs) =
+let string_of_raw_program (imp, glb, fs, exts) =
     "{\"Program\": {" ^
       "\"Imports\": " ^ string_of_list (Strings imp) ^ "," ^
       "\"Globals\": " ^ string_of_list (Stmts glb) ^ "," ^
+      "\"ExternalLibraries\": " ^ string_of_list (Libraries exts) ^ "," ^
       "\"Functions\": " ^ string_of_list (RawFuncs fs) ^ "}}"
 
 let string_of_variable v =
@@ -238,10 +258,11 @@ let string_of_funcdecl f =
   "\"Assertions\": " ^ string_of_list (Exprs f.func_asserts) ^ "," ^
   "\"ReturnVal\": " ^ string_of_range f.func_ret_val ^ "}"
 
-let string_of_program (glb, fs) =
+let string_of_program (glb, fs, exts) =
   "{\"Program\": {" ^
     "\"Globals\": " ^ string_of_map "Variable" string_of_variable glb ^ "," ^
-    "\"Functions\": " ^ string_of_map "Function" string_of_funcdecl fs ^ "}}"
+    "\"Functions\": " ^ string_of_map "Function" string_of_funcdecl fs ^ "," ^
+    "\"ExternalFunctions\": " ^ string_of_map "ExternalFunctions" string_of_extern_func exts ^ "}}"
 
 let allow_range_literal = function
     LitRange(rowlist) ->

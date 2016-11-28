@@ -242,7 +242,8 @@ let check_semantics (globals, functions, externs) =
          else ())
       params ;
     let check_call called_fname num_args =
-      if not (StringMap.mem called_fname fn_signatures) then raise(UnknownFunction(called_fname))
+      if (not (StringMap.mem called_fname fn_signatures)) && (not (String.equal called_fname "printf")) then raise(UnknownFunction(called_fname))
+      else if (String.equal called_fname "printf") then ()
       else let signature_args = StringMap.find called_fname fn_signatures in
       if num_args != signature_args then raise(WrongNumberArgs(
           "In " ^ fname ^ "(), the function " ^ called_fname ^ "() was called with " ^ string_of_int num_args ^ " arguments " ^

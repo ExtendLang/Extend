@@ -5,19 +5,24 @@
 struct subrange_t;
 struct value_t;
 
-struct number_t {
-	int val;
-};
-
 struct formula_t {
 	struct value_t (*formula)(struct value_t);
 };
 
 typedef struct formula_t* formula_p;
 
+struct string_t {
+	char *text;
+	long length;
+	int refs;
+};
+
+typedef struct string_t* string_p;
+
 struct value_t {
 	char flags;
-	struct number_t numericVal;
+	int numericVal;
+	string_p str;
 	struct subrange_t *subrange;
 };
 
@@ -55,17 +60,18 @@ int assertSingle(subrange_p range) {
 	return (range->subrangeRow == 1 && range->subrangeCol == 1);
 }
 
-subrange_p extend_abc() {
-	printf("Fun1\n");
+subrange_p print(subrange_p whatever, subrange_p text) {
+	printf("%s", text->range->values->str->text);
 	subrange_p result = malloc(sizeof(struct subrange_t));
 	return result;
 }
+
+/*
 subrange_p _extend_abc() {
 	printf("Fun2\n");
 	subrange_p result = malloc(sizeof(struct subrange_t));
 	return result;
 }
-/*
 value_p extend_sin(subrange_p range) {
 	double val;
 	value_p result = malloc(sizeof(struct value_t));

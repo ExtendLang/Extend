@@ -347,7 +347,7 @@ let translate (globals, functions, externs) =
            base_module)
       ) functions in
   let build_public_functions =
-    Ast.StringMap.union (fun k a b -> Some(a)) (Ast.StringMap.map (fun (b, c) -> c) build_function_names) build_externs in
+    Ast.StringMap.fold (fun k a b -> Ast.StringMap.add k a b) (Ast.StringMap.map (fun (b, c) -> c) build_function_names) build_externs in
   (* Declare the external functions that we need to call *)
   create_extern_functions context base_types base_module ;
 

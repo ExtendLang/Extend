@@ -10,6 +10,8 @@ addons:
     - avsm
     - llvm-toolchain-precise-3.8
     - ubuntu-toolchain-r-test
+    - sourceline: 'deb http://download.opensuse.org/repositories/home:/ocaml/xUbuntu_14.04/ /'
+      key_url: 'http://download.opensuse.org/repositories/home:ocaml/xUbuntu_14.04/Release.key'
     packages:
     - ocaml
     - m4

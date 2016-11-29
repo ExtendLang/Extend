@@ -10,7 +10,7 @@ exception LogicError of string;;
 let idgen =
   (* from http://stackoverflow.com/questions/10459363/side-effects-and-top-level-expressions-in-ocaml*)
   let count = ref (-1) in
-  fun () -> incr count; "_tmp" ^ string_of_int !count;;
+  fun prefix -> incr count; "_tmp_" ^ prefix ^ string_of_int !count;;
 
 module StringSet = Set.Make (String);;
 let importSet = StringSet.empty;;
@@ -46,7 +46,7 @@ let expand_expressions (imports, globals, functions, externs) =
   let entire_dimension = (Some DimensionStart, Some DimensionEnd) in
   let entire_range = (Some entire_dimension, Some entire_dimension) in
 
-  let expand_expr = function
+  let expand_expr expr_loc = function
     (* If expression is not sufficiently atomic, create a new variable
        to hold the expression; return the new expression and whatever
        new statements are necessary to create the new variable *)
@@ -54,39 +54,39 @@ let expand_expressions (imports, globals, functions, externs) =
     | Id(s)     -> (Id(s), [])
     | Empty     -> raise (IllegalExpression("Empty"))
     | Wild      -> raise (IllegalExpression("wild - this shouldn't be possible"))
-    | e         -> let new_id = idgen() in (
+    | e         -> let new_id = idgen expr_loc in (
         Id(new_id),
         [Varinit (one_by_one, [(new_id, None)]);
          Assign (new_id, zero_comma_zero, Some e)]) in
 
-  let expand_index = function
+  let expand_index index_loc = function
     (* Expand one index of a slice if necessary. *)
-      Abs(e) -> let (new_e, new_stmts) = expand_expr e in
+      Abs(e) -> let (new_e, new_stmts) = expand_expr index_loc e in
       (Abs(new_e), new_stmts)
     | DimensionStart -> (DimensionStart, [])
     | DimensionEnd -> (DimensionEnd, [])
     | Rel(_) -> raise (IllegalExpression("relative - this shouldn't be possible")) in
 
-  let expand_slice = function
+  let expand_slice slice_loc = function
     (* Expand one or both sides as necessary. *)
       None -> (entire_dimension, [])
     | Some (Some (Abs(e)), None) ->
-      let (start_e, start_stmts) = expand_expr e in
+      let (start_e, start_stmts) = expand_expr (slice_loc ^ "_start") e in
       ((Some (Abs(start_e)), None), start_stmts)
     | Some (Some idx_start, Some idx_end) ->
-      let (new_start, new_start_exprs) = expand_index idx_start in
-      let (new_end, new_end_exprs) = expand_index idx_end in
+      let (new_start, new_start_exprs) = expand_index (slice_loc ^ "_start") idx_start in
+      let (new_end, new_end_exprs) = expand_index (slice_loc ^ "_end") idx_end in
       ((Some new_start, Some new_end), new_start_exprs @ new_end_exprs)
     | Some (Some _, None) | Some (None, _) -> raise (IllegalExpression("Illegal slice - this shouldn't be possible")) in
 
-  let expand_assign (var_name, (row_slice, col_slice), formula) =
+  let expand_assign asgn_loc (var_name, (row_slice, col_slice), formula) =
     (* expand_assign: Take an Assign and return a list of more
        atomic statements, with new variables replacing any
        complex expressions in the selection slices and with single
        index values desugared to expr:expr+1. *)
     try
-      let (new_row_slice, row_exprs) = expand_slice row_slice in
-      let (new_col_slice, col_exprs) = expand_slice col_slice in
+      let (new_row_slice, row_exprs) = expand_slice (asgn_loc ^ "_" ^ var_name ^ "_row") row_slice in
+      let (new_col_slice, col_exprs) = expand_slice (asgn_loc ^ "_" ^ var_name ^ "_col") col_slice in
       Assign(var_name, (Some new_row_slice, Some new_col_slice), formula) :: (row_exprs @ col_exprs)
     with IllegalExpression(s) ->
       raise (IllegalExpression("Illegal expression (" ^ s ^ ") in " ^
@@ -98,11 +98,11 @@ let expand_expressions (imports, globals, functions, externs) =
       None -> []
     | Some e -> [Assign (v, entire_range, Some e)] in
 
-  let expand_dimension = function
-      None -> expand_expr (LitInt(1))
-    | Some e -> expand_expr e in
+  let expand_dimension dim_loc = function
+      None -> expand_expr dim_loc (LitInt(1))
+    | Some e -> expand_expr dim_loc e in
 
-  let expand_varinit ((row_dim, col_dim), inits) =
+  let expand_varinit fname ((row_dim, col_dim), inits) =
     (* expand_varinit: Take a Varinit and return a list of more atomic
        statements. Each dimension will be given a temporary ID, which
        will be declared as [1,1] _tmpXXX; the formula for tmpXXX will be
@@ -110,24 +110,24 @@ let expand_expressions (imports, globals, functions, externs) =
        declared as [_tmpXXX, _tmpYYY] var; and the formula assignment
        will be applied to [:,:]. *)
     try
-      let (row_e, row_stmts) = expand_dimension row_dim in
-      let (col_e, col_stmts) = expand_dimension col_dim in
+      let (row_e, row_stmts) = expand_dimension (fname ^ "_" ^ (String.concat "_" (List.map fst inits)) ^ "_row_dim") row_dim in
+      let (col_e, col_stmts) = expand_dimension (fname ^ "_" ^ (String.concat "_" (List.map fst inits)) ^ "_col_dim") col_dim in
       row_stmts @ col_stmts @ List.concat (List.map (expand_init (row_e, col_e)) inits)
     with IllegalExpression(s) ->
       raise (IllegalExpression("Illegal expression (" ^ s ^ ") in " ^
                                string_of_varinit ((row_dim, col_dim), inits))) in
 
-  let expand_stmt = function
-    Assign(a) -> expand_assign(a)
-  | Varinit(d, inits) -> expand_varinit (d, inits) in
+  let expand_stmt fname = function
+    Assign(a) -> expand_assign fname a
+  | Varinit(d, inits) -> expand_varinit fname (d, inits) in
 
-  let expand_stmt_list stmts = List.concat (List.map expand_stmt stmts) in
+  let expand_stmt_list fname stmts = List.concat (List.map (expand_stmt fname) stmts) in
 
-  let expand_params params =
+  let expand_params fname params =
     let needs_sizevar = function
         ((None, None), _) -> false
       | _ -> true in
-    let params_with_sizevar = List.map (fun x -> (idgen(), x)) (List.filter needs_sizevar params) in
+    let params_with_sizevar = List.map (fun x -> (idgen fname ^ "_" ^ ((snd x) ^ "_size"), x)) (List.filter needs_sizevar params) in
     let expanded_args = List.map (fun (sv, ((rv, cv), s)) -> ((sv, s), [((sv, abs_zero), rv); ((sv, abs_one), cv)])) params_with_sizevar in
     let (sizes, inits) = (List.map fst expanded_args, List.concat (List.map snd expanded_args)) in
     let add_item (varset, (assertlist, initlist)) ((sizevar, pos), var) =
@@ -153,15 +153,15 @@ let expand_expressions (imports, globals, functions, externs) =
     (List.concat (List.map create_sizevar sizes), List.rev rev_assertions, List.rev rev_inits) in
 
   let expand_function f =
-    let (new_sizevars, assertions, size_inits) = expand_params f.params in
+    let (new_sizevars, assertions, size_inits) = expand_params f.name f.params in
     {
       name = f.name;
       params = f.params;
       raw_asserts = assertions;
-      body = new_sizevars @ size_inits @ expand_stmt_list f.body;
+      body = new_sizevars @ size_inits @ expand_stmt_list f.name f.body;
       ret_val = f.ret_val
     } in
-  (imports, expand_stmt_list globals, List.map expand_function functions, externs);;
+  (imports, expand_stmt_list "global" globals, List.map expand_function functions, externs);;
 
 let map_of_list list_of_tuples =
   (*  map_of_list: Take a list of the form [("foo", 2); ("bar", 3)]

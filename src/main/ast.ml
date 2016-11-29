@@ -1,7 +1,7 @@
 type op       = Plus | Minus | Times | Divide | Mod | Pow |
                 LShift | RShift | BitOr | BitAnd | BitXor |
                 Eq | NotEq | Gt | Lt | GtEq | LtEq | LogAnd | LogOr
-type unop     = Neg | LogNot | BitNot | SizeOf | TypeOf | Row | Column
+type unop     = Neg | LogNot | BitNot | SizeOf | TypeOf | Row | Column | Truthy
 
 type expr     = LitInt of int |
                 LitFlt of float |
@@ -91,6 +91,7 @@ type listable = Inits of init list |
                 Formulas of formula list
 
 exception IllegalRangeLiteral of string
+exception TransformedAway of string
 
 let quote_string str =
   let escape_characters = Str.regexp "[\n \t \r \\ \"]" in
@@ -110,7 +111,7 @@ let string_of_op o = "\"" ^ (match o with
     LogAnd -> "&& " | LogOr -> "||" ) ^ "\""
 
 let string_of_unop = function
-    Neg -> "\"-\"" | LogNot -> "\"!\"" | BitNot -> "\"~\"" |
+    Neg -> "\"-\"" | LogNot -> "\"!\"" | BitNot -> "\"~\"" | Truthy -> "\"truthy\"" |
     SizeOf -> "\"size\"" | TypeOf -> "\"type\"" | Row -> "\"row\"" | Column -> "\"column\""
 
 let rec string_of_expr = function

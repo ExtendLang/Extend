@@ -227,6 +227,50 @@ let create_maps (imports, globals, functions, externs) =
    map_of_list (List.map fd_of_raw_func functions),
    map_of_list (List.concat (List.map tupleize_library externs)))
 
+let ternarize_booleans (globals, functions, externs) =
+  let rec ternarize_expr = function
+      BinOp(e1, LogAnd, e2) -> Ternary(UnOp(Truthy,ternarize_expr e1), UnOp(Truthy,ternarize_expr e2), LitInt(0))
+    | BinOp(e1, LogOr, e2) -> Ternary(UnOp(Truthy,ternarize_expr e1), LitInt(1), UnOp(Truthy,ternarize_expr e2))
+    | BinOp(e1, op, e2) -> BinOp(ternarize_expr e1, op, ternarize_expr e2)
+    | UnOp(op, e) -> UnOp(op, ternarize_expr e)
+    | Ternary(cond, e1, e2) -> Ternary(cond, ternarize_expr e1, ternarize_expr e2)
+    | Switch(Some e, cases) -> Switch(Some (ternarize_expr e), List.map ternarize_case cases)
+    | Switch(None, cases) -> Switch(None, List.map ternarize_case cases)
+    | Call(fname, args) -> Call(fname, List.map ternarize_expr args)
+    | Selection(e, (sl1, sl2)) -> Selection(ternarize_expr e, (ternarize_slice sl1, ternarize_slice sl2))
+    | Precedence(e1, e2) -> Precedence(ternarize_expr e1, ternarize_expr e2)
+    | e -> e
+  and ternarize_case = function
+      (Some conds, e) -> (Some (List.map ternarize_expr conds), ternarize_expr e)
+    | (None, e) -> (None, ternarize_expr e)
+  and ternarize_slice = function
+      None -> None
+    | Some (i1, i2) -> Some (ternarize_index_option i1, ternarize_index_option i2)
+  and ternarize_index_option = function
+      None -> None
+    | Some i -> Some (ternarize_index i)
+  and ternarize_index = function
+      Abs(e) -> Abs(ternarize_expr e)
+    | Rel(e) -> Rel(ternarize_expr e)
+    | i -> i in
+  let ternarize_formula f =
+    {
+      formula_row_start = ternarize_index f.formula_row_start;
+      formula_row_end = ternarize_index_option f.formula_row_end;
+      formula_col_start = ternarize_index f.formula_col_start;
+      formula_col_end = ternarize_index_option f.formula_col_end;
+      formula_expr = ternarize_expr f.formula_expr;
+    } in
+  let ternarize_variable v = {v with var_formulas = List.map ternarize_formula v.var_formulas} in
+  let ternarize_function fn =
+    {
+      func_params = fn.func_params;
+      func_body = StringMap.map ternarize_variable fn.func_body;
+      func_asserts = List.map ternarize_expr fn.func_asserts;
+      func_ret_val = (fst fn.func_ret_val, ternarize_expr (snd fn.func_ret_val));
+    } in
+  (StringMap.map ternarize_variable globals, StringMap.map ternarize_function functions, externs)
+
 let check_semantics (globals, functions, externs) =
   let fn_signatures = map_of_list
       (builtin_signatures @
@@ -261,31 +305,24 @@ let check_semantics (globals, functions, externs) =
       | Call(called_fname, args) ->
         check_call called_fname (List.length args) ;
         List.iter check_expr args
-      | Selection(e, sel) -> check_expr e ; check_sel sel
+      | Selection(e, (sl1, sl2)) -> check_expr e ; check_slice sl1 ; check_slice sl2
       | Precedence(e1, e2) -> check_expr e1 ; check_expr e2
       | LitInt(_) | LitFlt(_) | LitRange(_) | LitString(_) | Empty | Wild -> ()
     and check_case = function
         (Some conds, e) -> List.iter check_expr conds ; check_expr e
       | (None, e) -> check_expr e
-    and check_sel = function
-        (None, None) -> ()
-      | (Some sl1, None) -> check_slice sl1
-      | (None, Some sl2) -> check_slice sl2
-      | (Some sl1, Some sl2) -> check_slice sl1 ; check_slice sl2
     and check_slice = function
-        (None, None) -> ()
-      | (Some i1, None) -> check_index i1
-      | (None, Some i2) -> check_index i2
-      | (Some i1, Some i2) -> check_index i1 ; check_index i2
+        None -> ()
+      | Some (i1, i2) -> check_index i1 ; check_index i2
     and check_index = function
-        Abs(e) -> check_expr e
-      | Rel(e) -> check_expr e
+        Some Abs(e) -> check_expr e
+      | Some Rel(e) -> check_expr e
       | _ -> () in
     let check_formula f =
-      check_index f.formula_row_start ;
-      (match f.formula_row_end with Some i -> check_index i | None -> ()) ;
-      check_index f.formula_col_start ;
-      (match f.formula_col_end with Some i -> check_index i | None -> ()) ;
+      check_index (Some f.formula_row_start) ;
+      check_index f.formula_row_end ;
+      check_index (Some f.formula_col_start) ;
+      check_index f.formula_col_end ;
       check_expr f.formula_expr in
     let check_dim = function
         DimInt(_) -> ()
@@ -304,4 +341,5 @@ let create_ast filename =
   let ast_imp_res = expand_file filename in
   let ast_expanded = expand_expressions ast_imp_res in
   let ast_mapped = create_maps ast_expanded in
-  check_semantics ast_mapped ; ast_mapped
+  let ast_ternarized = ternarize_booleans ast_mapped in
+  check_semantics ast_ternarized ; ast_ternarized

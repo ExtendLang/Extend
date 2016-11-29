@@ -182,8 +182,8 @@ and evaluate scope cell e =
         | Lt -> if n1 < n2 then ExtendNumber(1) else ExtendNumber(0)
         | GtEq -> if n1 >= n2 then ExtendNumber(1) else ExtendNumber(0)
         | LtEq -> if n1 <= n2 then ExtendNumber(1) else ExtendNumber(0)
-        | LogAnd -> if (n1 != 0 && n2 != 0) then ExtendNumber(1) else ExtendNumber(0)
-        | LogOr -> if (n1 != 0 || n2 != 0) then ExtendNumber(1) else ExtendNumber(0)
+        | LogAnd -> raise(TransformedAway("Logical And shouldn't be possible!"))
+        | LogOr -> raise(TransformedAway("Logical And shouldn't be possible!"))
         )
     | (ExtendString(s1), ExtendString(s2)) -> (match op with
           Plus -> ExtendString(s1 ^ s2)
@@ -211,6 +211,9 @@ and evaluate scope cell e =
     | (LogNot, ExtendNumber(0)) -> ExtendNumber(1)
     | (LogNot, EmptyValue) -> EmptyValue
     | (LogNot, _) -> ExtendNumber(0)
+    | (Truthy, ExtendNumber(0)) -> ExtendNumber(0)
+    | (Truthy, EmptyValue) -> EmptyValue
+    | (Truthy, _) -> ExtendNumber(1)
     | (Row, EmptyValue) -> let Cell(r,c) = cell in ExtendNumber(r)
     | (Row, _) -> EmptyValue
     | (Column, EmptyValue) -> let Cell(r,c) = cell in ExtendNumber(c)

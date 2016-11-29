@@ -150,7 +150,7 @@ and string_of_cell scope rg (r,c) =
      "{" ^ quote_string (index_of_cell (Cell(r,c))) ^ ": " ^ string_of_val scope (get_val rg (Cell(r,c))) ^ "}"
 
 and evaluate scope cell e =
-  let interpreter_variable_of_val v = 
+  let interpreter_variable_of_val v =
       {
         interpreter_variable_dimensions = Dimensions(1,1);
         interpreter_variable_scope = scope;
@@ -352,6 +352,14 @@ and evaluate scope cell e =
                          base_offset = Cell(row_start, col_start)}))
        else EmptyValue
      | _ -> EmptyValue)
+  | Call("printf", exprs) -> (match (evaluate scope cell (List.hd (List.tl exprs))) with
+          ExtendString(s) -> print_string s
+        | _ -> ());
+      EmptyValue
+  | Call("print", exprs) -> (match (evaluate scope cell (List.hd (List.tl exprs))) with
+          ExtendString(s) -> print_string s
+        | _ -> ());
+      EmptyValue
   | Call(fname, exprs) ->
     if StringMap.mem fname scope.interpreter_scope_builtins then
       (StringMap.find fname scope.interpreter_scope_builtins) scope cell exprs

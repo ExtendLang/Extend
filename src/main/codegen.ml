@@ -82,7 +82,6 @@ let create_extern_functions ctx bt the_module =
   let add_extern_func fname ftype returntype arglist =
     let the_func = Llvm.declare_function fname (ftype returntype (Array.of_list arglist)) the_module
     in Hashtbl.add extern_functions fname the_func in
-  add_extern_func "printf" Llvm.var_arg_function_type bt.int_t [bt.char_p] ;
   add_extern_func "strlen" Llvm.function_type bt.long_t [bt.char_p];
   add_extern_func "llvm.memcpy.p0i8.p0i8.i64" Llvm.function_type bt.void_t [bt.char_p; bt.char_p; bt.long_t; bt.int_t; bt.bool_t] ;
   ()
@@ -202,17 +201,6 @@ let create_helper_functions ctx bt the_module =
     let _ = Llvm.build_ret subrange fn_bod in
     Hashtbl.add helper_functions fname fn_def in
 
-  let create_printf_2 fname =
-    let (fn_def, fn_bod) = create_def_bod fname bt.value_p [bt.subrange_p; bt.subrange_p] in
-    let subrange = Llvm.param fn_def 1 in (*TODO: Assert string*)
-    let rg = (subrange => subrange_field_index BaseRangePtr) "the_range" fn_bod in
-    let value = (rg => (range_field_index Values)) "the_value" fn_bod in
-    let str = (value => (value_field_index String)) "the_string" fn_bod in
-    let char_str = (str => (string_field_index StringCharPtr)) "char_ppp" fn_bod in
-    let _ = Llvm.build_call (Hashtbl.find extern_functions "printf") [|char_str|] "" fn_bod in
-    let _ = Llvm.build_ret value fn_bod in
-    Hashtbl.add helper_functions fname fn_def in
-
     create_is_subrange_1x1 "is_subrange_1x1";
     create_get_val "get_val";
     create_deref_subrange "deref_subrange";
@@ -221,7 +209,6 @@ let create_helper_functions ctx bt the_module =
     create_box_value_string "box_value_string";
     create_box_value_number "box_value_number";
     create_box_single_value "box_single_value";
-    create_printf_2 "printf";
     ()
 
 let create_main fnames ctx bt the_module =
@@ -334,6 +321,24 @@ let translate (globals, functions, externs) =
     }
   and base_module = Llvm.create_module context "Extend" in
   let base_types = setup_types context in
+  let build_externs =
+    Ast.StringMap.fold
+    (fun key (b: Ast.extern_func) a ->
+      Ast.StringMap.add
+      b.Ast.extern_fn_name
+      (
+        Llvm.declare_function
+        b.Ast.extern_fn_name
+        (
+          Llvm.function_type base_types.subrange_p (Array.of_list (List.map (fun a -> base_types.subrange_p) b.Ast.extern_fn_params))
+        )
+        base_module
+      )
+      a
+    )
+    externs
+    Ast.StringMap.empty
+     in
   let build_function_names =
     Ast.StringMap.mapi (fun key (func: Ast.func_decl) ->
         (func, Llvm.define_function
@@ -341,7 +346,8 @@ let translate (globals, functions, externs) =
            (Llvm.function_type base_types.subrange_p (Array.of_list (List.map (fun a -> base_types.subrange_p) func.Ast.func_params)))
            base_module)
       ) functions in
-
+  let build_public_functions =
+    Ast.StringMap.fold (fun k a b -> Ast.StringMap.add k a b) (Ast.StringMap.map (fun (b, c) -> c) build_function_names) build_externs in
   (* Declare the external functions that we need to call *)
   create_extern_functions context base_types base_module ;
 
@@ -357,9 +363,12 @@ let translate (globals, functions, externs) =
           (*print_endline (Ast.string_of_expr expr);*)
           match expr with
             Ast.Precedence(a,b) -> expr_eval a scope builder ctx extern helpers bt; expr_eval b scope builder ctx extern helpers bt;
-          | Ast.Call(fn,exl) -> let args = Array.of_list
+          | Ast.Call(fn,exl) ->
+              let args = Array.of_list
                 (List.rev (List.fold_left (fun a b -> (expr_eval b scope builder ctx extern helpers bt) :: a) [] exl)) in
-              Llvm.build_call (Hashtbl.find helpers fn) args "" builder
+              Llvm.build_call (
+                Ast.StringMap.find fn build_public_functions
+              ) args "" builder
           | Ast.LitString(str) ->
               let boxxx = Llvm.build_call
               (Hashtbl.find helpers "new_string")

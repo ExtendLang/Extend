@@ -10,7 +10,8 @@ REGRESSION=inputs_regression
 EXPECTED=expected
 TMP_DIR=./tmp
 INT_OUT=.i.out
-COMP_OUT=.c.out
+COMP_OUT=.c.o
+COMP_OUTPUT=.c.out
 EXP_OUT=.exp
 RES_OUT=.r.out
 LLVM_F=.ll
@@ -21,17 +22,23 @@ counteri=0
 countern=0
 result=0
 
+gcc -c -o tmp/std.o src/stdlib/lib.c
+
 for f in $(ls $TESTDIR/$REGRESSION); do
   counter=$((counter+1))
   INTERPRETER_TARGET=$TMP_DIR/$f$INT_OUT
   EXTEND_TARGET=$TMP_DIR/$f$LLVM_F
   EXTEND_FILE=$TESTDIR/$REGRESSION/$f
   COMPILED_OUTPUT=$TMP_DIR/$f$COMP_OUT
+  TEXT_OUTPUT=$TMP_DIR/$f$COMP_OUTPUT
   EXPECTED_OUTPUT=$TESTDIR/$EXPECTED/$f$EXP_OUT
   RESULT_OUTPUT=$TMP_DIR/$f$RES_OUT
   ./main.byte -i $EXTEND_FILE > $INTERPRETER_TARGET 2>&1
   ./main.byte -c $EXTEND_FILE > $EXTEND_TARGET 2>&1
-  lli-3.8 $EXTEND_TARGET arg1 > $COMPILED_OUTPUT 2>&1
+  llc-3.8 -filetype=obj $EXTEND_TARGET -o $COMPILED_OUTPUT
+  gcc -o tmp/tmp $COMPILED_OUTPUT tmp/std.o
+  rm $COMPILED_OUTPUT
+  ./tmp/tmp > $TEXT_OUTPUT
   diff $INTERPRETER_TARGET $EXPECTED_OUTPUT > $RESULT_OUTPUT 2>&1
   if [ $? -eq 0 ]; then
     counteri=$((counteri+1))
@@ -43,7 +50,7 @@ for f in $(ls $TESTDIR/$REGRESSION); do
       cat $RESULT_OUTPUT
     fi
   fi
-  diff $COMPILED_OUTPUT $EXPECTED_OUTPUT > $RESULT_OUTPUT 2>&1
+  diff $TEXT_OUTPUT $EXPECTED_OUTPUT > $RESULT_OUTPUT 2>&1
   if [ $? -eq 0 ]; then
     counterc=$((counterc+1))
     echo "Compiler: PASSED ($f)"
@@ -56,6 +63,8 @@ for f in $(ls $TESTDIR/$REGRESSION); do
   fi
 done
 
+rm tmp/std.o
+
 for f in $(ls $TESTDIR/$INPUTS); do
   counter=$((counter+1))
   INTERPRETER_TARGET=$TMP_DIR/$f$INT_OUT
@@ -67,7 +76,7 @@ for f in $(ls $TESTDIR/$INPUTS); do
   p=0
   ./main.byte -i $EXTEND_FILE > $INTERPRETER_TARGET 2>&1
   ./main.byte -c $EXTEND_FILE > $EXTEND_TARGET 2>&1
-  lli-3.8 $EXTEND_TARGET arg1 > $COMPILED_OUTPUT 2>&1
+  lli-3.8 $EXTEND_TARGET arg1 > $TEXT_OUTPUT 2>&1
   echo "Comparing ($INTERPRETER_TARGET) and ($EXPECTED_OUTPUT)"
   diff $INTERPRETER_TARGET $EXPECTED_OUTPUT > $RESULT_OUTPUT 2>&1
   if [ $? -eq 0 ]; then
@@ -80,7 +89,7 @@ for f in $(ls $TESTDIR/$INPUTS); do
       cat $RESULT_OUTPUT
     fi
   fi
-  diff $COMPILED_OUTPUT $EXPECTED_OUTPUT > $RESULT_OUTPUT 2>&1
+  diff $TEXT_OUTPUT $EXPECTED_OUTPUT > $RESULT_OUTPUT 2>&1
   if [ $? -eq 0 ]; then
     counterc=$((counterc+1))
     p=$((p+1))

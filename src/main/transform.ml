@@ -15,7 +15,7 @@ let idgen =
 module StringSet = Set.Make (String);;
 let importSet = StringSet.empty;;
 
-let builtin_signatures = [("row", 0); ("column", 0); ("printf", 2); ("toString", 1)]
+let builtin_signatures = [("row", 0); ("column", 0); (*("printf", 2);*) ("toString", 1)]
 
 let expand_file filename =
   let rec expand_imports processed_imports globals fns exts = function
@@ -242,13 +242,15 @@ let check_semantics (globals, functions, externs) =
          else ())
       params ;
     let check_call called_fname num_args =
-      if not (StringMap.mem called_fname fn_signatures) then raise(UnknownFunction(called_fname))
-      else let signature_args = StringMap.find called_fname fn_signatures in
-      if num_args != signature_args then raise(WrongNumberArgs(
-          "In " ^ fname ^ "(), the function " ^ called_fname ^ "() was called with " ^ string_of_int num_args ^ " arguments " ^
-          "but the signature specifies " ^ string_of_int signature_args
-        ))
-      else () in
+      match called_fname with
+          "printf" -> ()
+        | _ -> if (not (StringMap.mem called_fname fn_signatures)) then raise(UnknownFunction(called_fname))
+            else let signature_args = StringMap.find called_fname fn_signatures in
+            if num_args != signature_args then raise(WrongNumberArgs(
+                "In " ^ fname ^ "(), the function " ^ called_fname ^ "() was called with " ^ string_of_int num_args ^ " arguments " ^
+                "but the signature specifies " ^ string_of_int signature_args
+              ))
+            else () in
     let rec check_expr = function
         BinOp(e1,_,e2) -> check_expr e1 ; check_expr e2
       | UnOp(_, e) -> check_expr e

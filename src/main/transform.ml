@@ -233,7 +233,7 @@ let ternarize_booleans (globals, functions, externs) =
     | BinOp(e1, LogOr, e2) -> Ternary(UnOp(Truthy,ternarize_expr e1), LitInt(1), UnOp(Truthy,ternarize_expr e2))
     | BinOp(e1, op, e2) -> BinOp(ternarize_expr e1, op, ternarize_expr e2)
     | UnOp(op, e) -> UnOp(op, ternarize_expr e)
-    | Ternary(cond, e1, e2) -> Ternary(cond, ternarize_expr e1, ternarize_expr e2)
+    | Ternary(cond, e1, e2) -> Ternary(ternarize_expr cond, ternarize_expr e1, ternarize_expr e2)
     | Switch(Some e, cases) -> Switch(Some (ternarize_expr e), List.map ternarize_case cases)
     | Switch(None, cases) -> Switch(None, List.map ternarize_case cases)
     | Call(fname, args) -> Call(fname, List.map ternarize_expr args)

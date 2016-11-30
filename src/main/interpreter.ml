@@ -320,13 +320,14 @@ and evaluate scope cell e =
   | LitString(s) -> ExtendString(s)
   | BinOp(e1, op, e2) -> eval_binop op ((evaluate scope cell e1),(evaluate scope cell e2))
   | UnOp(op, e1) -> eval_unop op (evaluate scope cell e1)
+  | Id(s) -> find_variable s
+  | Precedence(a,b) -> ignore (evaluate scope cell a); evaluate scope cell b
   | ReducedTernary(cond_id, true_id, false_id) ->
     (match (evaluate scope cell (Selection(Id(cond_id),(Some(Some(Rel(LitInt(0))),None),Some(Some(Rel(LitInt(0))),None))))) with
        EmptyValue -> EmptyValue
      | ExtendNumber(0) -> (evaluate scope cell (Selection(Id(false_id),(Some(Some(Rel(LitInt(0))),None),Some(Some(Rel(LitInt(0))),None)))))
      | ExtendNumber(1) -> (evaluate scope cell (Selection(Id(true_id),(Some(Some(Rel(LitInt(0))),None),Some(Some(Rel(LitInt(0))),None)))))
      | v -> raise(TransformedAway("Illegal value " ^ (string_of_val scope v) ^ " in truthiness variable " ^ cond_id)))
-  | Id(s) -> find_variable s
   | Selection(expr, sel) ->
     let rng = range_of_val (evaluate scope cell expr) in
     let Cell(cell_row, cell_col) = cell in
@@ -369,7 +370,6 @@ and evaluate scope cell e =
       evaluate f_scope (Cell(0,0)) (snd f.func_ret_val)
 
 (*  LitRange of (expr list) list *)
-  | Precedence(a,b) -> ignore (evaluate scope cell a); evaluate scope cell b
   | Ternary(cond, true_exp, false_exp) -> raise(TransformedAway("Ternaries shouldn't be possible!"))
       (* (match (evaluate scope cell cond) with
         EmptyValue -> EmptyValue

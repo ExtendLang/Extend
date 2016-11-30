@@ -127,7 +127,7 @@ let expand_expressions (imports, globals, functions, externs) =
     let needs_sizevar = function
         ((None, None), _) -> false
       | _ -> true in
-    let params_with_sizevar = List.map (fun x -> (idgen fname ^ "_" ^ ((snd x) ^ "_size"), x)) (List.filter needs_sizevar params) in
+    let params_with_sizevar = List.map (fun x -> (idgen (fname ^ "_" ^ (snd x) ^ "_size"), x)) (List.filter needs_sizevar params) in
     let expanded_args = List.map (fun (sv, ((rv, cv), s)) -> ((sv, s), [((sv, abs_zero), rv); ((sv, abs_one), cv)])) params_with_sizevar in
     let (sizes, inits) = (List.map fst expanded_args, List.concat (List.map snd expanded_args)) in
     let add_item (varset, (assertlist, initlist)) ((sizevar, pos), var) =
@@ -154,12 +154,13 @@ let expand_expressions (imports, globals, functions, externs) =
 
   let expand_function f =
     let (new_sizevars, assertions, size_inits) = expand_params f.name f.params in
+    let (new_retval, retval_inits) = expand_expr (f.name ^ "_retval") (snd f.ret_val) in
     {
       name = f.name;
       params = f.params;
       raw_asserts = assertions;
-      body = new_sizevars @ size_inits @ expand_stmt_list f.name f.body;
-      ret_val = f.ret_val
+      body = new_sizevars @ size_inits @ retval_inits @ expand_stmt_list f.name f.body;
+      ret_val = (fst f.ret_val, new_retval)
     } in
   (imports, expand_stmt_list "global" globals, List.map expand_function functions, externs);;
 
@@ -228,45 +229,75 @@ let create_maps (imports, globals, functions, externs) =
    map_of_list (List.concat (List.map tupleize_library externs)))
 
 let ternarize_exprs (globals, functions, externs) =
-  let rec ternarize_expr = function
-      BinOp(e1, LogAnd, e2) -> Ternary(UnOp(Truthy,ternarize_expr e1), UnOp(Truthy,ternarize_expr e2), LitInt(0))
-    | BinOp(e1, LogOr, e2) -> Ternary(UnOp(Truthy,ternarize_expr e1), LitInt(1), UnOp(Truthy,ternarize_expr e2))
-    | BinOp(e1, op, e2) -> BinOp(ternarize_expr e1, op, ternarize_expr e2)
-    | UnOp(op, e) -> UnOp(op, ternarize_expr e)
-    | Ternary(cond, e1, e2) -> Ternary(ternarize_expr cond, ternarize_expr e1, ternarize_expr e2)
-    | Switch(Some e, cases, dflt) -> Switch(Some (ternarize_expr e), List.map ternarize_case cases, ternarize_expr dflt)
-    | Switch(None, cases, dflt) -> Switch(None, List.map ternarize_case cases, ternarize_expr dflt)
-    | Call(fname, args) -> Call(fname, List.map ternarize_expr args)
-    | Selection(e, (sl1, sl2)) -> Selection(ternarize_expr e, (ternarize_slice sl1, ternarize_slice sl2))
-    | Precedence(e1, e2) -> Precedence(ternarize_expr e1, ternarize_expr e2)
-    | e -> e
-  and ternarize_case (conds, e) = (List.map ternarize_expr conds, ternarize_expr e)
-  and ternarize_slice = function
-      None -> None
-    | Some (i1, i2) -> Some (ternarize_index_option i1, ternarize_index_option i2)
-  and ternarize_index_option = function
-      None -> None
-    | Some i -> Some (ternarize_index i)
-  and ternarize_index = function
-      Abs(e) -> Abs(ternarize_expr e)
-    | Rel(e) -> Rel(ternarize_expr e)
-    | i -> i in
-  let ternarize_formula f =
-    {
-      formula_row_start = ternarize_index f.formula_row_start;
-      formula_row_end = ternarize_index_option f.formula_row_end;
-      formula_col_start = ternarize_index f.formula_col_start;
-      formula_col_end = ternarize_index_option f.formula_col_end;
-      formula_expr = ternarize_expr f.formula_expr;
-    } in
-  let ternarize_variable v = {v with var_formulas = List.map ternarize_formula v.var_formulas} in
-  let ternarize_function fn =
-    {
-      func_params = fn.func_params;
-      func_body = StringMap.map ternarize_variable fn.func_body;
-      func_asserts = List.map ternarize_expr fn.func_asserts;
-      func_ret_val = (fst fn.func_ret_val, ternarize_expr (snd fn.func_ret_val));
-    } in
+  let rec ternarize_expr lhs_var new_vars = function
+      BinOp(e1, LogAnd, e2) ->
+      let (new_e1, new_e1_vars) = ternarize_expr lhs_var new_vars e1 in
+      let (new_e2, new_e2_vars) = ternarize_expr lhs_var new_vars e2 in
+      (Ternary(UnOp(Truthy,new_e1), UnOp(Truthy,new_e2), LitInt(0)), new_e1_vars @ new_e2_vars @ new_vars)
+    | BinOp(e1, LogOr, e2) ->
+      let (new_e1, new_e1_vars) = ternarize_expr lhs_var new_vars e1 in
+      let (new_e2, new_e2_vars) = ternarize_expr lhs_var new_vars e2 in
+      (Ternary(UnOp(Truthy,new_e1), LitInt(1), UnOp(Truthy,new_e2)), new_e1_vars @ new_e2_vars @ new_vars)
+    | BinOp(e1, op, e2) ->
+      let (new_e1, new_e1_vars) = ternarize_expr lhs_var new_vars e1 in
+      let (new_e2, new_e2_vars) = ternarize_expr lhs_var new_vars e2 in
+      (BinOp(new_e1, op, new_e2), new_e1_vars @ new_e2_vars @ new_vars)
+    | UnOp(op, e) ->
+      let (new_e, new_e_vars) = ternarize_expr lhs_var new_vars e in
+      (UnOp(op, new_e), new_e_vars @ new_vars)
+    | Ternary(cond, e1, e2) ->
+      let (new_cond, new_cond_vars) = ternarize_expr lhs_var new_vars cond in
+      let (new_e1, new_e1_vars) = ternarize_expr lhs_var new_vars e1 in
+      let (new_e2, new_e2_vars) = ternarize_expr lhs_var new_vars e2 in
+      (Ternary(new_cond, new_e1, new_e2), new_cond_vars @ new_e1_vars @ new_e2_vars @ new_vars)
+    | Call(fname, args) ->
+      let new_args_and_vars = List.map (ternarize_expr lhs_var new_vars) args in
+      (Call(fname, (List.map fst new_args_and_vars)), (List.concat (List.map snd new_args_and_vars)) @ new_vars)
+    | Selection(e, (sl1, sl2)) ->
+      let (new_e, new_e_vars) = ternarize_expr lhs_var new_vars e in
+      let (new_sl1, new_sl1_vars) = ternarize_slice lhs_var new_vars sl1 in
+      let (new_sl2, new_sl2_vars) = ternarize_slice lhs_var new_vars sl2 in
+      (Selection(new_e, (new_sl1, new_sl2)), new_e_vars @ new_sl1_vars @ new_sl2_vars @ new_vars)
+    | Precedence(e1, e2) ->
+      let (new_e1, new_e1_vars) = ternarize_expr lhs_var new_vars e1 in
+      let (new_e2, new_e2_vars) = ternarize_expr lhs_var new_vars e2 in
+      (Precedence(new_e1, new_e2), new_e1_vars @ new_e2_vars @ new_vars)
+    | Switch(cond, cases, dflt) ->
+      ternarize_switch lhs_var new_vars cases dflt cond
+    | e -> (e, new_vars)
+  and ternarize_switch lhs_var new_vars cases dflt = function
+      Some cond ->
+      let (new_cond, new_cond_vars) = ternarize_expr lhs_var new_vars cond in
+      let new_cases_and_vars = List.map (ternarize_case lhs_var new_vars) cases in
+      let (new_dflt, new_dflt_vars) = ternarize_expr lhs_var new_vars dflt in
+      (Switch(Some new_cond, List.map fst new_cases_and_vars, new_dflt), (List.concat (List.map snd new_cases_and_vars)) @ new_vars)
+    | None ->
+      let new_cases_and_vars = List.map (ternarize_case lhs_var new_vars) cases in
+      let (new_dflt, new_dflt_vars) = ternarize_expr lhs_var new_vars dflt in
+      (Switch(None, List.map fst new_cases_and_vars, new_dflt), (List.concat (List.map snd new_cases_and_vars)) @ new_vars)
+  and ternarize_case lhs_var new_vars (conds, e) =
+    let new_conds_and_vars = List.map (ternarize_expr lhs_var new_vars) conds in
+    let (new_e, new_e_vars) = ternarize_expr lhs_var new_vars e in
+    ((List.map fst new_conds_and_vars, new_e), (List.concat (List.map snd new_conds_and_vars)) @ new_e_vars @ new_vars)
+  and ternarize_slice lhs_var new_vars = function
+      None -> (None, new_vars)
+    | Some (i1, i2) ->
+      let (new_i1, new_i1_vars) = ternarize_index lhs_var new_vars i1 in
+      let (new_i2, new_i2_vars) = ternarize_index lhs_var new_vars i2 in
+      (Some (new_i1, new_i2), new_i1_vars @ new_i2_vars @ new_vars)
+  and ternarize_index lhs_var new_vars = function
+      Some Abs(e) ->
+      let (new_e, new_e_vars) = ternarize_expr lhs_var new_vars e in
+      (Some(Abs(new_e)), new_e_vars @ new_vars)
+    | Some Rel(e) ->
+      let (new_e, new_e_vars) = ternarize_expr lhs_var new_vars e in
+      (Some(Rel(new_e)), new_e_vars @ new_vars)
+    | i -> (i, new_vars) in
+  let ternarize_formula lhs_var f =
+    let (new_expr, new_vars) = ternarize_expr lhs_var [] f.formula_expr in
+    {f with formula_expr = new_expr} in
+  let ternarize_variable v = {v with var_formulas = List.map (ternarize_formula v) v.var_formulas} in
+  let ternarize_function fn = {fn with func_body = StringMap.map ternarize_variable fn.func_body} in
   (StringMap.map ternarize_variable globals, StringMap.map ternarize_function functions, externs)
 
 let check_semantics (globals, functions, externs) =

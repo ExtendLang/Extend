@@ -3,9 +3,9 @@
 %{
 open Ast
 
-let parse_error s = (* Called by the parser function on error *)
+(*let parse_error s =
   print_endline s;
-  flush stdout
+  flush stdout*)
 %}
 
 %token LSQBRACK RSQBRACK LPAREN RPAREN LBRACE RBRACE HASH

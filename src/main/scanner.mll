@@ -1,17 +1,9 @@
 {
   open Lexing
   open Parser
-
   exception SyntaxError of string
-  let next_line lexbuf =
-    let pos = lexbuf.lex_curr_p in
-      (* let lnum_str = string_of_int pos.pos_lnum in
-        print_endline lnum_str;; *)
-      lexbuf.lex_curr_p <-
-      { pos with pos_bol = lexbuf.lex_curr_pos;
-                 pos_lnum = pos.pos_lnum + 1
-                 (* If we can extract this line num to SyntaxError? *)
-      }
+  let line_num = ref 1
+  let syntax_error msg = raise (SyntaxError("Invalid character: " ^ msg ^ " on line " ^ (string_of_int !line_num)))
 }
 
 let digit = ['0'-'9']
@@ -19,8 +11,10 @@ let exp = 'e'('+'|'-')?['0'-'9']+
 let flt = (digit)+ ('.' (digit)* exp?|exp)
 let id = ['a'-'z' 'A'-'Z']['a'-'z' 'A'-'Z' '0'-'9' '_']*
 
+
 rule token = parse
-  [' ' '\t' '\r' '\n'] { token lexbuf }   (* Whitespace *)
+  ['\n']               { incr line_num; token lexbuf } (* New line, must be counted *)
+| [' ' '\t' '\r']      { token lexbuf }   (* Whitespace *)
 | "/*"                 { multiline_comment lexbuf }
 | "//"                 { oneline_comment lexbuf }
 | '"'                  { read_string (Buffer.create 17) lexbuf }
@@ -76,7 +70,7 @@ rule token = parse
 | flt as lit      { LIT_FLOAT(float_of_string lit) }
 | id as lit       { ID(lit) }
 | eof             { EOF }
-| _               { raise (SyntaxError("illegal character: " ^ Lexing.lexeme lexbuf)) }
+| _               { syntax_error (Lexing.lexeme lexbuf) }
 
 and multiline_comment = parse
   "*/" { token lexbuf }
@@ -100,5 +94,5 @@ and read_string buf =
     { Buffer.add_string buf (Lexing.lexeme lexbuf);
       read_string buf lexbuf
     }
-  | _         { raise (SyntaxError("illegal string character: " ^ Lexing.lexeme lexbuf)) }
+  | _         { syntax_error (Lexing.lexeme lexbuf) }
   | eof       { raise (Failure("unterminated string")) }

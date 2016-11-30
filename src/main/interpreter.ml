@@ -324,7 +324,7 @@ and evaluate scope cell e =
         EmptyValue -> EmptyValue
       | ExtendNumber(0) -> (evaluate scope cell false_exp)
       | _ -> (evaluate scope cell true_exp))
-  | Switch(eo, cases, dflt) -> let match_val = (match eo with
+  | Switch(eo, cases, dflt) -> raise(TransformedAway("Switches shouldn't be possible!")) (* let match_val = (match eo with
         Some e -> (evaluate scope cell e)
       | None -> ExtendNumber(1)) in
     let is_expr_match e = (ExtendNumber(1) = (eval_binop Eq (match_val, (evaluate scope cell e)))) in
@@ -332,7 +332,7 @@ and evaluate scope cell e =
     (try
       let matching_case = List.find is_match cases in
       (evaluate scope cell (snd matching_case))
-     with Not_found -> (evaluate scope cell dflt))
+      with Not_found -> (evaluate scope cell dflt)) *)
   | Id(s) -> find_variable s
   | Selection(expr, sel) ->
     let rng = range_of_val (evaluate scope cell expr) in

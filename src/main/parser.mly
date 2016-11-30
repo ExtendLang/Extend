@@ -2,6 +2,10 @@
 
 %{
 open Ast
+
+let parse_error s = (* Called by the parser function on error *)
+  print_endline s;
+  flush stdout
 %}
 
 %token LSQBRACK RSQBRACK LPAREN RPAREN LBRACE RBRACE HASH

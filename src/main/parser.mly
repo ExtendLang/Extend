@@ -173,20 +173,26 @@ ternary_expr:
     expr QUESTION expr COLON expr %prec QUESTION { Ternary($1, $3, $5) }
 
 switch_expr:
-    SWITCH LPAREN switch_cond RPAREN LBRACE case_list RBRACE { Switch($3, List.rev $6) }
-  | SWITCH LBRACE case_list RBRACE { Switch(None, List.rev $3) }
+    SWITCH LPAREN switch_cond RPAREN LBRACE default_case_list RBRACE { Switch($3, fst $6, snd $6) }
+  | SWITCH LBRACE default_case_list RBRACE { Switch(None, fst $3, snd $3) }
 
 switch_cond:
     /* nothing */ { None }
   | expr { Some $1 }
+
+default_case_list:
+    case_list {(List.rev $1, Empty)}
+  | case_list default_expr {(List.rev $1, $2)}
 
 case_list:
     case_stmt { [$1] }
   | case_list case_stmt { $2 :: $1 }
 
 case_stmt:
-    DEFAULT COLON expr SEMI { (None, $3) }
-  | CASE case_expr_list COLON expr SEMI { (Some (List.rev $2), $4) }
+    CASE case_expr_list COLON expr SEMI { (List.rev $2, $4) }
+
+default_expr:
+    DEFAULT COLON expr SEMI { $3 }
 
 case_expr_list:
     expr { [$1] }

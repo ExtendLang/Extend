@@ -227,22 +227,20 @@ let create_maps (imports, globals, functions, externs) =
    map_of_list (List.map fd_of_raw_func functions),
    map_of_list (List.concat (List.map tupleize_library externs)))
 
-let ternarize_booleans (globals, functions, externs) =
+let ternarize_exprs (globals, functions, externs) =
   let rec ternarize_expr = function
       BinOp(e1, LogAnd, e2) -> Ternary(UnOp(Truthy,ternarize_expr e1), UnOp(Truthy,ternarize_expr e2), LitInt(0))
     | BinOp(e1, LogOr, e2) -> Ternary(UnOp(Truthy,ternarize_expr e1), LitInt(1), UnOp(Truthy,ternarize_expr e2))
     | BinOp(e1, op, e2) -> BinOp(ternarize_expr e1, op, ternarize_expr e2)
     | UnOp(op, e) -> UnOp(op, ternarize_expr e)
     | Ternary(cond, e1, e2) -> Ternary(ternarize_expr cond, ternarize_expr e1, ternarize_expr e2)
-    | Switch(Some e, cases) -> Switch(Some (ternarize_expr e), List.map ternarize_case cases)
-    | Switch(None, cases) -> Switch(None, List.map ternarize_case cases)
+    | Switch(Some e, cases, dflt) -> Switch(Some (ternarize_expr e), List.map ternarize_case cases, ternarize_expr dflt)
+    | Switch(None, cases, dflt) -> Switch(None, List.map ternarize_case cases, ternarize_expr dflt)
     | Call(fname, args) -> Call(fname, List.map ternarize_expr args)
     | Selection(e, (sl1, sl2)) -> Selection(ternarize_expr e, (ternarize_slice sl1, ternarize_slice sl2))
     | Precedence(e1, e2) -> Precedence(ternarize_expr e1, ternarize_expr e2)
     | e -> e
-  and ternarize_case = function
-      (Some conds, e) -> (Some (List.map ternarize_expr conds), ternarize_expr e)
-    | (None, e) -> (None, ternarize_expr e)
+  and ternarize_case (conds, e) = (List.map ternarize_expr conds, ternarize_expr e)
   and ternarize_slice = function
       None -> None
     | Some (i1, i2) -> Some (ternarize_index_option i1, ternarize_index_option i2)
@@ -300,17 +298,15 @@ let check_semantics (globals, functions, externs) =
       | UnOp(_, e) -> check_expr e
       | Ternary(cond, e1, e2) -> check_expr cond ; check_expr e1 ; check_expr e2
       | Id(s) -> if (List.mem s params || StringMap.mem s locals || StringMap.mem s globals) then () else raise(UnknownVariable(fname ^ "(): " ^ s))
-      | Switch(Some e, cases) -> check_expr e ; List.iter check_case cases
-      | Switch(None, cases) -> List.iter check_case cases
+      | Switch(Some e, cases, dflt) -> check_expr e ; List.iter check_case cases ; check_expr dflt
+      | Switch(None, cases, dflt) -> List.iter check_case cases ; check_expr dflt
       | Call(called_fname, args) ->
         check_call called_fname (List.length args) ;
         List.iter check_expr args
       | Selection(e, (sl1, sl2)) -> check_expr e ; check_slice sl1 ; check_slice sl2
       | Precedence(e1, e2) -> check_expr e1 ; check_expr e2
       | LitInt(_) | LitFlt(_) | LitRange(_) | LitString(_) | Empty | Wild -> ()
-    and check_case = function
-        (Some conds, e) -> List.iter check_expr conds ; check_expr e
-      | (None, e) -> check_expr e
+    and check_case (conds, e) = List.iter check_expr conds ; check_expr e
     and check_slice = function
         None -> ()
       | Some (i1, i2) -> check_index i1 ; check_index i2
@@ -341,5 +337,5 @@ let create_ast filename =
   let ast_imp_res = expand_file filename in
   let ast_expanded = expand_expressions ast_imp_res in
   let ast_mapped = create_maps ast_expanded in
-  let ast_ternarized = ternarize_booleans ast_mapped in
+  let ast_ternarized = ternarize_exprs ast_mapped in
   check_semantics ast_ternarized ; ast_ternarized

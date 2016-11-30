@@ -13,7 +13,7 @@ type expr     = LitInt of int |
                 BinOp of expr * op * expr |
                 UnOp of unop * expr |
                 Ternary of expr * expr * expr |
-                Switch of expr option * case list |
+                Switch of expr option * case list * expr |
                 Call of string * expr list |
                 Selection of expr * sel |
                 Precedence of expr * expr
@@ -23,7 +23,7 @@ and  index    = Abs of expr |
                 DimensionEnd
 and  slice    = index option * index option
 and  sel      = slice option * slice option
-and  case     = (expr list) option * expr
+and  case     = expr list * expr
 
 type dim      = expr option * expr option
 type var      = dim * string
@@ -133,10 +133,11 @@ let rec string_of_expr = function
                             "\"condition\": " ^ string_of_expr c ^ ", " ^
                             "\"ifExpr\": " ^ string_of_expr e1 ^ ", " ^
                             "\"elseExpr\": " ^ string_of_expr e2 ^ "}}"
-  | Switch(eo, cases) ->  "{\"Switch\": {" ^
-                            "\"condition\": " ^
-                              (match eo with None -> "null" | Some e -> string_of_expr e) ^ ", " ^
-                            "\"cases\": " ^ string_of_list (Cases cases) ^ "}}"
+  | Switch(eo, cases, dflt) ->  "{\"Switch\": {" ^
+                                "\"condition\": " ^
+                                  (match eo with None -> "null" | Some e -> string_of_expr e) ^ ", " ^
+                                "\"cases\": " ^ string_of_list (Cases cases) ^ ", " ^
+                                "\"defaultExpr\": " ^ string_of_expr dflt ^ "}}"
   | Call(f, arguments) -> "{\"Call\": {" ^
                             "\"function\": " ^ quote_string f ^ ", " ^
                             "\"arguments\": " ^ string_of_list (Exprs arguments) ^ "}}"
@@ -148,7 +149,7 @@ let rec string_of_expr = function
                             "\"dependent_expr\": " ^ string_of_expr e2 ^ "}}"
 
 and string_of_case (el, e) =
-    "{\"Cases\": " ^ (match el with None -> "null" | Some es -> string_of_list (Exprs es)) ^ ", " ^
+    "{\"Cases\": " ^ string_of_list (Exprs el) ^ ", " ^
      "\"expr\": " ^ string_of_expr e ^ "}"
 
 and string_of_sel (s1, s2) =

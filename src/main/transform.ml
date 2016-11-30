@@ -372,7 +372,7 @@ let reduce_ternaries (globals, functions, externs) =
          formula_row_end = Some DimensionEnd;
          formula_col_start = DimensionStart;
          formula_col_end = Some DimensionEnd;
-         formula_expr = new_cond;
+         formula_expr = UnOp(Truthy,new_cond);
        }]}) ::
     (new_true_id, {lhs_vardef with var_formulas = [{
          formula_row_start = DimensionStart;
@@ -488,4 +488,4 @@ let create_ast filename =
   let ast_mapped = create_maps ast_expanded in check_semantics ast_mapped ;
   let ast_ternarized = ternarize_exprs ast_mapped in
   let ast_reduced = reduce_ternaries ast_ternarized in check_semantics ast_reduced ;
-  ast_ternarized
+  ast_reduced

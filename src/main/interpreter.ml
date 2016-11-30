@@ -320,24 +320,12 @@ and evaluate scope cell e =
   | LitString(s) -> ExtendString(s)
   | BinOp(e1, op, e2) -> eval_binop op ((evaluate scope cell e1),(evaluate scope cell e2))
   | UnOp(op, e1) -> eval_unop op (evaluate scope cell e1)
-  | Ternary(cond, true_exp, false_exp) -> (match (evaluate scope cell cond) with
-        EmptyValue -> EmptyValue
-      | ExtendNumber(0) -> (evaluate scope cell false_exp)
-      | _ -> (evaluate scope cell true_exp))
   | ReducedTernary(cond_id, true_id, false_id) ->
     (match (evaluate scope cell (Selection(Id(cond_id),(Some(Some(Rel(LitInt(0))),None),Some(Some(Rel(LitInt(0))),None))))) with
        EmptyValue -> EmptyValue
-     | ExtendNumber(0) -> (evaluate scope cell (Selection(Id(true_id),(Some(Some(Rel(LitInt(0))),None),Some(Some(Rel(LitInt(0))),None)))))
-     | _ -> (evaluate scope cell (Selection(Id(false_id),(Some(Some(Rel(LitInt(0))),None),Some(Some(Rel(LitInt(0))),None))))))
-  | Switch(eo, cases, dflt) -> raise(TransformedAway("Switches shouldn't be possible!")) (* let match_val = (match eo with
-        Some e -> (evaluate scope cell e)
-      | None -> ExtendNumber(1)) in
-    let is_expr_match e = (ExtendNumber(1) = (eval_binop Eq (match_val, (evaluate scope cell e)))) in
-    let is_match (exprs, _) = List.exists is_expr_match exprs in
-    (try
-      let matching_case = List.find is_match cases in
-      (evaluate scope cell (snd matching_case))
-      with Not_found -> (evaluate scope cell dflt)) *)
+     | ExtendNumber(0) -> (evaluate scope cell (Selection(Id(false_id),(Some(Some(Rel(LitInt(0))),None),Some(Some(Rel(LitInt(0))),None)))))
+     | ExtendNumber(1) -> (evaluate scope cell (Selection(Id(true_id),(Some(Some(Rel(LitInt(0))),None),Some(Some(Rel(LitInt(0))),None)))))
+     | v -> raise(TransformedAway("Illegal value " ^ (string_of_val scope v) ^ " in truthiness variable " ^ cond_id)))
   | Id(s) -> find_variable s
   | Selection(expr, sel) ->
     let rng = range_of_val (evaluate scope cell expr) in
@@ -382,6 +370,21 @@ and evaluate scope cell e =
 
 (*  LitRange of (expr list) list *)
   | Precedence(a,b) -> ignore (evaluate scope cell a); evaluate scope cell b
+  | Ternary(cond, true_exp, false_exp) -> raise(TransformedAway("Ternaries shouldn't be possible!"))
+      (* (match (evaluate scope cell cond) with
+        EmptyValue -> EmptyValue
+      | ExtendNumber(0) -> (evaluate scope cell false_exp)
+      | _ -> (evaluate scope cell true_exp)) *)
+  | Switch(eo, cases, dflt) -> raise(TransformedAway("Switches shouldn't be possible!"))
+    (* let match_val = (match eo with
+       Some e -> (evaluate scope cell e)
+       | None -> ExtendNumber(1)) in
+       let is_expr_match e = (ExtendNumber(1) = (eval_binop Eq (match_val, (evaluate scope cell e)))) in
+       let is_match (exprs, _) = List.exists is_expr_match exprs in
+       (try
+       let matching_case = List.find is_match cases in
+       (evaluate scope cell (snd matching_case))
+       with Not_found -> (evaluate scope cell dflt)) *)
   | _ -> ExtendNumber(-1))
 
 and get_val rg cell =

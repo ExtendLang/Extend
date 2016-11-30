@@ -27,3 +27,4 @@ setup.log
 *.synctex.gz
 *.toc
 /tmp
+out

@@ -324,6 +324,11 @@ and evaluate scope cell e =
         EmptyValue -> EmptyValue
       | ExtendNumber(0) -> (evaluate scope cell false_exp)
       | _ -> (evaluate scope cell true_exp))
+  | ReducedTernary(cond_id, true_id, false_id) ->
+    (match (evaluate scope cell (Selection(Id(cond_id),(Some(Some(Rel(LitInt(0))),None),Some(Some(Rel(LitInt(0))),None))))) with
+       EmptyValue -> EmptyValue
+     | ExtendNumber(0) -> (evaluate scope cell (Selection(Id(true_id),(Some(Some(Rel(LitInt(0))),None),Some(Some(Rel(LitInt(0))),None)))))
+     | _ -> (evaluate scope cell (Selection(Id(false_id),(Some(Some(Rel(LitInt(0))),None),Some(Some(Rel(LitInt(0))),None))))))
   | Switch(eo, cases, dflt) -> raise(TransformedAway("Switches shouldn't be possible!")) (* let match_val = (match eo with
         Some e -> (evaluate scope cell e)
       | None -> ExtendNumber(1)) in

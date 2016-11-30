@@ -10,9 +10,9 @@ main([1,n] args) {
         case 2: "c";
       };
     case #foo < 6:
-      "second_three_" + switch(#foo % 3) {
+      "second_three_" + switch(printf(1, "three times\n") -> #foo % 3) {
         case 0: "x";
-        case 1: "y";
+        case 1: printf(1, "only once\n") -> "y";
         case 2: "z";
       };
     default:

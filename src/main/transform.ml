@@ -271,7 +271,7 @@ let ternarize_exprs (globals, functions, externs) =
           let (lhs_varname, lhs_vardef) = lhs_var in
           let new_id = idgen (lhs_varname ^ "_switch_cond") in
           let (new_e, new_e_vars) = ternarize_expr lhs_var cond_expr in
-          (Some (Selection(Id(new_id),(None,None))),
+          (Some (Selection(Id(new_id),(Some(Some(Rel(LitInt(0))),None),Some(Some(Rel(LitInt(0))),None)))),
            (new_id, {lhs_vardef with var_formulas = [{
                 formula_row_start = DimensionStart;
                 formula_row_end = Some DimensionEnd;
@@ -335,6 +335,88 @@ let ternarize_exprs (globals, functions, externs) =
   let ternarize_function fn_name fn_def = {fn_def with func_body = ternarize_variables fn_name fn_def.func_body} in
   (ternarize_variables "global" globals, StringMap.mapi ternarize_function functions, externs)
 
+let reduce_ternaries (globals, functions, externs) =
+  let rec reduce_expr lhs_var = function
+    | BinOp(e1, op, e2) ->
+      let (new_e1, new_e1_vars) = reduce_expr lhs_var e1 in
+      let (new_e2, new_e2_vars) = reduce_expr lhs_var  e2 in
+      (BinOp(new_e1, op, new_e2), new_e1_vars @ new_e2_vars)
+    | UnOp(op, e) ->
+      let (new_e, new_e_vars) = reduce_expr lhs_var e in
+      (UnOp(op, new_e), new_e_vars)
+    | Ternary(cond, e1, e2) -> reduce_ternary lhs_var cond e1 e2
+    | Call(fname, args) ->
+      let new_args_and_vars = List.map (reduce_expr lhs_var) args in
+      (Call(fname, (List.map fst new_args_and_vars)), List.concat (List.map snd new_args_and_vars))
+    | Selection(e, (sl1, sl2)) ->
+      let (new_e, new_e_vars) = reduce_expr lhs_var e in
+      let (new_sl1, new_sl1_vars) = reduce_slice lhs_var sl1 in
+      let (new_sl2, new_sl2_vars) = reduce_slice lhs_var sl2 in
+      (Selection(new_e, (new_sl1, new_sl2)), new_e_vars @ new_sl1_vars @ new_sl2_vars)
+    | Precedence(e1, e2) ->
+      let (new_e1, new_e1_vars) = reduce_expr lhs_var e1 in
+      let (new_e2, new_e2_vars) = reduce_expr lhs_var e2 in
+      (Precedence(new_e1, new_e2), new_e1_vars @ new_e2_vars)
+    | e -> (e, [])
+  and reduce_ternary lhs_var cond e1 e2 =
+    let (new_cond, new_cond_vars) = reduce_expr lhs_var cond in
+    let (new_true_e, new_true_vars) = reduce_expr lhs_var e1 in
+    let (new_false_e, new_false_vars) = reduce_expr lhs_var e2 in
+    let (lhs_varname, lhs_vardef) = lhs_var in
+    let new_cond_id = idgen (lhs_varname ^ "_truthiness") in
+    let new_true_id = idgen (lhs_varname ^ "_values_if_true") in
+    let new_false_id = idgen (lhs_varname ^ "_values_if_false") in
+    (ReducedTernary(new_cond_id, new_true_id, new_false_id),
+    (new_cond_id, {lhs_vardef with var_formulas = [{
+         formula_row_start = DimensionStart;
+         formula_row_end = Some DimensionEnd;
+         formula_col_start = DimensionStart;
+         formula_col_end = Some DimensionEnd;
+         formula_expr = new_cond;
+       }]}) ::
+    (new_true_id, {lhs_vardef with var_formulas = [{
+         formula_row_start = DimensionStart;
+         formula_row_end = Some DimensionEnd;
+         formula_col_start = DimensionStart;
+         formula_col_end = Some DimensionEnd;
+         formula_expr = new_true_e;
+       }]}) ::
+    (new_false_id, {lhs_vardef with var_formulas = [{
+         formula_row_start = DimensionStart;
+         formula_row_end = Some DimensionEnd;
+         formula_col_start = DimensionStart;
+         formula_col_end = Some DimensionEnd;
+         formula_expr = new_false_e;
+       }]}) ::
+    (new_cond_vars @ new_true_vars @ new_false_vars))
+  and reduce_slice lhs_var = function
+      None -> (None, [])
+    | Some (i1, i2) ->
+      let (new_i1, new_i1_vars) = reduce_index lhs_var i1 in
+      let (new_i2, new_i2_vars) = reduce_index lhs_var i2 in
+      (Some (new_i1, new_i2), new_i1_vars @ new_i2_vars)
+  and reduce_index lhs_var = function
+      Some Abs(e) ->
+      let (new_e, new_e_vars) = reduce_expr lhs_var e in
+      (Some(Abs(new_e)), new_e_vars)
+    | Some Rel(e) ->
+      let (new_e, new_e_vars) = reduce_expr lhs_var e in
+      (Some(Rel(new_e)), new_e_vars)
+    | i -> (i, []) in
+  let reduce_formula lhs_var f =
+    let (new_expr, new_vars) = reduce_expr lhs_var f.formula_expr in
+    ({f with formula_expr = new_expr}, new_vars) in
+  let reduce_variable varname vardef =
+    let new_formulas_and_vars = List.map (reduce_formula (varname, vardef)) vardef.var_formulas in
+    ({vardef with var_formulas = List.map fst new_formulas_and_vars}, List.concat (List.map snd new_formulas_and_vars)) in
+  let reduce_variables fn_name m =
+    let new_variables_and_maps = StringMap.mapi (fun varname vardef -> reduce_variable (fn_name ^ "_" ^ varname) vardef) m in
+    let add_item var_name (orig_var, new_vars) l = ((var_name, orig_var) :: fst l, new_vars :: snd l) in
+    let combined_list = StringMap.fold add_item new_variables_and_maps ([],[]) in
+    map_of_list (List.rev (fst combined_list) @ List.concat (snd combined_list)) in
+  let reduce_function fn_name fn_def = {fn_def with func_body = reduce_variables fn_name fn_def.func_body} in
+  (reduce_variables "global" globals, StringMap.mapi reduce_function functions, externs)
+
 let check_semantics (globals, functions, externs) =
   let fn_signatures = map_of_list
       (builtin_signatures @
@@ -363,6 +445,7 @@ let check_semantics (globals, functions, externs) =
         BinOp(e1,_,e2) -> check_expr e1 ; check_expr e2
       | UnOp(_, e) -> check_expr e
       | Ternary(cond, e1, e2) -> check_expr cond ; check_expr e1 ; check_expr e2
+      | ReducedTernary(s1, s2, s3) -> check_expr (Id(s1)) ; check_expr (Id(s2)) ; check_expr (Id(s3))
       | Id(s) -> if (List.mem s params || StringMap.mem s locals || StringMap.mem s globals) then () else raise(UnknownVariable(fname ^ "(): " ^ s))
       | Switch(Some e, cases, dflt) -> check_expr e ; List.iter check_case cases ; check_expr dflt
       | Switch(None, cases, dflt) -> List.iter check_case cases ; check_expr dflt
@@ -402,6 +485,7 @@ let check_semantics (globals, functions, externs) =
 let create_ast filename =
   let ast_imp_res = expand_file filename in
   let ast_expanded = expand_expressions ast_imp_res in
-  let ast_mapped = create_maps ast_expanded in
+  let ast_mapped = create_maps ast_expanded in check_semantics ast_mapped ;
   let ast_ternarized = ternarize_exprs ast_mapped in
-  check_semantics ast_ternarized ; ast_ternarized
+  let ast_reduced = reduce_ternaries ast_ternarized in check_semantics ast_reduced ;
+  ast_ternarized

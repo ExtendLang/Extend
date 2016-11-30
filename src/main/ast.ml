@@ -16,6 +16,7 @@ type expr     = LitInt of int |
                 Switch of expr option * case list * expr |
                 Call of string * expr list |
                 Selection of expr * sel |
+                ReducedTernary of string * string * string |
                 Precedence of expr * expr
 and  index    = Abs of expr |
                 Rel of expr |
@@ -132,7 +133,11 @@ let rec string_of_expr = function
   | Ternary(c, e1, e2) -> "{\"Ternary\": {" ^
                             "\"condition\": " ^ string_of_expr c ^ ", " ^
                             "\"ifExpr\": " ^ string_of_expr e1 ^ ", " ^
-                            "\"elseExpr\": " ^ string_of_expr e2 ^ "}}"
+                          "\"elseExpr\": " ^ string_of_expr e2 ^ "}}"
+  | ReducedTernary(s1, s2, s3) -> "{\"ReducedTernary\": {" ^
+                            "\"truthiness\": " ^ quote_string s1 ^ ", " ^
+                            "\"true_values\": " ^ quote_string s2 ^ ", " ^
+                            "\"false_values\": " ^ quote_string s3 ^ "}}"
   | Switch(eo, cases, dflt) ->  "{\"Switch\": {" ^
                                 "\"condition\": " ^
                                   (match eo with None -> "null" | Some e -> string_of_expr e) ^ ", " ^

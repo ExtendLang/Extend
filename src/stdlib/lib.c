@@ -2,6 +2,11 @@
 #include<stdlib.h>
 #include<math.h>
 
+#define FLAG_EMPTY 0
+#define FLAG_NUMBER 1
+#define FLAG_STRING 2
+#define FLAG_SUBRANGE 3
+
 struct subrange_t;
 struct value_t;
 
@@ -67,12 +72,12 @@ int assertSingle(subrange_p range) {
 }
 
 int assertText(value_p my_val) {
-	return (my_val->flags == 2);
+	return (my_val->flags == FLAG_STRING);
 }
 
 value_p empty() {
 	value_p empty_val = malloc(sizeof(struct value_t));
-	empty_val->flags = 0;
+	empty_val->flags = FLAG_EMPTY;
 	return empty_val;
 }
 
@@ -90,12 +95,6 @@ value_p printd(subrange_p whatever, subrange_p text) {
 	return result;
 }
 
-/*
-subrange_p _extend_abc() {
-	printf("Fun2\n");
-	subrange_p result = malloc(sizeof(struct subrange_t));
-	return result;
-}*/
 value_p extend_sin(subrange_p range) {
 	double val;
 	if(!assertSingle(range)) return empty();
@@ -103,6 +102,6 @@ value_p extend_sin(subrange_p range) {
 	val = sin(initial->numericVal);
 	value_p result = empty();
 	result->numericVal = val;
-	result->flags = (char)4;
+	result->flags = FLAG_NUMBER;
 	return result;
 }

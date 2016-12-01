@@ -76,19 +76,12 @@ value_p empty() {
 	return empty_val;
 }
 
-value_p success() {
-	value_p val = malloc(sizeof(struct value_t));
-	val->flags = 1;
-	val->numericVal = 1;
-	return val;
-}
-
 value_p print(subrange_p whatever, subrange_p text) {
 	if(!assertSingle(text)) return empty();
 	value_p my_val = get_val(text,0,0);
 	if(!assertText(my_val)) return empty();
 	printf("%s", my_val->str->text);
-	return success();
+	return empty();
 }
 
 value_p printd(subrange_p whatever, subrange_p text) {

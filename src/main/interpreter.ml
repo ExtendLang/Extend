@@ -385,7 +385,8 @@ and evaluate scope cell e =
        let matching_case = List.find is_match cases in
        (evaluate scope cell (snd matching_case))
        with Not_found -> (evaluate scope cell dflt)) *)
-  | _ -> ExtendNumber(-1))
+  | LitRange(_) -> raise(TransformedAway("Literal ranges shouldn't be possible!"))
+  | Wild -> raise(TransformedAway("Wild shouldn't be possible!")))
 
 and get_val rg cell =
   match rg with

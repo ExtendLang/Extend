@@ -1,5 +1,5 @@
 [1,1] main(args){
   foo := 5/5;
-  foo := 5$5; /* Wrong on line 3 */
+  /* Test comment */ foo := 5$5;
   return foo;
 }

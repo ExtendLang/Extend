@@ -63,8 +63,6 @@ for f in $(ls $TESTDIR/$REGRESSION); do
   fi
 done
 
-rm tmp/std.o
-
 for f in $(ls $TESTDIR/$INPUTS); do
   counter=$((counter+1))
   INTERPRETER_TARGET=$TMP_DIR/$f$INT_OUT
@@ -72,16 +70,19 @@ for f in $(ls $TESTDIR/$INPUTS); do
   EXTEND_FILE=$TESTDIR/$INPUTS/$f
   COMPILED_OUTPUT=$TMP_DIR/$f$COMP_OUT
   EXPECTED_OUTPUT=$TESTDIR/$EXPECTED/$f$EXP_OUT
+  TEXT_OUTPUT=$TMP_DIR/$f$COMP_OUTPUT
   RESULT_OUTPUT=$TMP_DIR/$f$RES_OUT
   p=0
   ./main.byte -i $EXTEND_FILE > $INTERPRETER_TARGET 2>&1
   ./main.byte -c $EXTEND_FILE > $EXTEND_TARGET 2>&1
-  lli-3.8 $EXTEND_TARGET arg1 > $TEXT_OUTPUT 2>&1
-  echo "Comparing ($INTERPRETER_TARGET) and ($EXPECTED_OUTPUT)"
+  llc-3.8 -filetype=obj $EXTEND_TARGET -o $COMPILED_OUTPUT
+  gcc -o tmp/tmp $COMPILED_OUTPUT tmp/std.o
+  rm $COMPILED_OUTPUT
+  ./tmp/tmp > $TEXT_OUTPUT
   diff $INTERPRETER_TARGET $EXPECTED_OUTPUT > $RESULT_OUTPUT 2>&1
   if [ $? -eq 0 ]; then
     counteri=$((counteri+1))
-    p=$((p+1))
+#    p=$((p+1))
     echo "Interpreter: PASSED ($f)"
   else
     echo "Interpreter: FAILED ($f)"
@@ -100,11 +101,13 @@ for f in $(ls $TESTDIR/$INPUTS); do
       cat $RESULT_OUTPUT
     fi
   fi
-  if [ $p -eq 2 ]; then
+  if [ $p -eq 1 ]; then
     countern=$((countern+1))
     mv $EXTEND_FILE $TESTDIR/$REGRESSION/$f
   fi
 done
+
+rm tmp/std.o
 
 echo "Passed $counteri of $counter interpreter testcases"
 echo "Passed $counterc of $counter compiler testcases"

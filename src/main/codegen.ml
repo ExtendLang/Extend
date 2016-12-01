@@ -28,24 +28,27 @@ type something = {
   char_p : Llvm.lltype;
   char_p_p : Llvm.lltype;
   (*void_p : Llvm.lltype;*)
+  float_t : Llvm.lltype;
 };;
 
 let helper_functions = Hashtbl.create 10
 let extern_functions = Hashtbl.create 10
 
-type value_field_flags = Empty | Number | String | Range
+type value_field_flags = Empty | Number | String | Range | Float
 let value_field_flags_index = function
     Empty -> 0
   | Number -> 1
   | String -> 2
   | Range -> 3
+  | Float -> 4
 
-type value_field = Flags | Number | String | Subrange
+type value_field = Flags | Number | String | Subrange | Float
 let value_field_index = function
     Flags -> 0
   | Number -> 1
   | String -> 2
   | Subrange -> 3
+  | Float -> 4
 
 type range_field = Rows | Columns | Values | Statuses | Formulas
 let range_field_index = function
@@ -172,7 +175,7 @@ let create_helper_functions ctx bt the_module =
     let str = Llvm.param fn_def 0 in
     let ret_val = Llvm.build_malloc bt.value_t "" fn_bod in
     let sp = Llvm.build_struct_gep ret_val (value_field_index String) "str_pointer" fn_bod in
-    let _ = Llvm.build_store (Llvm.const_int bt.char_t 2) (Llvm.build_struct_gep ret_val (value_field_index Flags) "" fn_bod) fn_bod in
+    let _ = Llvm.build_store (Llvm.const_int bt.char_t (value_field_flags_index String)) (Llvm.build_struct_gep ret_val (value_field_index Flags) "" fn_bod) fn_bod in
     let _ = Llvm.build_store str sp fn_bod in
     let _ = Llvm.build_ret ret_val fn_bod in
     Hashtbl.add helper_functions fname fn_def in
@@ -182,9 +185,21 @@ let create_helper_functions ctx bt the_module =
     let str = Llvm.param fn_def 0 in
     let ret_val = Llvm.build_malloc bt.value_t "" fn_bod in
     let sp = Llvm.build_struct_gep ret_val (value_field_index Number) "num_pointer" fn_bod in
+    let _ = Llvm.build_store (Llvm.const_int bt.char_t (value_field_flags_index Number)) (Llvm.build_struct_gep ret_val (value_field_index Flags) "" fn_bod) fn_bod in
     let _ = Llvm.build_store str sp fn_bod in
     let _ = Llvm.build_ret ret_val fn_bod in
     Hashtbl.add helper_functions fname fn_def in
+
+  let create_box_value_float fname =
+    let (fn_def, fn_bod) = create_def_bod fname bt.value_p [bt.float_t] in
+    let str = Llvm.param fn_def 0 in
+    let ret_val = Llvm.build_malloc bt.value_t "" fn_bod in
+    let sp = Llvm.build_struct_gep ret_val (value_field_index Float) "num_pointer" fn_bod in
+    let _ = Llvm.build_store (Llvm.const_int bt.char_t (value_field_flags_index Float)) (Llvm.build_struct_gep ret_val (value_field_index Flags) "" fn_bod) fn_bod in
+    let _ = Llvm.build_store str sp fn_bod in
+    let _ = Llvm.build_ret ret_val fn_bod in
+    Hashtbl.add helper_functions fname fn_def in
+
 
   let create_box_single_value fname =
     let (fn_def, fn_bod) = create_def_bod fname bt.subrange_p [bt.value_p] in
@@ -212,6 +227,7 @@ let create_helper_functions ctx bt the_module =
     create_box_value_string "box_value_string";
     create_box_value_number "box_value_number";
     create_box_single_value "box_single_value";
+    create_box_value_float "box_value_float";
     ()
 
 let create_main fnames ctx bt the_module =
@@ -248,6 +264,7 @@ let translate (globals, functions, externs) =
     and subrange_t = Llvm.named_struct_type ctx "subrange" (*Subrange is a wrapper around a range to cut cells*)
     and int_t = Llvm.i32_type ctx (*Integer*)
     and long_t = Llvm.i64_type ctx
+    and float_t = Llvm.double_type ctx
     and flags_t = Llvm.i8_type ctx (*Flags for statuses*)
     and char_t = Llvm.i8_type ctx (*Simple ASCII character*)
     and bool_t = Llvm.i1_type ctx (*boolean 0 = false, 1 = true*)
@@ -286,7 +303,8 @@ let translate (globals, functions, externs) =
         flags_t (*First bit indicates whether it is an int or a range*);
         number_t (*Numeric value of the cell*);
         string_p (*String value of the cell if applicable*);
-        subrange_p (*Range value of the cell if applicable*)
+        subrange_p (*Range value of the cell if applicable*);
+        float_t (*Double value of the cell*)
       ]) false
     and _ = Llvm.struct_set_body string_t (Array.of_list [
         char_p (*Pointer to null-terminated string*);
@@ -314,6 +332,7 @@ let translate (globals, functions, externs) =
 
       int_t = int_t;
       long_t = long_t;
+      float_t = float_t;
       flags_t = flags_t;
       bool_t = bool_t;
       char_t = char_t;
@@ -395,6 +414,10 @@ let translate (globals, functions, externs) =
           | Ast.LitInt(i) -> let boxx = Llvm.build_call
               (Hashtbl.find helpers "box_value_number")
               (Array.of_list [Llvm.const_int bt.int_t i]) "box_value_str" builder
+              in boxx
+          | Ast.LitFlt(f) -> let boxx = Llvm.build_call
+              (Hashtbl.find helpers "box_value_float")
+              (Array.of_list [Llvm.const_float bt.float_t f]) "box_value_str" builder
               in boxx
           | Ast.BinOp(ex1,op,ex2) ->
               let val1 = (expr_eval ex1 scope builder ctx extern helpers bt)

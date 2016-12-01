@@ -23,8 +23,8 @@ struct value_t {
 	char flags;
 	int numericVal;
 	string_p str;
-	double doubleVal;
 	struct subrange_t *subrange;
+	double doubleVal;
 };
 
 typedef struct value_t* value_p;
@@ -99,7 +99,7 @@ value_p printn(subrange_p whatever, subrange_p text) {
 }
 
 value_p printd(subrange_p whatever, subrange_p text) {
-	printf("%f", text->range->values->doubleVal);
+	printf("%f\n", text->range->values->doubleVal);
 	value_p result = malloc(sizeof(struct value_t));
 	return result;
 }
@@ -112,12 +112,11 @@ subrange_p _extend_abc() {
 }*/
 value_p extend_sin(subrange_p range) {
 	double val;
-	value_p result = malloc(sizeof(struct value_t));
-	result->flags = (char)0;
-	if(!assertSingle(range)) return result;
+	if(!assertSingle(range)) return empty();
 	value_p initial = get_val(range, 0, 0);
-	val = sin(initial->numericVal);
-	result->numericVal = val;
-	result->flags = (char)1;
+	val = sin(initial->doubleVal);
+	value_p result = empty();
+	result->doubleVal = val;
+	result->flags = (char)4;
 	return result;
 }

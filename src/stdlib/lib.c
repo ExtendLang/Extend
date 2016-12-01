@@ -241,3 +241,47 @@ value_p extend_log10(subrange_p range) {
 	result->flags = (char)4;
 	return result;
 }
+
+value_p extend_sqrt(subrange_p range) {
+	double val;
+	if(!assertSingle(range)) return empty();
+	value_p initial = get_val(range, 0, 0);
+	val = sqrt(initial->doubleVal);
+	value_p result = empty();
+	result->doubleVal = val;
+	result->flags = (char)4;
+	return result;
+}
+
+value_p extend_ceil(subrange_p range) {
+	double val;
+	if(!assertSingle(range)) return empty();
+	value_p initial = get_val(range, 0, 0);
+	val = ceil(initial->doubleVal);
+	value_p result = empty();
+	result->doubleVal = val;
+	result->flags = (char)4;
+	return result;
+}
+
+value_p extend_fabs(subrange_p range) {
+	double val;
+	if(!assertSingle(range)) return empty();
+	value_p initial = get_val(range, 0, 0);
+	val = fabs(initial->doubleVal);
+	value_p result = empty();
+	result->doubleVal = val;
+	result->flags = (char)4;
+	return result;
+}
+
+value_p extend_floor(subrange_p range) {
+	double val;
+	if(!assertSingle(range)) return empty();
+	value_p initial = get_val(range, 0, 0);
+	val = floor(initial->doubleVal);
+	value_p result = empty();
+	result->doubleVal = val;
+	result->flags = (char)4;
+	return result;
+}

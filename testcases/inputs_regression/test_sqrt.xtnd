@@ -1,0 +1,8 @@
+extern "stdlib.o" {
+  extend_sqrt(a);
+  printd(a,b);
+}
+
+[1,1] main([1,n] args) {
+  return printd(1, extend_sqrt(9.0)) -> 0;
+}

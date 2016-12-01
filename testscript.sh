@@ -45,7 +45,7 @@ for f in $(ls $TESTDIR/$REGRESSION); do
     echo "Interpreter: PASSED ($f)"
   else
     echo "Interpreter: FAILED ($f)"
-    result=$((result+1))
+#    result=$((result+1))
     if [ $PRINT = "-p" ]; then
       cat $RESULT_OUTPUT
     fi
@@ -76,7 +76,7 @@ for f in $(ls $TESTDIR/$INPUTS); do
   ./main.byte -i $EXTEND_FILE > $INTERPRETER_TARGET 2>&1
   ./main.byte -c $EXTEND_FILE > $EXTEND_TARGET 2>&1
   llc-3.8 -filetype=obj $EXTEND_TARGET -o $COMPILED_OUTPUT
-  gcc -o tmp/tmp $COMPILED_OUTPUT tmp/std.o
+  gcc -lm -o tmp/tmp $COMPILED_OUTPUT tmp/std.o
   rm $COMPILED_OUTPUT
   ./tmp/tmp > $TEXT_OUTPUT
   diff $INTERPRETER_TARGET $EXPECTED_OUTPUT > $RESULT_OUTPUT 2>&1

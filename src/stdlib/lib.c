@@ -75,18 +75,18 @@ int assertText(value_p my_val) {
 	return (my_val->flags == FLAG_STRING);
 }
 
-value_p empty() {
+value_p new_val() {
 	value_p empty_val = malloc(sizeof(struct value_t));
 	empty_val->flags = FLAG_EMPTY;
 	return empty_val;
 }
 
 value_p print(subrange_p whatever, subrange_p text) {
-	if(!assertSingle(text)) return empty();
+	if(!assertSingle(text)) return new_val();
 	value_p my_val = get_val(text,0,0);
-	if(!assertText(my_val)) return empty();
+	if(!assertText(my_val)) return new_val();
 	printf("%s", my_val->str->text);
-	return empty();
+	return new_val();
 }
 
 value_p printd(subrange_p whatever, subrange_p text) {
@@ -97,10 +97,10 @@ value_p printd(subrange_p whatever, subrange_p text) {
 
 value_p extend_sin(subrange_p range) {
 	double val;
-	if(!assertSingle(range)) return empty();
+	if(!assertSingle(range)) return new_val();
 	value_p initial = get_val(range, 0, 0);
 	val = sin(initial->numericVal);
-	value_p result = empty();
+	value_p result = new_val();
 	result->numericVal = val;
 	result->flags = FLAG_NUMBER;
 	return result;

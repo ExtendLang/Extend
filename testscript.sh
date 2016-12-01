@@ -22,7 +22,7 @@ counteri=0
 countern=0
 result=0
 
-gcc -lm -c -o tmp/std.o src/stdlib/lib.c
+gcc -c -o tmp/std.o src/stdlib/lib.c -lm
 
 for f in $(ls $TESTDIR/$REGRESSION); do
   counter=$((counter+1))
@@ -36,7 +36,7 @@ for f in $(ls $TESTDIR/$REGRESSION); do
   ./main.byte -i $EXTEND_FILE > $INTERPRETER_TARGET 2>&1
   ./main.byte -c $EXTEND_FILE > $EXTEND_TARGET 2>&1
   llc-3.8 -filetype=obj $EXTEND_TARGET -o $COMPILED_OUTPUT
-  gcc -lm -o tmp/tmp $COMPILED_OUTPUT tmp/std.o
+  gcc -o tmp/tmp $COMPILED_OUTPUT tmp/std.o -lm
   rm $COMPILED_OUTPUT
   ./tmp/tmp > $TEXT_OUTPUT
   diff $INTERPRETER_TARGET $EXPECTED_OUTPUT > $RESULT_OUTPUT 2>&1
@@ -76,7 +76,7 @@ for f in $(ls $TESTDIR/$INPUTS); do
   ./main.byte -i $EXTEND_FILE > $INTERPRETER_TARGET 2>&1
   ./main.byte -c $EXTEND_FILE > $EXTEND_TARGET 2>&1
   llc-3.8 -filetype=obj $EXTEND_TARGET -o $COMPILED_OUTPUT
-  gcc -lm -o tmp/tmp $COMPILED_OUTPUT tmp/std.o
+  gcc -o tmp/tmp $COMPILED_OUTPUT tmp/std.o -lm
   rm $COMPILED_OUTPUT
   ./tmp/tmp > $TEXT_OUTPUT
   diff $INTERPRETER_TARGET $EXPECTED_OUTPUT > $RESULT_OUTPUT 2>&1

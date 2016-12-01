@@ -264,7 +264,13 @@ let ternarize_exprs (globals, functions, externs) =
       (Precedence(new_e1, new_e2), new_e1_vars @ new_e2_vars)
     | Switch(cond, cases, dflt) ->
       ternarize_switch lhs_var cases dflt cond
+    | LitRange(rowlist) -> ternarize_litrange lhs_var rowlist
     | e -> (e, [])
+  and ternarize_litrange lhs_var rowlist =
+    let (lhs_varname, _) = lhs_var in
+    let new_range_id = idgen (lhs_varname ^ "_litrange") in
+    let new_rows_id = idgen (new_range_id ^ "_rows") in
+    (Id(new_range_id), [])
   and ternarize_switch lhs_var cases dflt cond =
     let (new_cond_expr, new_cond_vars) = (match cond with
           Some cond_expr ->

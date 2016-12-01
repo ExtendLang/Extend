@@ -183,7 +183,7 @@ and evaluate scope cell e =
         | GtEq -> if n1 >= n2 then ExtendNumber(1) else ExtendNumber(0)
         | LtEq -> if n1 <= n2 then ExtendNumber(1) else ExtendNumber(0)
         | LogAnd -> raise(TransformedAway("Logical And shouldn't be possible!"))
-        | LogOr -> raise(TransformedAway("Logical And shouldn't be possible!"))
+        | LogOr -> raise(TransformedAway("Logical Or shouldn't be possible!"))
         )
     | (ExtendString(s1), ExtendString(s2)) -> (match op with
           Plus -> ExtendString(s1 ^ s2)

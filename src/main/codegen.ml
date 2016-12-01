@@ -104,7 +104,7 @@ let create_helper_functions ctx bt the_module =
     let _ = Llvm.build_ret one_by_one fn_bod in
     Hashtbl.add helper_functions fname fn_def in
 
-  let create_get_val fname =
+  (*let create_get_val fname =
     let (fn_def, fn_bod) = create_def_bod fname bt.int_t [bt.range_p; bt.int_t; bt.int_t] in
     let _ = Llvm.build_ret (Llvm.const_int bt.int_t (-1)) fn_bod in
     Hashtbl.add helper_functions fname fn_def in
@@ -117,7 +117,7 @@ let create_helper_functions ctx bt the_module =
         (Array.of_list [the_base_range; (Llvm.const_int bt.int_t 0); (Llvm.const_int bt.int_t 0)])
         "the_contents" fn_bod in
     let _ = Llvm.build_ret the_val fn_bod in
-    Hashtbl.add helper_functions fname fn_def in
+    Hashtbl.add helper_functions fname fn_def in*)
 
   let create_new_string fname =
     let (fn_def, fn_bod) = create_def_bod fname bt.string_p [bt.char_p] in
@@ -172,6 +172,7 @@ let create_helper_functions ctx bt the_module =
     let str = Llvm.param fn_def 0 in
     let ret_val = Llvm.build_malloc bt.value_t "" fn_bod in
     let sp = Llvm.build_struct_gep ret_val (value_field_index String) "str_pointer" fn_bod in
+    let _ = Llvm.build_store (Llvm.const_int bt.char_t 2) (Llvm.build_struct_gep ret_val (value_field_index Flags) "" fn_bod) fn_bod in
     let _ = Llvm.build_store str sp fn_bod in
     let _ = Llvm.build_ret ret_val fn_bod in
     Hashtbl.add helper_functions fname fn_def in
@@ -194,16 +195,18 @@ let create_helper_functions ctx bt the_module =
     let vp = Llvm.build_struct_gep range (range_field_index Values) "value_p" fn_bod in
     let _ = Llvm.build_store value vp fn_bod in
     let _ = Llvm.build_store range rp fn_bod in
-    let _ = Llvm.build_store (Llvm.const_int bt.int_t 0) (Llvm.build_struct_gep subrange (subrange_field_index BaseOffsetCol) "" fn_bod) in
-    let _ = Llvm.build_store (Llvm.const_int bt.int_t 0) (Llvm.build_struct_gep subrange (subrange_field_index BaseOffsetRow) "" fn_bod) in
-    let _ = Llvm.build_store (Llvm.const_int bt.int_t 1) (Llvm.build_struct_gep subrange (subrange_field_index SubrangeRows) "" fn_bod) in
-    let _ = Llvm.build_store (Llvm.const_int bt.int_t 1) (Llvm.build_struct_gep subrange (subrange_field_index SubrangeCols) "" fn_bod) in
+    let _ = Llvm.build_store (Llvm.const_int bt.int_t 0) (Llvm.build_struct_gep subrange (subrange_field_index BaseOffsetCol) "" fn_bod) fn_bod in
+    let _ = Llvm.build_store (Llvm.const_int bt.int_t 0) (Llvm.build_struct_gep subrange (subrange_field_index BaseOffsetRow) "" fn_bod) fn_bod in
+    let _ = Llvm.build_store (Llvm.const_int bt.int_t 1) (Llvm.build_struct_gep subrange (subrange_field_index SubrangeRows) "" fn_bod) fn_bod in
+    let _ = Llvm.build_store (Llvm.const_int bt.int_t 1) (Llvm.build_struct_gep subrange (subrange_field_index SubrangeCols) "" fn_bod) fn_bod in
+    let _ = Llvm.build_store (Llvm.const_int bt.int_t 1) (Llvm.build_struct_gep range (range_field_index Rows) "" fn_bod) fn_bod in
+    let _ = Llvm.build_store (Llvm.const_int bt.int_t 1) (Llvm.build_struct_gep range (range_field_index Columns) "" fn_bod) fn_bod in
     let _ = Llvm.build_ret subrange fn_bod in
     Hashtbl.add helper_functions fname fn_def in
 
     create_is_subrange_1x1 "is_subrange_1x1";
-    create_get_val "get_val";
-    create_deref_subrange "deref_subrange";
+    (*create_get_val "get_val";
+    create_deref_subrange "deref_subrange";*)
     create_new_string "new_string";
     create_box_native_string_list "box_native_string_list";
     create_box_value_string "box_value_string";
@@ -330,7 +333,10 @@ let translate (globals, functions, externs) =
         Llvm.declare_function
         b.Ast.extern_fn_name
         (
-          Llvm.function_type base_types.subrange_p (Array.of_list (List.map (fun a -> base_types.subrange_p) b.Ast.extern_fn_params))
+          Llvm.function_type base_types.value_p
+          (
+            Array.of_list (List.map (fun a -> base_types.subrange_p) b.Ast.extern_fn_params)
+          )
         )
         base_module
       )
@@ -343,7 +349,7 @@ let translate (globals, functions, externs) =
     Ast.StringMap.mapi (fun key (func: Ast.func_decl) ->
         (func, Llvm.define_function
            (if (key = "main") then "_main" else key)
-           (Llvm.function_type base_types.subrange_p (Array.of_list (List.map (fun a -> base_types.subrange_p) func.Ast.func_params)))
+           (Llvm.function_type base_types.value_p (Array.of_list (List.map (fun a -> base_types.subrange_p) func.Ast.func_params)))
            base_module)
       ) functions in
   let build_public_functions =
@@ -365,7 +371,14 @@ let translate (globals, functions, externs) =
             Ast.Precedence(a,b) -> expr_eval a scope builder ctx extern helpers bt; expr_eval b scope builder ctx extern helpers bt;
           | Ast.Call(fn,exl) ->
               let args = Array.of_list
-                (List.rev (List.fold_left (fun a b -> (expr_eval b scope builder ctx extern helpers bt) :: a) [] exl)) in
+                (List.rev (List.fold_left (
+                  fun a b -> (
+                    Llvm.build_call
+                    (Hashtbl.find helpers "box_single_value")
+                    (Array.of_list [(expr_eval b scope builder ctx extern helpers bt)])
+                    ""
+                    builder
+                  ) :: a) [] exl)) in
               Llvm.build_call (
                 Ast.StringMap.find fn build_public_functions
               ) args "" builder
@@ -377,18 +390,12 @@ let translate (globals, functions, externs) =
               ]) "boxed_str" builder in
               let boxx = Llvm.build_call
               (Hashtbl.find helpers "box_value_string")
-              (Array.of_list [boxxx]) "box_value_str" builder in
-              let box = Llvm.build_call
-              (Hashtbl.find helpers "box_single_value")
-              [|boxx|] "box_subrange" builder
-              in box
+              (Array.of_list [boxxx]) "box_value_str" builder
+              in boxx
           | Ast.LitInt(i) -> let boxx = Llvm.build_call
               (Hashtbl.find helpers "box_value_number")
-              (Array.of_list [Llvm.const_int bt.int_t i]) "box_value_str" builder in
-              let box = Llvm.build_call
-              (Hashtbl.find helpers "box_single_value")
-              [|boxx|] "box_subrange" builder
-              in box
+              (Array.of_list [Llvm.const_int bt.int_t i]) "box_value_str" builder
+              in boxx
           | Ast.BinOp(ex1,op,ex2) ->
               let val1 = (expr_eval ex1 scope builder ctx extern helpers bt)
               and val2 = (expr_eval ex2 scope builder ctx extern helpers bt) in

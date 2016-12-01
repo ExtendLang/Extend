@@ -2,6 +2,11 @@
 #include<stdlib.h>
 #include<math.h>
 
+#define FLAG_EMPTY 0
+#define FLAG_NUMBER 1
+#define FLAG_STRING 2
+#define FLAG_SUBRANGE 3
+
 struct subrange_t;
 struct value_t;
 
@@ -21,9 +26,8 @@ typedef struct string_t* string_p;
 
 struct value_t {
 	char flags;
-	int numericVal;
+	double numericVal;
 	string_p str;
-	double doubleVal;
 	struct subrange_t *subrange;
 };
 
@@ -68,49 +72,36 @@ int assertSingle(subrange_p range) {
 }
 
 int assertText(value_p my_val) {
-	return (my_val->flags == 2);
+	return (my_val->flags == FLAG_STRING);
 }
 
-value_p empty() {
+value_p new_val() {
 	value_p empty_val = malloc(sizeof(struct value_t));
-	empty_val->flags = 0;
+	empty_val->flags = FLAG_EMPTY;
 	return empty_val;
 }
 
 value_p print(subrange_p whatever, subrange_p text) {
-	if(!assertSingle(text)) return empty();
+	if(!assertSingle(text)) return new_val();
 	value_p my_val = get_val(text,0,0);
-	if(!assertText(my_val)) return empty();
+	if(!assertText(my_val)) return new_val();
 	printf("%s", my_val->str->text);
-	return empty();
-}
-
-value_p printn(subrange_p whatever, subrange_p text) {
-	printf("%d", text->range->values->numericVal);
-	value_p result = malloc(sizeof(struct value_t));
-	return result;
+	return new_val();
 }
 
 value_p printd(subrange_p whatever, subrange_p text) {
-	printf("%f", text->range->values->doubleVal);
+	printf("%f\n", text->range->values->numericVal);
 	value_p result = malloc(sizeof(struct value_t));
 	return result;
 }
 
-/*
-subrange_p _extend_abc() {
-	printf("Fun2\n");
-	subrange_p result = malloc(sizeof(struct subrange_t));
-	return result;
-}*/
 value_p extend_sin(subrange_p range) {
 	double val;
-	value_p result = malloc(sizeof(struct value_t));
-	result->flags = (char)0;
-	if(!assertSingle(range)) return result;
+	if(!assertSingle(range)) return new_val();
 	value_p initial = get_val(range, 0, 0);
 	val = sin(initial->numericVal);
+	value_p result = new_val();
 	result->numericVal = val;
-	result->flags = (char)1;
+	result->flags = FLAG_NUMBER;
 	return result;
 }

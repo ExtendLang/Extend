@@ -23,6 +23,7 @@ struct value_t {
 	char flags;
 	int numericVal;
 	string_p str;
+	double doubleVal;
 	struct subrange_t *subrange;
 };
 
@@ -54,15 +55,45 @@ struct subrange_t {
 
 typedef struct subrange_t* subrange_p;
 
-value_p get_val(range_p range, int row, int col);
+//value_p get_val(range_p range, int row, int col);
+
+value_p get_val(subrange_p range, int row, int col) {
+	//TODO: assertions
+	value_p val = range->range->values + (row + range->offsetRow) * range->range->cols + col + range->offsetCol;
+	return val;
+}
 
 int assertSingle(subrange_p range) {
 	return (range->subrangeRow == 1 && range->subrangeCol == 1);
 }
 
-subrange_p print(subrange_p whatever, subrange_p text) {
-	printf("%s", text->range->values->str->text);
-	subrange_p result = malloc(sizeof(struct subrange_t));
+int assertText(value_p my_val) {
+	return (my_val->flags == 2);
+}
+
+value_p empty() {
+	value_p empty_val = malloc(sizeof(struct value_t));
+	empty_val->flags = 0;
+	return empty_val;
+}
+
+value_p print(subrange_p whatever, subrange_p text) {
+	if(!assertSingle(text)) return empty();
+	value_p my_val = get_val(text,0,0);
+	if(!assertText(my_val)) return empty();
+	printf("%s", my_val->str->text);
+	return empty();
+}
+
+value_p printn(subrange_p whatever, subrange_p text) {
+	printf("%d", text->range->values->numericVal);
+	value_p result = malloc(sizeof(struct value_t));
+	return result;
+}
+
+value_p printd(subrange_p whatever, subrange_p text) {
+	printf("%f", text->range->values->doubleVal);
+	value_p result = malloc(sizeof(struct value_t));
 	return result;
 }
 
@@ -71,16 +102,15 @@ subrange_p _extend_abc() {
 	printf("Fun2\n");
 	subrange_p result = malloc(sizeof(struct subrange_t));
 	return result;
-}
+}*/
 value_p extend_sin(subrange_p range) {
 	double val;
 	value_p result = malloc(sizeof(struct value_t));
 	result->flags = (char)0;
 	if(!assertSingle(range)) return result;
-	value_p initial = get_val(range->range, range->offsetRow, range->offsetCol);
-	val = sin(initial->numericVal.val);
-	result->numericVal.val = val;
+	value_p initial = get_val(range, 0, 0);
+	val = sin(initial->numericVal);
+	result->numericVal = val;
 	result->flags = (char)1;
 	return result;
 }
-*/

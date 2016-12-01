@@ -6,6 +6,8 @@ main(args) {
   r5 := {{{{{1}}}}};
   r6 := {-1,-2,-3};
   r7 := {-1.5,-2.5,{-2,"ummm"},-3.5};
+  r8 := {{"a","b","c"};{"d","e","f"}};
+  r9 := {{"a","b","c"},{"d","e","f"}};
 
   return
     printf(1, toString(r1) + "\n") ->
@@ -15,5 +17,7 @@ main(args) {
     printf(1, toString(r5) + "\n") ->
     printf(1, toString(r6) + "\n") ->
     printf(1, toString(r7) + "\n") ->
+    printf(1, toString(r8) + "\n") ->
+    printf(1, toString(r9) + "\n") ->
     0;
 }

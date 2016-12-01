@@ -276,55 +276,27 @@ let ternarize_exprs (globals, functions, externs) =
     | e -> (e, [])
   and formulize_litrange lhs_varname rowlist =
     let new_range_id = idgen (lhs_varname ^ "_litrange") in
-    let new_rows_id = idgen (lhs_varname ^ "_litrange_rows") in
+    let num_rows = List.length rowlist in
+    let num_cols = List.fold_left max 0 (List.map List.length rowlist) in
+    let formulize_expr r c = function
+        LitRange(rl) -> formulize_litrange (new_range_id ^ "_" ^ string_of_int r ^ "_" ^ string_of_int c) rl
+      | e -> (e, []) in
     let formulize_row rownum col_exprs =
-      let cols_var_id = idgen (lhs_varname ^ "_litrange_row_" ^ string_of_int rownum) in
-      let num_cols = List.length col_exprs in
-      let formulize_expr = function
-          LitRange(rl) -> formulize_litrange cols_var_id rl
-        | e -> (e, []) in
-      let col_formulas_and_vars = List.map formulize_expr col_exprs in
-      let create_col_formula colnum e = {
-        formula_row_start = Abs(LitInt(0)); formula_row_end = None;
+      let col_formulas_and_vars = List.mapi (fun c e -> formulize_expr rownum c e) col_exprs in
+      let create_formula colnum e = {
+        formula_row_start = Abs(LitInt(rownum)); formula_row_end = None;
         formula_col_start = Abs(LitInt(colnum)); formula_col_end = None;
         formula_expr = e;
       } in
-      let cols_var = {
-        var_rows = DimInt(1); var_cols = DimInt(num_cols);
-        var_formulas = List.mapi create_col_formula (List.map fst col_formulas_and_vars);
-      } in
-      ((cols_var_id,num_cols), (cols_var_id, cols_var) :: List.concat (List.map snd col_formulas_and_vars)) in
-    let rowids_and_vars = List.mapi formulize_row rowlist in
-    let num_rows = List.length rowlist in
-    let num_cols = List.fold_left max 0 (List.map (fun l -> snd (fst l)) rowids_and_vars) in
-    let create_row_formula rownum rowid = {
-      formula_row_start = Abs(LitInt(rownum)); formula_row_end = None;
-      formula_col_start = Abs(LitInt(0)); formula_col_end = None;
-      formula_expr = Id(rowid);
-    } in
-    let rows_var = {
-      (* [2,1] foo_rows;
-         foo_rows[0,0] = foo_row_0;
-         foo_rows[1,0] = foo_row_1; *)
-      var_rows = DimInt(num_rows); var_cols = DimInt(1);
-      var_formulas = List.mapi create_row_formula (List.map (fun x -> fst (fst x)) rowids_and_vars);
-    } in
+      (List.mapi create_formula (List.map fst col_formulas_and_vars), List.concat (List.map snd col_formulas_and_vars)) in
+    let formulas_and_vars = List.mapi formulize_row rowlist in
     let range_var = {
-      (* [2,3] foo := foo_rows[[0],0][0,[0]]; *)
       var_rows = DimInt(num_rows); var_cols = DimInt(num_cols);
-      var_formulas = [single_formula
-                        (Selection(
-                            Selection(
-                              Id(new_rows_id), (
-                                Some (Some (Rel(LitInt(0))), None),
-                                Some (Some (Abs(LitInt(0))), None))),
-                            (Some (Some (Abs(LitInt(0))), None),
-                             Some (Some (Rel(LitInt(0))), None))))];
+      var_formulas = List.concat (List.map fst formulas_and_vars);
     } in
     (Id(new_range_id),
-     (new_rows_id, rows_var) ::
      (new_range_id, range_var) ::
-     List.concat (List.map snd rowids_and_vars))
+     List.concat (List.map snd formulas_and_vars))
   and ternarize_switch lhs_var cases dflt cond =
     let (new_cond_expr, new_cond_vars) = (match cond with
           Some cond_expr ->

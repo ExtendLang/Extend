@@ -120,3 +120,124 @@ value_p extend_sin(subrange_p range) {
 	result->flags = (char)4;
 	return result;
 }
+
+value_p extend_cos(subrange_p range) {
+	double val;
+	if(!assertSingle(range)) return empty();
+	value_p initial = get_val(range, 0, 0);
+	val = cos(initial->doubleVal);
+	value_p result = empty();
+	result->doubleVal = val;
+	result->flags = (char)4;
+	return result;
+}
+
+value_p extend_tan(subrange_p range) {
+	double val;
+	if(!assertSingle(range)) return empty();
+	value_p initial = get_val(range, 0, 0);
+	val = tan(initial->doubleVal);
+	value_p result = empty();
+	result->doubleVal = val;
+	result->flags = (char)4;
+	return result;
+}
+
+value_p extend_asin(subrange_p range) {
+	double val;
+	if(!assertSingle(range)) return empty();
+	value_p initial = get_val(range, 0, 0);
+	val = asin(initial->doubleVal);
+	value_p result = empty();
+	result->doubleVal = val;
+	result->flags = (char)4;
+	return result;
+}
+
+value_p extend_acos(subrange_p range) {
+	double val;
+	if(!assertSingle(range)) return empty();
+	value_p initial = get_val(range, 0, 0);
+	val = acos(initial->doubleVal);
+	value_p result = empty();
+	result->doubleVal = val;
+	result->flags = (char)4;
+	return result;
+}
+
+value_p extend_atan(subrange_p range) {
+	double val;
+	if(!assertSingle(range)) return empty();
+	value_p initial = get_val(range, 0, 0);
+	val = atan(initial->doubleVal);
+	value_p result = empty();
+	result->doubleVal = val;
+	result->flags = (char)4;
+	return result;
+}
+
+value_p extend_sinh(subrange_p range) {
+	double val;
+	if(!assertSingle(range)) return empty();
+	value_p initial = get_val(range, 0, 0);
+	val = sinh(initial->doubleVal);
+	value_p result = empty();
+	result->doubleVal = val;
+	result->flags = (char)4;
+	return result;
+}
+
+value_p extend_cosh(subrange_p range) {
+	double val;
+	if(!assertSingle(range)) return empty();
+	value_p initial = get_val(range, 0, 0);
+	val = cosh(initial->doubleVal);
+	value_p result = empty();
+	result->doubleVal = val;
+	result->flags = (char)4;
+	return result;
+}
+
+value_p extend_tanh(subrange_p range) {
+	double val;
+	if(!assertSingle(range)) return empty();
+	value_p initial = get_val(range, 0, 0);
+	val = tanh(initial->doubleVal);
+	value_p result = empty();
+	result->doubleVal = val;
+	result->flags = (char)4;
+	return result;
+}
+
+value_p extend_exp(subrange_p range) {
+	double val;
+	if(!assertSingle(range)) return empty();
+	value_p initial = get_val(range, 0, 0);
+	val = exp(initial->doubleVal);
+	value_p result = empty();
+	result->doubleVal = val;
+	result->flags = (char)4;
+	return result;
+}
+
+value_p extend_log(subrange_p range) {
+	double val;
+	if(!assertSingle(range)) return empty();
+	value_p initial = get_val(range, 0, 0);
+	val = log(initial->doubleVal);
+	value_p result = empty();
+	result->doubleVal = val;
+	result->flags = (char)4;
+	return result;
+}
+
+value_p extend_log10(subrange_p range) {
+	double val;
+	if(!assertSingle(range)) return empty();
+	value_p initial = get_val(range, 0, 0);
+	val = log10(initial->doubleVal);
+	value_p result = empty();
+	result->doubleVal = val;
+	result->flags = (char)4;
+	return result;
+}

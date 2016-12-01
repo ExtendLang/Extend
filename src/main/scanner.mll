@@ -6,8 +6,8 @@
   exception SyntaxError of string
   let line_num = ref 1;;
   let char_num = ref 1;;
-  let syntax_error msg = raise (SyntaxError(
-    "Invalid character: " ^ msg ^ " on line " ^ (string_of_int !line_num) ^ " at character " ^ (string_of_int !char_num)))
+  let syntax_error token = raise (SyntaxError(
+    "Invalid character: " ^ token ^ " on line " ^ (string_of_int !line_num) ^ " at character " ^ (string_of_int !char_num)))
 }
 
 let digit = ['0'-'9']
@@ -17,7 +17,7 @@ let id = ['a'-'z' 'A'-'Z']['a'-'z' 'A'-'Z' '0'-'9' '_']*
 
 
 rule token = parse
-  ['\n']               { incr line_num; char_num := 1; token lexbuf } (* New line, must be counted *)
+  ['\n']               { incr line_num; char_num := 1; token lexbuf }
 | [' ' '\t' '\r']      { incr char_num; token lexbuf }   (* Whitespace *)
 | "/*"                 { char_num := !char_num + 2; multiline_comment lexbuf }
 | "//"                 { char_num := !char_num + 2; oneline_comment lexbuf }
@@ -80,7 +80,7 @@ and multiline_comment = parse
   "*/" { char_num := !char_num + 2; token lexbuf }
 | _    { incr char_num; multiline_comment lexbuf }
 
-and oneline_comment = parse (* Need to figure out how to increment here *)
+and oneline_comment = parse
   '\n' { char_num := 1; token lexbuf }
 | _    { incr char_num; oneline_comment lexbuf }
 
@@ -88,14 +88,14 @@ and oneline_comment = parse (* Need to figure out how to increment here *)
 https://realworldocaml.org/v1/en/html/parsing-with-ocamllex-and-menhir.html *)
 and read_string buf =
   parse
-  | '"'       { incr char_num; LIT_STRING (Buffer.contents buf) }(* TODO: Handle the below ones properly *)
-  | '\\' 'n'  { Buffer.add_char buf '\n'; read_string buf lexbuf }
-  | '\\' 'r'  { Buffer.add_char buf '\r'; read_string buf lexbuf }
-  | '\\' 't'  { Buffer.add_char buf '\t'; read_string buf lexbuf }
+  | '"'       { incr char_num; LIT_STRING (Buffer.contents buf) }
+  | '\\' 'n'  { char_num := !char_num + 3; Buffer.add_char buf '\n'; read_string buf lexbuf }
+  | '\\' 'r'  { char_num := !char_num + 3; Buffer.add_char buf '\r'; read_string buf lexbuf }
+  | '\\' 't'  { char_num := !char_num + 3; Buffer.add_char buf '\t'; read_string buf lexbuf }
   | '\\' ([^'\\' 'n' 'r' 't'] as lxm)
-    { Buffer.add_char buf lxm; read_string buf lexbuf }
-  | [^ '"' '\\']+
-    { Buffer.add_string buf (Lexing.lexeme lexbuf);
+    { char_num := !char_num + 3; Buffer.add_char buf lxm; read_string buf lexbuf }
+  | [^ '"' '\\']+ as lit
+    { char_num := (!char_num + (length lit)); Buffer.add_string buf (Lexing.lexeme lexbuf);
       read_string buf lexbuf
     }
   | _         { syntax_error (Lexing.lexeme lexbuf) }

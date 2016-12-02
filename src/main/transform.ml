@@ -1,4 +1,6 @@
 open Ast
+open Lexing
+open Parsing
 
 exception IllegalExpression of string;;
 exception DuplicateDefinition of string;;
@@ -18,6 +20,11 @@ let importSet = StringSet.empty;;
 let builtin_signatures = [("row", 0); ("column", 0); (*("printf", 2);*) ("toString", 1)]
 
 let expand_file filename =
+  let print_error_location filename msg lexbuf =
+    let pos = lexbuf.lex_curr_p in
+    prerr_endline ("Syntax error in \"" ^ filename ^ "\": " ^ msg) ;
+    prerr_endline ("Line " ^ (string_of_int pos.pos_lnum) ^ " at character " ^ (string_of_int (pos.pos_cnum - pos.pos_bol))) in
+
   let rec expand_imports processed_imports globals fns exts = function
       [] -> ([], globals, fns, exts)
     | import :: imports ->
@@ -26,7 +33,13 @@ let expand_file filename =
       print_endline ("Already processed:"); *)
       (* StringSet.iter (fun a -> print_endline a) processed_imports; *)
       let in_chan = open_in import in
-      let (file_imports, file_globals, file_functions, file_externs) = Parser.program Scanner.token (Lexing.from_channel (in_chan)) in
+      let lexbuf = (Lexing.from_channel (in_chan)) in
+      let (file_imports, file_globals, file_functions, file_externs) =
+        try Parser.program Scanner.token lexbuf
+        with
+          Parsing.Parse_error -> print_error_location import "" lexbuf ; exit(-1)
+        | Scanner.SyntaxError(s) -> print_error_location import s lexbuf ; exit(-1)
+      in
       let new_proc = StringSet.add import processed_imports and _ = close_in in_chan in
       (* print_endline ("Now I'm done with: ") ; *)
       (* StringSet.iter (fun a -> print_endline a) new_proc; *)

@@ -4,9 +4,9 @@
   open String
 
   exception SyntaxError of string
-  let syntax_error lexbuf = raise (SyntaxError(
-    let pos = lexbuf.lex_curr_p in
-    "Invalid character: " ^ Lexing.lexeme lexbuf ^ " on line " ^ (string_of_int pos.pos_lnum) ^ " at character " ^ (string_of_int (pos.pos_cnum - pos.pos_bol))))
+  let syntax_error lexbuf = raise (SyntaxError("Invalid character: " ^ Lexing.lexeme lexbuf))
+(*    let pos = lexbuf.lex_curr_p in
+    "Invalid character: " ^ Lexing.lexeme lexbuf ^ " on line " ^ (string_of_int pos.pos_lnum) ^ " at character " ^ (string_of_int (pos.pos_cnum - pos.pos_bol)))) *)
 }
 
 let digit = ['0'-'9']

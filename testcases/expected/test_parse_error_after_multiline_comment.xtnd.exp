@@ -1,1 +1,2 @@
-Fatal error: exception Scanner.SyntaxError("Invalid character: $ on line 23 at character 10")
+Syntax error in "testcases/inputs/test_parse_error_after_multiline_comment.xtnd": Invalid character: $
+Line 23 at character 10

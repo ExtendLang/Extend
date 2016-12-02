@@ -1,1 +1,2 @@
-Fatal error: exception Scanner.SyntaxError("Invalid character: $ on line 2 at character 18")
+Syntax error in "./testcases/inputs_regression/test_parse_error_string.xtnd": Invalid character: $
+Line 2 at character 18

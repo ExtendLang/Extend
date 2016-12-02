@@ -1,0 +1,7 @@
+main([1,1] args){
+	x := switch() {
+		case 1 > 2: 100;
+		case 3 > 0: 200
+	};
+	return printf(1,toString(x)+"\n") -> 0;
+}

@@ -1,2 +1,2 @@
-Syntax error in "testcases/inputs/test_parse_error_newlines.xtnd": Invalid character: $
+Syntax error in "./testcases/inputs/test_parse_error_newlines.xtnd": Invalid character: $
 Line 3 at character 52

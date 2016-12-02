@@ -77,7 +77,7 @@ rule token = parse
 
 and multiline_comment = parse
   "*/" { token lexbuf }
-| '\n' { new_line lexbuf ; multiline_comment lexbuf }
+| '\n' { new_line lexbuf; multiline_comment lexbuf }
 | _    { multiline_comment lexbuf }
 
 and oneline_comment = parse
@@ -89,12 +89,13 @@ https://realworldocaml.org/v1/en/html/parsing-with-ocamllex-and-menhir.html *)
 and read_string buf =
   parse
   | '"'       { LIT_STRING (Buffer.contents buf) }
+  | '\n'      { new_line lexbuf; Buffer.add_char buf '\n'; read_string buf lexbuf }
   | '\\' 'n'  { Buffer.add_char buf '\n'; read_string buf lexbuf }
   | '\\' 'r'  { Buffer.add_char buf '\r'; read_string buf lexbuf }
   | '\\' 't'  { Buffer.add_char buf '\t'; read_string buf lexbuf }
   | '\\' ([^'\\' 'n' 'r' 't'] as lxm)
     { Buffer.add_char buf lxm; read_string buf lexbuf }
-  | [^ '"' '\\']+ as lit
+  | [^ '"' '\\']+
     { Buffer.add_string buf (Lexing.lexeme lexbuf);
       read_string buf lexbuf
     }

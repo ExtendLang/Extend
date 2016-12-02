@@ -1,12 +1,23 @@
-{ open Parser }
+{
+  open Lexing
+  open Parser
+  open String
+
+  exception SyntaxError of string
+  let syntax_error lexbuf = raise (SyntaxError(
+    let pos = lexbuf.lex_curr_p in
+    "Invalid character: " ^ Lexing.lexeme lexbuf ^ " on line " ^ (string_of_int pos.pos_lnum) ^ " at character " ^ (string_of_int (pos.pos_cnum - pos.pos_bol))))
+}
 
 let digit = ['0'-'9']
 let exp = 'e'('+'|'-')?['0'-'9']+
 let flt = (digit)+ ('.' (digit)* exp?|exp)
 let id = ['a'-'z' 'A'-'Z']['a'-'z' 'A'-'Z' '0'-'9' '_']*
 
+
 rule token = parse
-  [' ' '\t' '\r' '\n'] { token lexbuf }   (* Whitespace *)
+  ['\n']               { new_line lexbuf; token lexbuf }
+| [' ' '\t' '\r']      { token lexbuf }   (* Whitespace *)
 | "/*"                 { multiline_comment lexbuf }
 | "//"                 { oneline_comment lexbuf }
 | '"'                  { read_string (Buffer.create 17) lexbuf }
@@ -62,14 +73,15 @@ rule token = parse
 | flt as lit      { LIT_FLOAT(float_of_string lit) }
 | id as lit       { ID(lit) }
 | eof             { EOF }
-| _ as char       { raise (Failure("illegal character " ^ Char.escaped char)) }
+| _               { syntax_error lexbuf }
 
 and multiline_comment = parse
   "*/" { token lexbuf }
+| '\n' { new_line lexbuf; multiline_comment lexbuf }
 | _    { multiline_comment lexbuf }
 
 and oneline_comment = parse
-  '\n' { token lexbuf }
+  '\n' { new_line lexbuf; token lexbuf }
 | _    { oneline_comment lexbuf }
 
 (* read_string mostly taken from:
@@ -77,6 +89,7 @@ https://realworldocaml.org/v1/en/html/parsing-with-ocamllex-and-menhir.html *)
 and read_string buf =
   parse
   | '"'       { LIT_STRING (Buffer.contents buf) }
+  | '\n'      { new_line lexbuf; Buffer.add_char buf '\n'; read_string buf lexbuf }
   | '\\' 'n'  { Buffer.add_char buf '\n'; read_string buf lexbuf }
   | '\\' 'r'  { Buffer.add_char buf '\r'; read_string buf lexbuf }
   | '\\' 't'  { Buffer.add_char buf '\t'; read_string buf lexbuf }
@@ -86,5 +99,5 @@ and read_string buf =
     { Buffer.add_string buf (Lexing.lexeme lexbuf);
       read_string buf lexbuf
     }
-  | _ as char { raise (Failure("illegal character " ^ Char.escaped char)) }
+  | _         { syntax_error lexbuf }
   | eof       { raise (Failure("unterminated string")) }

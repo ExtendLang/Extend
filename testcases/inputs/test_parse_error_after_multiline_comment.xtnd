@@ -1,0 +1,25 @@
+[1,1] main(args){
+/* This is a comment spanning multiple lines.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+20 of them, in fact. */
+  foo := 5/5;
+  bar := $$$$
+  return foo;
+}

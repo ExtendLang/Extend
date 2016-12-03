@@ -1,0 +1,8 @@
+extern "stdlib.o" {
+  extend_asin(a);
+  printd(a,b);
+}
+
+[1,1] main([1,n] args) {
+  return printd(1, extend_asin(0.5)) -> 0;
+}

@@ -59,7 +59,7 @@ for f in $(ls $TESTDIR/$REGRESSION); do
     counterc=$((counterc+1))
     echo "Compiler: PASSED ($f)"
   else
-    echo "Compiler: FAILED ($f)"
+    echo "Compiler: FAILED REGRESSION TEST ($f)"
     result=$((result+1))
     if [ $PRINT = "-p" ]; then
       cat $RESULT_OUTPUT

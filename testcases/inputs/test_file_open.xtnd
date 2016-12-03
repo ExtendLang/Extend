@@ -1,0 +1,8 @@
+extern "stdlib.o" {
+  extend_open(a,b);
+}
+
+[1,1] main(args){
+  [1,1] foo := extend_open("../assets/test_file.txt", "w");
+  return foo;
+}

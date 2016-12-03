@@ -278,3 +278,17 @@ value_p extend_floor(subrange_p range) {
 	setFlag(result, FLAG_NUMBER);
 	return result;
 }
+
+value_p extend_open(subrange_p range_one, subrange_p range_two){
+	FILE *val;
+	if(!assertSingle(range_one)) return new_val();
+	if(!assertSingle(range_two)) return new_val();
+	value_p filename = get_val(range_one, 0, 0);
+	value_p mode = get_val(range_two, 0,0);
+	val = fopen(filename->str->text, mode->str->text);
+	value_p result = new_val();
+	setNumeric(result, (double)(int)val);
+	// warning: cast from pointer to integer of different size [-Wpointer-to-int-cast]
+	setFlag(result, FLAG_NUMBER);
+	return result;
+}

@@ -1,0 +1,8 @@
+extern "stdlib.o" {
+  extend_sinh(a);
+  printd(a,b);
+}
+
+[1,1] main([1,n] args) {
+  return printd(1, extend_sinh(45.0)) -> 0;
+}

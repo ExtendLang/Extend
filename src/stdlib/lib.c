@@ -67,6 +67,14 @@ value_p get_val(subrange_p range, int row, int col) {
 	return val;
 }
 
+double setNumeric(value_p result, double val) {
+	return (result->numericVal = val);
+}
+
+double setFlag(value_p result, double flag_num) {
+	return (result->flags = FLAG_NUMBER);
+}
+
 int assertSingle(subrange_p range) {
 	return (range->subrangeRow == 1 && range->subrangeCol == 1);
 }
@@ -77,7 +85,7 @@ int assertText(value_p my_val) {
 
 value_p new_val() {
 	value_p empty_val = malloc(sizeof(struct value_t));
-	empty_val->flags = FLAG_EMPTY;
+	setFlag(empty_val, FLAG_EMPTY);
 	return empty_val;
 }
 
@@ -101,7 +109,172 @@ value_p extend_sin(subrange_p range) {
 	value_p initial = get_val(range, 0, 0);
 	val = sin(initial->numericVal);
 	value_p result = new_val();
-	result->numericVal = val;
-	result->flags = FLAG_NUMBER;
+	setNumeric(result,val);
+	setFlag(result, FLAG_NUMBER);
+	return result;
+}
+
+value_p extend_cos(subrange_p range) {
+	double val;
+	if(!assertSingle(range)) return new_val();
+	value_p initial = get_val(range, 0, 0);
+	val = cos(initial->numericVal);
+	value_p result = new_val();
+	setNumeric(result,val);
+	setFlag(result, FLAG_NUMBER);
+	return result;
+}
+
+value_p extend_tan(subrange_p range) {
+	double val;
+	if(!assertSingle(range)) return new_val();
+	value_p initial = get_val(range, 0, 0);
+	val = tan(initial->numericVal);
+	value_p result = new_val();
+	setNumeric(result,val);
+	setFlag(result, FLAG_NUMBER);
+	return result;
+}
+
+value_p extend_asin(subrange_p range) {
+	double val;
+	if(!assertSingle(range)) return new_val();
+	value_p initial = get_val(range, 0, 0);
+	val = asin(initial->numericVal);
+	value_p result = new_val();
+	setNumeric(result,val);
+	setFlag(result, FLAG_NUMBER);
+	return result;
+}
+
+value_p extend_acos(subrange_p range) {
+	double val;
+	if(!assertSingle(range)) return new_val();
+	value_p initial = get_val(range, 0, 0);
+	val = acos(initial->numericVal);
+	value_p result = new_val();
+	setNumeric(result,val);
+	setFlag(result, FLAG_NUMBER);
+	return result;
+}
+
+value_p extend_atan(subrange_p range) {
+	double val;
+	if(!assertSingle(range)) return new_val();
+	value_p initial = get_val(range, 0, 0);
+	val = atan(initial->numericVal);
+	value_p result = new_val();
+	setNumeric(result,val);
+	setFlag(result, FLAG_NUMBER);
+	return result;
+}
+
+value_p extend_sinh(subrange_p range) {
+	double val;
+	if(!assertSingle(range)) return new_val();
+	value_p initial = get_val(range, 0, 0);
+	val = sinh(initial->numericVal);
+	value_p result = new_val();
+	setNumeric(result,val);
+	setFlag(result, FLAG_NUMBER);
+	return result;
+}
+
+value_p extend_cosh(subrange_p range) {
+	double val;
+	if(!assertSingle(range)) return new_val();
+	value_p initial = get_val(range, 0, 0);
+	val = cosh(initial->numericVal);
+	value_p result = new_val();
+	setNumeric(result,val);
+	setFlag(result, FLAG_NUMBER);
+	return result;
+}
+
+value_p extend_tanh(subrange_p range) {
+	double val;
+	if(!assertSingle(range)) return new_val();
+	value_p initial = get_val(range, 0, 0);
+	val = tanh(initial->numericVal);
+	value_p result = new_val();
+	setNumeric(result,val);
+	setFlag(result, FLAG_NUMBER);
+	return result;
+}
+
+value_p extend_exp(subrange_p range) {
+	double val;
+	if(!assertSingle(range)) return new_val();
+	value_p initial = get_val(range, 0, 0);
+	val = exp(initial->numericVal);
+	value_p result = new_val();
+	setNumeric(result,val);
+	setFlag(result, FLAG_NUMBER);
+	return result;
+}
+
+value_p extend_log(subrange_p range) {
+	double val;
+	if(!assertSingle(range)) return new_val();
+	value_p initial = get_val(range, 0, 0);
+	val = log(initial->numericVal);
+	value_p result = new_val();
+	setNumeric(result,val);
+	setFlag(result, FLAG_NUMBER);
+	return result;
+}
+
+value_p extend_log10(subrange_p range) {
+	double val;
+	if(!assertSingle(range)) return new_val();
+	value_p initial = get_val(range, 0, 0);
+	val = log10(initial->numericVal);
+	value_p result = new_val();
+	setNumeric(result,val);
+	setFlag(result, FLAG_NUMBER);
+	return result;
+}
+
+value_p extend_sqrt(subrange_p range) {
+	double val;
+	if(!assertSingle(range)) return new_val();
+	value_p initial = get_val(range, 0, 0);
+	val = sqrt(initial->numericVal);
+	value_p result = new_val();
+	setNumeric(result,val);
+	setFlag(result, FLAG_NUMBER);
+	return result;
+}
+
+value_p extend_ceil(subrange_p range) {
+	double val;
+	if(!assertSingle(range)) return new_val();
+	value_p initial = get_val(range, 0, 0);
+	val = ceil(initial->numericVal);
+	value_p result = new_val();
+	setNumeric(result,val);
+	setFlag(result, FLAG_NUMBER);
+	return result;
+}
+
+value_p extend_fabs(subrange_p range) {
+	double val;
+	if(!assertSingle(range)) return new_val();
+	value_p initial = get_val(range, 0, 0);
+	val = fabs(initial->numericVal);
+	value_p result = new_val();
+	setNumeric(result,val);
+	setFlag(result, FLAG_NUMBER);
+	return result;
+}
+
+value_p extend_floor(subrange_p range) {
+	double val;
+	if(!assertSingle(range)) return new_val();
+	value_p initial = get_val(range, 0, 0);
+	val = floor(initial->numericVal);
+	value_p result = new_val();
+	setNumeric(result,val);
+	setFlag(result, FLAG_NUMBER);
 	return result;
 }

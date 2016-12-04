@@ -82,6 +82,14 @@ int assertSingle(subrange_p range) {
 	return (range->subrangeRow == 1 && range->subrangeCol == 1);
 }
 
+int assertSingleNumber(subrange_p range) {
+	if (!assertSingle(range)) {
+		return 0;
+	};
+	value_p p = get_val(range, 0, 0);
+	return (p->flags == FLAG_NUMBER);
+}
+
 int assertText(value_p my_val) {
 	return (my_val->flags == FLAG_STRING);
 }
@@ -99,6 +107,14 @@ value_p new_number(double val) {
 	return new_v;
 }
 
+double get_number(subrange_p p) {
+	/* Assumes the calling function has
+	 * already verified that subrange_p
+	 * points to a single Number */
+	value_p v = get_val(p, 0, 0);
+	return v->numericVal;
+}
+
 value_p print(subrange_p whatever, subrange_p text) {
 	if(!assertSingle(text)) return new_val();
 	value_p my_val = get_val(text,0,0);
@@ -114,148 +130,127 @@ value_p printd(subrange_p whatever, subrange_p text) {
 }
 
 value_p extend_sin(subrange_p range) {
-	double val;
-	if(!assertSingle(range)) return new_val();
-	value_p initial = get_val(range, 0, 0);
-	val = sin(initial->numericVal);
+	if(!assertSingleNumber(range)) return new_val();
+	double initial = get_number(range);
+	double val = sin(initial);
 	return new_number(val);
 }
 
 value_p extend_cos(subrange_p range) {
-	double val;
-	if(!assertSingle(range)) return new_val();
-	value_p initial = get_val(range, 0, 0);
-	val = cos(initial->numericVal);
+	if(!assertSingleNumber(range)) return new_val();
+	double initial = get_number(range);
+	double val = cos(initial);
 	return new_number(val);
 }
 
 value_p extend_tan(subrange_p range) {
-	double val;
-	if(!assertSingle(range)) return new_val();
-	value_p initial = get_val(range, 0, 0);
-	val = tan(initial->numericVal);
+	if(!assertSingleNumber(range)) return new_val();
+	double initial = get_number(range);
+	double val = tan(initial);
 	return new_number(val);
 }
 
 value_p extend_asin(subrange_p range) {
-	double val;
-	if(!assertSingle(range)) return new_val();
-	value_p initial = get_val(range, 0, 0);
-	val = asin(initial->numericVal);
+	if(!assertSingleNumber(range)) return new_val();
+	double initial = get_number(range);
+	double val = asin(initial);
 	return new_number(val);
 }
 
 value_p extend_acos(subrange_p range) {
-	double val;
-	if(!assertSingle(range)) return new_val();
-	value_p initial = get_val(range, 0, 0);
-	val = acos(initial->numericVal);
+	if(!assertSingleNumber(range)) return new_val();
+	double initial = get_number(range);
+	double val = acos(initial);
 	return new_number(val);
 }
 
 value_p extend_atan(subrange_p range) {
-	double val;
-	if(!assertSingle(range)) return new_val();
-	value_p initial = get_val(range, 0, 0);
-	val = atan(initial->numericVal);
+	if(!assertSingleNumber(range)) return new_val();
+	double initial = get_number(range);
+	double val = atan(initial);
 	return new_number(val);
 }
 
 value_p extend_sinh(subrange_p range) {
-	double val;
-	if(!assertSingle(range)) return new_val();
-	value_p initial = get_val(range, 0, 0);
-	val = sinh(initial->numericVal);
+	if(!assertSingleNumber(range)) return new_val();
+	double initial = get_number(range);
+	double val = sinh(initial);
 	return new_number(val);
 }
 
 value_p extend_cosh(subrange_p range) {
-	double val;
-	if(!assertSingle(range)) return new_val();
-	value_p initial = get_val(range, 0, 0);
-	val = cosh(initial->numericVal);
+	if(!assertSingleNumber(range)) return new_val();
+	double initial = get_number(range);
+	double val = cosh(initial);
 	return new_number(val);
 }
 
 value_p extend_tanh(subrange_p range) {
-	double val;
-	if(!assertSingle(range)) return new_val();
-	value_p initial = get_val(range, 0, 0);
-	val = tanh(initial->numericVal);
+	if(!assertSingleNumber(range)) return new_val();
+	double initial = get_number(range);
+	double val = tanh(initial);
 	return new_number(val);
 }
 
 value_p extend_exp(subrange_p range) {
-	double val;
-	if(!assertSingle(range)) return new_val();
-	value_p initial = get_val(range, 0, 0);
-	val = exp(initial->numericVal);
+	if(!assertSingleNumber(range)) return new_val();
+	double initial = get_number(range);
+	double val = exp(initial);
 	return new_number(val);
 }
 
 value_p extend_log(subrange_p range) {
-	double val;
-	if(!assertSingle(range)) return new_val();
-	value_p initial = get_val(range, 0, 0);
-	val = log(initial->numericVal);
+	if(!assertSingleNumber(range)) return new_val();
+	double initial = get_number(range);
+	double val = log(initial);
 	return new_number(val);
 }
 
 value_p extend_log10(subrange_p range) {
-	double val;
-	if(!assertSingle(range)) return new_val();
-	value_p initial = get_val(range, 0, 0);
-	val = log10(initial->numericVal);
+	if(!assertSingleNumber(range)) return new_val();
+	double initial = get_number(range);
+	double val = log10(initial);
 	return new_number(val);
 }
 
 value_p extend_sqrt(subrange_p range) {
-	double val;
-	if(!assertSingle(range)) return new_val();
-	value_p initial = get_val(range, 0, 0);
-	val = sqrt(initial->numericVal);
+	if(!assertSingleNumber(range)) return new_val();
+	double initial = get_number(range);
+	double val = sqrt(initial);
 	return new_number(val);
 }
 
 value_p extend_ceil(subrange_p range) {
-	double val;
-	if(!assertSingle(range)) return new_val();
-	value_p initial = get_val(range, 0, 0);
-	val = ceil(initial->numericVal);
+	if(!assertSingleNumber(range)) return new_val();
+	double initial = get_number(range);
+	double val = ceil(initial);
 	return new_number(val);
 }
 
 value_p extend_fabs(subrange_p range) {
-	double val;
-	if(!assertSingle(range)) return new_val();
-	value_p initial = get_val(range, 0, 0);
-	val = fabs(initial->numericVal);
+	if(!assertSingleNumber(range)) return new_val();
+	double initial = get_number(range);
+	double val = fabs(initial);
 	return new_number(val);
 }
 
 value_p extend_floor(subrange_p range) {
-	double val;
-	if(!assertSingle(range)) return new_val();
-	value_p initial = get_val(range, 0, 0);
-	val = floor(initial->numericVal);
+	if(!assertSingleNumber(range)) return new_val();
+	double initial = get_number(range);
+	double val = floor(initial);
 	return new_number(val);
 }
 
 value_p extend_open(subrange_p range_one, subrange_p range_two){
 	FILE *val;
-	if(!assertSingle(range_one)) return new_val();
-	if(!assertSingle(range_two)) return new_val();
-	if(open_num_files + 1 > 255) return new_val();
+	if(!assertSingle(range_one) || !assertSingle(range_two) || open_num_files + 1 > 255) return new_val();
 	value_p filename = get_val(range_one, 0, 0);
 	value_p mode = get_val(range_two, 0,0);
 	val = fopen(filename->str->text, mode->str->text);
 	if(val == NULL) return new_val();
 	open_num_files++;
 	open_files[open_num_files] = val;
-	value_p result = new_val();
-	setNumeric(result, open_num_files);
-	setFlag(result, FLAG_NUMBER);
-	return result;
+	return new_number((double) open_num_files);
 }
 
 // test is currently not working - box_single_value subrange arg problem?

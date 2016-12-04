@@ -63,11 +63,11 @@ let expand_expressions (imports, globals, functions, externs) =
     (* If expression is not sufficiently atomic, create a new variable
        to hold the expression; return the new expression and whatever
        new statements are necessary to create the new variable *)
-      LitInt(i) -> (LitInt(i), [])
-    | Id(s)     -> (Id(s), [])
-    | Empty     -> raise (IllegalExpression("Empty"))
+      Empty     -> raise (IllegalExpression("Empty not allowed " ^ "on LHS")) (* ^ " in " ^ expr_loc)*)
     | Wild      -> raise (IllegalExpression("wild - this shouldn't be possible"))
-    | e         -> let new_id = idgen() in (
+    | LitString(s) -> raise (IllegalExpression("String literal " ^ quote_string s ^ " not allowed " ^ "on LHS")) (* ^ " in "  ^ expr_loc)*)
+    | LitRange(rl) -> raise (IllegalExpression("Range literal " ^ string_of_list (Rows rl) ^ " not allowed on LHS")) (* ^ " in " ^ expr_loc)*)
+    | e         -> let new_id = idgen (* expr_loc *) () in (
         Id(new_id),
         [Varinit (one_by_one, [(new_id, None)]);
          Assign (new_id, zero_comma_zero, Some e)]) in

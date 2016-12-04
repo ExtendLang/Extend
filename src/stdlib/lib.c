@@ -286,23 +286,66 @@ value_p extend_open(subrange_p range_one, subrange_p range_two){
 	FILE *val;
 	if(!assertSingle(range_one)) return new_val();
 	if(!assertSingle(range_two)) return new_val();
+	if(open_num_files + 1 > 255) return new_val();
 	value_p filename = get_val(range_one, 0, 0);
 	value_p mode = get_val(range_two, 0,0);
+	val = fopen(filename->str->text, mode->str->text);
+	if(val == NULL) return new_val();
 	open_num_files++;
-	if(open_num_files < 256){
-		printf("About to open %s in mode %s\n", filename->str->text, mode->str->text);
-		val = fopen(filename->str->text, mode->str->text);
-		if (NULL == val) {
-			printf("failed\n");
-		}	else {
-			printf("success!\n");
-		}
-		open_files[open_num_files] = val;
-		value_p result = new_val();
-		setNumeric(result, open_num_files);
-		setFlag(result, FLAG_NUMBER);
-		return result;
-	}else{
-		return new_val();
-	}
+	open_files[open_num_files] = val;
+	value_p result = new_val();
+	setNumeric(result, open_num_files);
+	setFlag(result, FLAG_NUMBER);
+	return result;
+}
+
+// test is currently not working - box_single_value subrange arg problem?
+value_p extend_close(subrange_p range){
+	double val;
+	if(!assertSingle(range)) return new_val();
+	value_p ind = get_val(range, 0, 0);
+	val = fclose(open_files[(int)ind->numericVal]);
+	open_files[(int)ind->numericVal] = NULL; // Empty the container for the pointer.
+	value_p result = new_val();
+	setNumeric(result, val);
+	setFlag(result, FLAG_NUMBER);
+	return result;
+}
+
+// untested
+value_p extend_read(subrange_p buf, subrange_p s, subrange_p n, subrange_p f){
+	double val;
+	if(!assertSingle(buf)) return new_val();
+	if(!assertSingle(s)) return new_val();
+	if(!assertSingle(n)) return new_val();
+	if(!assertSingle(f)) return new_val();
+	value_p buffer = get_val(buf, 0, 0);
+	value_p size = get_val(s, 0, 0);
+	value_p num = get_val(n, 0, 0);
+	value_p fd = get_val(f, 0, 0);
+	// is this supposed to be buffer->subrange? or text?
+	val = fread(buffer->subrange, size->numericVal, num->numericVal, open_files[(int)fd->numericVal]);
+	value_p result = new_val();
+	setNumeric(result, val);
+	setFlag(result, FLAG_NUMBER);
+	return result;
+}
+
+// untested
+value_p extend_write(subrange_p buf, subrange_p s, subrange_p n, subrange_p f){
+	double val;
+	if(!assertSingle(buf)) return new_val();
+	if(!assertSingle(s)) return new_val();
+	if(!assertSingle(n)) return new_val();
+	if(!assertSingle(f)) return new_val();
+	value_p buffer = get_val(buf, 0, 0);
+	value_p size = get_val(s, 0, 0);
+	value_p num = get_val(n, 0, 0);
+	value_p fd = get_val(f, 0, 0);
+	// is this supposed to be buffer->subrange? or text? Same q as above.
+	val = fwrite(buffer->subrange, size->numericVal, num->numericVal, open_files[(int)fd->numericVal]);
+	value_p result = new_val();
+	setNumeric(result, val);
+	setFlag(result, FLAG_NUMBER);
+	return result;
 }

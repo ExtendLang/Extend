@@ -299,5 +299,4 @@ value_p extend_open(subrange_p range_one, subrange_p range_two){
 	}else{
 		return new_val();
 	}
-
 }

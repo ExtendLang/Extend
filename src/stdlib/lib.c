@@ -7,7 +7,8 @@
 #define FLAG_STRING 2
 #define FLAG_SUBRANGE 3
 
-FILE *open_files[256];
+#define MAX_FILES 255
+FILE *open_files[1 + MAX_FILES] = {NULL};
 int open_num_files = 0;
 
 struct subrange_t;
@@ -243,7 +244,7 @@ value_p extend_floor(subrange_p range) {
 
 value_p extend_open(subrange_p range_one, subrange_p range_two){
 	FILE *val;
-	if(!assertSingle(range_one) || !assertSingle(range_two) || open_num_files + 1 > 255) return new_val();
+	if(!assertSingle(range_one) || !assertSingle(range_two) || open_num_files + 1 > MAX_FILES) return new_val();
 	value_p filename = get_val(range_one, 0, 0);
 	value_p mode = get_val(range_two, 0,0);
 	val = fopen(filename->str->text, mode->str->text);
@@ -255,15 +256,22 @@ value_p extend_open(subrange_p range_one, subrange_p range_two){
 
 // test is currently not working - box_single_value subrange arg problem?
 value_p extend_close(subrange_p range){
-	double val;
-	if(!assertSingle(range)) return new_val();
-	value_p ind = get_val(range, 0, 0);
-	val = fclose(open_files[(int)ind->numericVal]);
-	open_files[(int)ind->numericVal] = NULL; // Empty the container for the pointer.
-	value_p result = new_val();
-	setNumeric(result, val);
-	setFlag(result, FLAG_NUMBER);
-	return result;
+	if(!assertSingleNumber(range)) {
+		// Per the LRM this is actually supposed to crash the program.
+		fprintf(stderr, "EXITING - Attempted to close something that was not a valid file pointer\n");
+		exit(-1);
+	}
+
+	int fileNum = (int) get_number(range);
+	if (fileNum > open_num_files || open_files[fileNum] == NULL) {
+		// Per the LRM this is actually supposed to crash the program.
+		fprintf(stderr, "EXITING - Attempted to close something that was not a valid file pointer\n");
+		exit(-1);
+	}
+
+	fclose(open_files[fileNum]);
+	open_files[fileNum] = NULL; // Empty the container for the pointer.
+	return new_val(); // asssuming it was an open valid handle, close() is just supposed to return empty
 }
 
 // untested

@@ -290,7 +290,13 @@ value_p extend_open(subrange_p range_one, subrange_p range_two){
 	value_p mode = get_val(range_two, 0,0);
 	open_num_files++;
 	if(open_num_files < 256){
+		printf("About to open %s in mode %s\n", filename->str->text, mode->str->text);
 		val = fopen(filename->str->text, mode->str->text);
+		if (NULL == val) {
+			printf("failed\n");
+		}	else {
+			printf("success!\n");
+		}
 		open_files[open_num_files] = val;
 		value_p result = new_val();
 		setNumeric(result, open_num_files);

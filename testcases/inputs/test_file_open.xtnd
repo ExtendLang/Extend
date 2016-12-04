@@ -3,6 +3,6 @@ extern "stdlib.o" {
 }
 
 [1,1] main(args){
-  [1,1] foo := extend_open("../assets/test_file.txt", "w");
-  return foo;
+  [1,1] foo := extend_open("./compile.sh", "r");
+  return foo -> 0;
 }

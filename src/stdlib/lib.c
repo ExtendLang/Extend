@@ -92,6 +92,13 @@ value_p new_val() {
 	return empty_val;
 }
 
+value_p new_number(double val) {
+	value_p new_v = malloc(sizeof(struct value_t));
+	setFlag(new_v, FLAG_NUMBER);
+	setNumeric(new_v, val);
+	return new_v;
+}
+
 value_p print(subrange_p whatever, subrange_p text) {
 	if(!assertSingle(text)) return new_val();
 	value_p my_val = get_val(text,0,0);
@@ -111,10 +118,7 @@ value_p extend_sin(subrange_p range) {
 	if(!assertSingle(range)) return new_val();
 	value_p initial = get_val(range, 0, 0);
 	val = sin(initial->numericVal);
-	value_p result = new_val();
-	setNumeric(result,val);
-	setFlag(result, FLAG_NUMBER);
-	return result;
+	return new_number(val);
 }
 
 value_p extend_cos(subrange_p range) {
@@ -122,10 +126,7 @@ value_p extend_cos(subrange_p range) {
 	if(!assertSingle(range)) return new_val();
 	value_p initial = get_val(range, 0, 0);
 	val = cos(initial->numericVal);
-	value_p result = new_val();
-	setNumeric(result,val);
-	setFlag(result, FLAG_NUMBER);
-	return result;
+	return new_number(val);
 }
 
 value_p extend_tan(subrange_p range) {
@@ -133,10 +134,7 @@ value_p extend_tan(subrange_p range) {
 	if(!assertSingle(range)) return new_val();
 	value_p initial = get_val(range, 0, 0);
 	val = tan(initial->numericVal);
-	value_p result = new_val();
-	setNumeric(result,val);
-	setFlag(result, FLAG_NUMBER);
-	return result;
+	return new_number(val);
 }
 
 value_p extend_asin(subrange_p range) {
@@ -144,10 +142,7 @@ value_p extend_asin(subrange_p range) {
 	if(!assertSingle(range)) return new_val();
 	value_p initial = get_val(range, 0, 0);
 	val = asin(initial->numericVal);
-	value_p result = new_val();
-	setNumeric(result,val);
-	setFlag(result, FLAG_NUMBER);
-	return result;
+	return new_number(val);
 }
 
 value_p extend_acos(subrange_p range) {
@@ -155,10 +150,7 @@ value_p extend_acos(subrange_p range) {
 	if(!assertSingle(range)) return new_val();
 	value_p initial = get_val(range, 0, 0);
 	val = acos(initial->numericVal);
-	value_p result = new_val();
-	setNumeric(result,val);
-	setFlag(result, FLAG_NUMBER);
-	return result;
+	return new_number(val);
 }
 
 value_p extend_atan(subrange_p range) {
@@ -166,10 +158,7 @@ value_p extend_atan(subrange_p range) {
 	if(!assertSingle(range)) return new_val();
 	value_p initial = get_val(range, 0, 0);
 	val = atan(initial->numericVal);
-	value_p result = new_val();
-	setNumeric(result,val);
-	setFlag(result, FLAG_NUMBER);
-	return result;
+	return new_number(val);
 }
 
 value_p extend_sinh(subrange_p range) {
@@ -177,10 +166,7 @@ value_p extend_sinh(subrange_p range) {
 	if(!assertSingle(range)) return new_val();
 	value_p initial = get_val(range, 0, 0);
 	val = sinh(initial->numericVal);
-	value_p result = new_val();
-	setNumeric(result,val);
-	setFlag(result, FLAG_NUMBER);
-	return result;
+	return new_number(val);
 }
 
 value_p extend_cosh(subrange_p range) {
@@ -188,10 +174,7 @@ value_p extend_cosh(subrange_p range) {
 	if(!assertSingle(range)) return new_val();
 	value_p initial = get_val(range, 0, 0);
 	val = cosh(initial->numericVal);
-	value_p result = new_val();
-	setNumeric(result,val);
-	setFlag(result, FLAG_NUMBER);
-	return result;
+	return new_number(val);
 }
 
 value_p extend_tanh(subrange_p range) {
@@ -199,10 +182,7 @@ value_p extend_tanh(subrange_p range) {
 	if(!assertSingle(range)) return new_val();
 	value_p initial = get_val(range, 0, 0);
 	val = tanh(initial->numericVal);
-	value_p result = new_val();
-	setNumeric(result,val);
-	setFlag(result, FLAG_NUMBER);
-	return result;
+	return new_number(val);
 }
 
 value_p extend_exp(subrange_p range) {
@@ -210,10 +190,7 @@ value_p extend_exp(subrange_p range) {
 	if(!assertSingle(range)) return new_val();
 	value_p initial = get_val(range, 0, 0);
 	val = exp(initial->numericVal);
-	value_p result = new_val();
-	setNumeric(result,val);
-	setFlag(result, FLAG_NUMBER);
-	return result;
+	return new_number(val);
 }
 
 value_p extend_log(subrange_p range) {
@@ -221,10 +198,7 @@ value_p extend_log(subrange_p range) {
 	if(!assertSingle(range)) return new_val();
 	value_p initial = get_val(range, 0, 0);
 	val = log(initial->numericVal);
-	value_p result = new_val();
-	setNumeric(result,val);
-	setFlag(result, FLAG_NUMBER);
-	return result;
+	return new_number(val);
 }
 
 value_p extend_log10(subrange_p range) {
@@ -232,10 +206,7 @@ value_p extend_log10(subrange_p range) {
 	if(!assertSingle(range)) return new_val();
 	value_p initial = get_val(range, 0, 0);
 	val = log10(initial->numericVal);
-	value_p result = new_val();
-	setNumeric(result,val);
-	setFlag(result, FLAG_NUMBER);
-	return result;
+	return new_number(val);
 }
 
 value_p extend_sqrt(subrange_p range) {
@@ -243,10 +214,7 @@ value_p extend_sqrt(subrange_p range) {
 	if(!assertSingle(range)) return new_val();
 	value_p initial = get_val(range, 0, 0);
 	val = sqrt(initial->numericVal);
-	value_p result = new_val();
-	setNumeric(result,val);
-	setFlag(result, FLAG_NUMBER);
-	return result;
+	return new_number(val);
 }
 
 value_p extend_ceil(subrange_p range) {
@@ -254,10 +222,7 @@ value_p extend_ceil(subrange_p range) {
 	if(!assertSingle(range)) return new_val();
 	value_p initial = get_val(range, 0, 0);
 	val = ceil(initial->numericVal);
-	value_p result = new_val();
-	setNumeric(result,val);
-	setFlag(result, FLAG_NUMBER);
-	return result;
+	return new_number(val);
 }
 
 value_p extend_fabs(subrange_p range) {
@@ -265,10 +230,7 @@ value_p extend_fabs(subrange_p range) {
 	if(!assertSingle(range)) return new_val();
 	value_p initial = get_val(range, 0, 0);
 	val = fabs(initial->numericVal);
-	value_p result = new_val();
-	setNumeric(result,val);
-	setFlag(result, FLAG_NUMBER);
-	return result;
+	return new_number(val);
 }
 
 value_p extend_floor(subrange_p range) {
@@ -276,10 +238,7 @@ value_p extend_floor(subrange_p range) {
 	if(!assertSingle(range)) return new_val();
 	value_p initial = get_val(range, 0, 0);
 	val = floor(initial->numericVal);
-	value_p result = new_val();
-	setNumeric(result,val);
-	setFlag(result, FLAG_NUMBER);
-	return result;
+	return new_number(val);
 }
 
 value_p extend_open(subrange_p range_one, subrange_p range_two){

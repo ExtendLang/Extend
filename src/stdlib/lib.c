@@ -7,6 +7,9 @@
 #define FLAG_STRING 2
 #define FLAG_SUBRANGE 3
 
+FILE *open_files[256];
+int open_num_files = 0;
+
 struct subrange_t;
 struct value_t;
 
@@ -285,10 +288,16 @@ value_p extend_open(subrange_p range_one, subrange_p range_two){
 	if(!assertSingle(range_two)) return new_val();
 	value_p filename = get_val(range_one, 0, 0);
 	value_p mode = get_val(range_two, 0,0);
-	val = fopen(filename->str->text, mode->str->text);
-	value_p result = new_val();
-	setNumeric(result, (double)(int)val);
-	// warning: cast from pointer to integer of different size [-Wpointer-to-int-cast]
-	setFlag(result, FLAG_NUMBER);
-	return result;
+	open_num_files++;
+	if(open_num_files < 256){
+		val = fopen(filename->str->text, mode->str->text);
+		open_files[open_num_files] = val;
+		value_p result = new_val();
+		setNumeric(result, open_num_files);
+		setFlag(result, FLAG_NUMBER);
+		return result;
+	}else{
+		return new_val();
+	}
+
 }

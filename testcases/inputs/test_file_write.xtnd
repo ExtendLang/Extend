@@ -6,7 +6,6 @@ extern "stdlib.o" {
 
 [1,1] main(args){
 
-  foo := extend_write("Hello", extend_open("testcases/assets/test_file_write.txt", "w")) -> 0;
+  foo := extend_write("Hello", extend_open("testcases/expected/test_file_write.xtnd.exp", "w")) -> 0;
   return foo -> print(1,"Made it this far\n") -> 0;
-  /* Successfully writes, but unsure of how to architect testcase. */
 }

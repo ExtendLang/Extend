@@ -28,11 +28,6 @@ Executable main
   Path: src/main
   MainIs: main.ml
 
-Executable microc
-  BuildDepends: llvm, llvm.analysis
-  MainIs: microc.ml
-  Path: src/microc
-
 Executable compare
   BuildDepends: oUnit, test_transf
   MainIs: compare.ml

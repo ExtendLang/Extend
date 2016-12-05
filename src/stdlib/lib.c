@@ -298,7 +298,7 @@ value_p extend_read(subrange_p rng_file_handle, subrange_p rng_num_bytes){
 	if (fileNum > open_num_files || open_files[fileNum] == NULL)  return new_val();
 	char *buf = malloc(sizeof(char) * (max_bytes + 1));
 	int bytes_read = fread(buf, sizeof(char), max_bytes, open_files[fileNum]);
-	buf[bytes_read + 1] = 0;
+	buf[bytes_read] = 0;
 	value_p result = box_value_string(new_string(buf));
 	free(buf);
 	return result;

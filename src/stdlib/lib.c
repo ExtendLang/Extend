@@ -114,13 +114,6 @@ value_p new_number(double val) {
 	return new_v;
 }
 
-// value_p new_string(char *b){
-// 	value_p new_str = malloc(sizeof(struct value_t));
-// 	setFlag(new_str, FLAG_STRING);
-// 	setString(new_str, b);
-// 	return new_str;
-// }
-
 double get_number(subrange_p p) {
 	/* Assumes the calling function has
 	 * already verified that subrange_p
@@ -267,7 +260,6 @@ value_p extend_open(subrange_p range_one, subrange_p range_two){
 	return new_number((double) open_num_files);
 }
 
-// test is currently not working - box_single_value subrange arg problem?
 value_p extend_close(subrange_p range){
 	if(!assertSingleNumber(range)) {
 		// Per the LRM this is actually supposed to crash the program.

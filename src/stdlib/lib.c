@@ -289,8 +289,6 @@ value_p extend_close(subrange_p range){
 value_p extend_read(subrange_p n, subrange_p f){
 	if(!assertSingle(n)) return new_val();
 	if(!assertSingle(f)) return new_val();
-	// value_p num_bytes = get_val(n, 0, 0);
-	// value_p fd = get_val(f, 0, 0);
 	char *buf = malloc(sizeof(char) * ((int)get_number(n) + 1));
 	int bytes_read = fread(buf, sizeof(char), (int)get_number(n), open_files[(int)get_number(f)]);
 	buf[bytes_read + 1] = 0;
@@ -300,20 +298,17 @@ value_p extend_read(subrange_p n, subrange_p f){
 	//edge case: how to return the entire contents of the file if n == empty?
 }
 
-// value_p extend_write(subrange_p buf, subrange_p s, subrange_p n, subrange_p f){
-// 	double val;
-// 	if(!assertSingle(buf)) return new_val();
-// 	if(!assertSingle(s)) return new_val();
-// 	if(!assertSingle(n)) return new_val();
-// 	if(!assertSingle(f)) return new_val();
-// 	value_p buffer = get_val(buf, 0, 0);
-// 	value_p size = get_val(s, 0, 0);
-// 	value_p num = get_val(n, 0, 0);
-// 	value_p fd = get_val(f, 0, 0);
-// 	// is this supposed to be buffer->subrange? or text? Same q as above.
-// 	val = fwrite(buffer->subrange, size->numericVal, num->numericVal, open_files[(int)fd->numericVal]);
-// 	value_p result = new_val();
-// 	setNumeric(result, val);
-// 	setFlag(result, FLAG_NUMBER);
-// 	return result;
-// }
+value_p extend_write(subrange_p buf, subrange_p f){
+	int val;
+	if(!assertSingle(buf)) return new_val();
+	if(!assertSingle(f)) return new_val();
+	value_p buffer = get_val(buf, 0, 0);
+	value_p fd = get_val(f, 0, 0);
+	val = fwrite(buffer->str->text, 1, sizeof buffer->str->text, open_files[(int)get_number(f)]);
+	if(val == 0 ){
+		fprintf(stderr, "EXITING - No bytes written.\n");
+		exit(-1);
+	}
+	// return empty no matter what?
+	return new_val();
+}

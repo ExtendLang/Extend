@@ -1,0 +1,12 @@
+extern "stdlib.o" {
+  extend_open(a,b);
+  extend_write(a,b);
+  print(a,b);
+}
+
+[1,1] main(args){
+
+  foo := extend_write("Hello", extend_open("testcases/assets/test_file_write.txt", "w")) -> 0;
+  return foo -> print(1,"Made it this far\n") -> 0;
+  /* Successfully writes, but unsure of how to architect testcase. */
+}

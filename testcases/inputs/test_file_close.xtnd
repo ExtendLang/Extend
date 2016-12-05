@@ -5,6 +5,6 @@ extern "stdlib.o" {
 }
 
 [1,1] main(args){
-  [1,1] bar := extend_close(extend_open("./compile.sh", "r"));
+  [1,1] bar := extend_close(extend_open("../assets/test_file.txt", "r"));
   return bar -> print(1,"Made it this far\n") -> 0;
 }

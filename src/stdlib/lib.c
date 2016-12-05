@@ -63,7 +63,9 @@ struct subrange_t {
 
 typedef struct subrange_t* subrange_p;
 
-//value_p get_val(range_p range, int row, int col);
+string_p new_string(char *str);
+
+value_p box_value_string(string_p);
 
 value_p get_val(subrange_p range, int row, int col) {
 	//TODO: assertions
@@ -112,12 +114,12 @@ value_p new_number(double val) {
 	return new_v;
 }
 
-value_p new_string(char *b){
-	value_p new_str = malloc(sizeof(struct value_t));
-	setFlag(new_str, FLAG_STRING);
-	setString(new_str, b);
-	return new_str;
-}
+// value_p new_string(char *b){
+// 	value_p new_str = malloc(sizeof(struct value_t));
+// 	setFlag(new_str, FLAG_STRING);
+// 	setString(new_str, b);
+// 	return new_str;
+// }
 
 double get_number(subrange_p p) {
 	/* Assumes the calling function has
@@ -290,8 +292,11 @@ value_p extend_read(subrange_p n, subrange_p f){
 	// value_p num_bytes = get_val(n, 0, 0);
 	// value_p fd = get_val(f, 0, 0);
 	char *buf = malloc(sizeof(char) * ((int)get_number(n) + 1));
-	fread(buf, sizeof(char), (int)get_number(n), open_files[(int)get_number(f)]);
-	return new_string(buf);
+	int bytes_read = fread(buf, sizeof(char), (int)get_number(n), open_files[(int)get_number(f)]);
+	buf[bytes_read + 1] = 0;
+	value_p result = box_value_string(new_string(buf));
+	free(buf);
+	return result;
 	//edge case: how to return the entire contents of the file if n == empty?
 }
 

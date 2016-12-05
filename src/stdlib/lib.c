@@ -10,15 +10,13 @@
 #define FLAG_STRING 2
 #define FLAG_SUBRANGE 3
 
-<<<<<<< HEAD
 /* Status flag */
 #define CALCULATED 2
 #define IN_PROGRESS 4
-=======
+
 #define MAX_FILES 255
 FILE *open_files[1 + MAX_FILES] = {NULL};
 int open_num_files = 0;
->>>>>>> master
 
 struct subrange_t;
 struct value_t;
@@ -52,18 +50,58 @@ struct status_t {
 
 typedef struct status_t* status_p;
 
-struct range_t {
-	int rows;
-	int cols;
-	value_p values;
-	status_p statuses;
-	formula_p formulas;
+struct ExtendScope;
+typedef value_p (*FormulaFP) (struct ExtendScope *scope, int row, int col);
+
+struct ExtendFormula {
+  /* These 10 variables correspond to formula_row_start through formula_col_end,
+   * where bool singleRow/Col are true if formula_row_end is None */
+  bool fromFirstRow;
+  int rowStart_varnum;
+  bool toLastRow;
+  int rowEnd_varnum;
+  bool fromFirstCol;
+  int colStart_varnum;
+  bool toLastCol;
+  int colEnd_varnum;
+
+  FormulaFP formula;
 };
 
-typedef struct range_t* range_p;
+struct ResolvedFormula {
+	int rowStart, rowEnd, colStart, colEnd;
+	FormulaFP formula;
+};
+
+struct var_defn {
+  /* This is like a class definition - for every declared variable in the
+   * Extend source, there should be one instance of these per compiled program.
+   * They should just live in the global program storage.
+   * It corresponds to Ast.variable */
+   int rows_varnum;
+   int cols_varnum;
+   int numFormulas;
+   struct ExtendFormula *formulas;
+};
+struct var_instance {
+  /* This is an actual instance of a variable - we get one of these
+   * per variable per time a function is called (assuming the contents
+   * of the variable get examined.  */
+	int rows, cols;
+	int numFormulas;
+	struct ResolvedFormula *formulas;
+  struct ExtendScope *closure;
+  value_p *values;
+	char *status;
+};
+struct ExtendScope {
+  struct var_defn *defns;
+  struct var_instance **vars;
+	int numVars;
+};
 
 struct subrange_t {
-	range_p range;
+	struct var_instance *range;
 	int offsetRow;
 	int offsetCol;
 	int subrangeRow;
@@ -76,9 +114,15 @@ string_p new_string(char *str);
 
 value_p box_value_string(string_p);
 
+value_p __get_val(struct var_instance *range, int row, int col) {
+	//TODO: assertions
+	value_p val = range->values[row * range->cols + col];
+	return val;
+}
+
 value_p get_val(subrange_p range, int row, int col) {
 	//TODO: assertions
-	value_p val = range->range->values + (row + range->offsetRow) * range->range->cols + col + range->offsetCol;
+	value_p val =  __get_val(range->range, row + range->offsetRow, col + range->offsetCol);
 	return val;
 }
 
@@ -333,89 +377,81 @@ value_p extend_write(subrange_p rng_file_handle, subrange_p buf){
 /*
  * VENDOR
  */
-struct ExtendScope;
-typedef value_p (*FormulaFP) (struct ExtendScope *scope, int row, int col);
 
-struct ExtendFormula {
-  /* These 10 variables correspond to formula_row_start through formula_col_end,
-   * where bool singleRow/Col are true if formula_row_end is None */
-  bool fromFirstRow;
-  int rowStart_varnum;
-  bool toLastRow;
-  int rowEnd_varnum;
-  bool fromFirstCol;
-  int colStart_varnum;
-  bool toLastCol;
-  int colEnd_varnum;
-
-  FormulaFP formula;
-};
-struct var_defn {
-  /* This is like a class definition - for every declared variable in the
-   * Extend source, there should be one instance of these per compiled program.
-   * They should just live in the global program storage.
-   * It corresponds to Ast.variable */
-
-   int rows_varnum;
-   int cols_varnum;
-   int numFormulas;
-   struct ExtendFormula *formulas;
-};
-struct var_instance {
-  /* This is an actual instance of a variable - we get one of these
-   * per variable per time a function is called (assuming the contents
-   * of the variable get examined.  */
-  struct var_defn defi;
-  struct ExtendScope *closure;
-  char *status;
-  struct value_t *values;
-};
-struct ExtendScope {
-  struct var_defn *defns;
-  struct var_instance *vars;
-	int numVars;
-};
 struct ExtendScope *global_scope;
 
-bool assertInBounds(struct var_defn *defn, int x, int y) {
-	if(defn->rows_varnum < x && defn->cols_varnum < y) return true;
+struct var_instance *get_variable(struct ExtendScope *scope_ptr, int varnum);
+
+struct var_instance *instantiate_variable(struct ExtendScope *scope_ptr, struct var_defn def) {
+	struct var_instance *rows_var = get_variable(scope_ptr, def.rows_varnum);
+	value_p rows = __get_val(rows_var,0,0);
+	struct var_instance *cols_var = get_variable(scope_ptr, def.cols_varnum);
+	value_p cols = __get_val(cols_var,0,0);
+	if(rows->flags == FLAG_NUMBER || cols->flags == FLAG_NUMBER) {
+		/* TODO: throw error */
+	}
+	// TODO: do the same thing for each FormulaFP to turn an ExtendFormula into a ResolvedFormula
+	struct var_instance *inst = malloc(sizeof(struct var_instance));
+	inst->rows = (int)(rows->numericVal + 0.5);
+	inst->cols = (int)(cols->numericVal + 0.5);
+	inst->numFormulas = def.numFormulas;
+	inst->closure = scope_ptr;
+	int size = inst->rows * inst->cols;
+	inst->values = malloc(sizeof(value_p) * size);
+	inst->status = malloc(sizeof(struct status_t) * size);
+	return inst;
+}
+
+struct var_instance *get_variable(struct ExtendScope *scope_ptr, int varnum) {
+	if (varnum >= scope_ptr->numVars) {
+		fprintf(stderr, "Runtime error: Asked for nonexistant variable number\n");
+		exit(-1);
+	}
+	if (scope_ptr->vars[varnum] == NULL) {
+		scope_ptr->vars[varnum] = instantiate_variable(scope_ptr, scope_ptr->defns[varnum]);
+	}
+	return scope_ptr->vars[varnum];
+}
+
+bool assertInBounds(struct var_instance *defn, int x, int y) {
+	if(defn->rows < x && defn->cols < y) return true;
 	return false;
 }
 
-bool fitsDim(int dim, bool fromFirstRow, int rowStart_varnum, bool toLastRow, int rowEnd_varnum) {
-	return (fromFirstRow || (dim >= rowStart_varnum)) && (toLastRow || (dim <= rowEnd_varnum));
+bool fitsDim(int dim, int rowStart_varnum, int rowEnd_varnum) {
+	return (dim >= rowStart_varnum) && (dim <= rowEnd_varnum);
 }
 
-bool fitsRange(struct ExtendFormula *formula, int x, int y) {
-	return fitsDim(x, formula->fromFirstRow, formula->rowStart_varnum, formula->toLastRow, formula->rowEnd_varnum)
-		&& fitsDim(y, formula->fromFirstCol, formula->colStart_varnum, formula->toLastCol, formula->colEnd_varnum);
+bool fitsRange(struct ResolvedFormula *formula, int x, int y) {
+	return fitsDim(x, formula->colStart, formula->colEnd)
+		&& fitsDim(y, formula->rowStart, formula->rowEnd);
 }
 
-int calcVal(struct var_instance *inst, int x, int y, value_p target) {
-	struct ExtendFormula *form = inst->defi.formulas;
-	while(form < inst->defi.formulas + inst->defi.numFormulas) {
+value_p calcVal(struct var_instance *inst, int x, int y, value_p target) {
+	struct ResolvedFormula *form = inst->formulas;
+	while(form < inst->formulas + inst->numFormulas) {
 		if(fitsRange(form, x, y)) {
-			goto found;
+				value_p res = (form->formula)(inst->closure, x, y);
+				return res;
 		}
 		form++;
 	}
-	return -1;
-found: {
-		value_p res = (form->formula)(inst->closure, x, y);
-		memcpy(target, res, sizeof(struct value_t));
-		return 0;
-	}
+	return new_val();
 }
 
 value_p getVal(struct var_instance *inst, int x, int y) {
-	if(!assertInBounds(&inst->defi, x, y)) return new_val();
-	int offset = inst->defi.rows_varnum * y + x;
+	if(!assertInBounds(inst, x, y)) return new_val();
+	int offset = inst->rows * y + x;
 	char *status = inst->status + offset;
 	if(*status & IN_PROGRESS) {
 		/* TODO: Circular dependency. Possibly throw? */
 		return new_val();
 	} else if (!(*status) & CALCULATED) { /* value not calculated */
-		calcVal(inst, x, y, inst->values + offset);
+		value_p val = calcVal(inst, x, y, inst->values[offset]);
+		inst->values[offset] = val;
+		*status = (*status && !IN_PROGRESS) | CALCULATED;
+		return val;
+	} else {
+		return inst->values[offset];
 	}
-	return (inst->values + offset);
 }

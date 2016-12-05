@@ -75,6 +75,10 @@ double setNumeric(value_p result, double val) {
 	return (result->numericVal = val);
 }
 
+char* setString(value_p result, char *str) {
+	return (result->str->text = str);
+}
+
 double setFlag(value_p result, double flag_num) {
 	return (result->flags = FLAG_NUMBER);
 }
@@ -106,6 +110,13 @@ value_p new_number(double val) {
 	setFlag(new_v, FLAG_NUMBER);
 	setNumeric(new_v, val);
 	return new_v;
+}
+
+value_p new_string(char *b){
+	value_p new_str = malloc(sizeof(struct value_t));
+	setFlag(new_str, FLAG_STRING);
+	setString(new_str, b);
+	return new_str;
 }
 
 double get_number(subrange_p p) {
@@ -268,46 +279,36 @@ value_p extend_close(subrange_p range){
 		fprintf(stderr, "EXITING - Attempted to close something that was not a valid file pointer\n");
 		exit(-1);
 	}
-
 	fclose(open_files[fileNum]);
 	open_files[fileNum] = NULL; // Empty the container for the pointer.
 	return new_val(); // asssuming it was an open valid handle, close() is just supposed to return empty
 }
 
-// untested
-value_p extend_read(subrange_p buf, subrange_p s, subrange_p n, subrange_p f){
-	double val;
-	if(!assertSingle(buf)) return new_val();
-	if(!assertSingle(s)) return new_val();
+value_p extend_read(subrange_p n, subrange_p f){
 	if(!assertSingle(n)) return new_val();
 	if(!assertSingle(f)) return new_val();
-	value_p buffer = get_val(buf, 0, 0);
-	value_p size = get_val(s, 0, 0);
-	value_p num = get_val(n, 0, 0);
-	value_p fd = get_val(f, 0, 0);
-	// is this supposed to be buffer->subrange? or text?
-	val = fread(buffer->subrange, size->numericVal, num->numericVal, open_files[(int)fd->numericVal]);
-	value_p result = new_val();
-	setNumeric(result, val);
-	setFlag(result, FLAG_NUMBER);
-	return result;
+	// value_p num_bytes = get_val(n, 0, 0);
+	// value_p fd = get_val(f, 0, 0);
+	char *buf = malloc(sizeof(char) * ((int)get_number(n) + 1));
+	fread(buf, sizeof(char), (int)get_number(n), open_files[(int)get_number(f)]);
+	return new_string(buf);
+	//edge case: how to return the entire contents of the file if n == empty?
 }
 
-// untested
-value_p extend_write(subrange_p buf, subrange_p s, subrange_p n, subrange_p f){
-	double val;
-	if(!assertSingle(buf)) return new_val();
-	if(!assertSingle(s)) return new_val();
-	if(!assertSingle(n)) return new_val();
-	if(!assertSingle(f)) return new_val();
-	value_p buffer = get_val(buf, 0, 0);
-	value_p size = get_val(s, 0, 0);
-	value_p num = get_val(n, 0, 0);
-	value_p fd = get_val(f, 0, 0);
-	// is this supposed to be buffer->subrange? or text? Same q as above.
-	val = fwrite(buffer->subrange, size->numericVal, num->numericVal, open_files[(int)fd->numericVal]);
-	value_p result = new_val();
-	setNumeric(result, val);
-	setFlag(result, FLAG_NUMBER);
-	return result;
-}
+// value_p extend_write(subrange_p buf, subrange_p s, subrange_p n, subrange_p f){
+// 	double val;
+// 	if(!assertSingle(buf)) return new_val();
+// 	if(!assertSingle(s)) return new_val();
+// 	if(!assertSingle(n)) return new_val();
+// 	if(!assertSingle(f)) return new_val();
+// 	value_p buffer = get_val(buf, 0, 0);
+// 	value_p size = get_val(s, 0, 0);
+// 	value_p num = get_val(n, 0, 0);
+// 	value_p fd = get_val(f, 0, 0);
+// 	// is this supposed to be buffer->subrange? or text? Same q as above.
+// 	val = fwrite(buffer->subrange, size->numericVal, num->numericVal, open_files[(int)fd->numericVal]);
+// 	value_p result = new_val();
+// 	setNumeric(result, val);
+// 	setFlag(result, FLAG_NUMBER);
+// 	return result;
+// }

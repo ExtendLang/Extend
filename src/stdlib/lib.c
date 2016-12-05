@@ -1,11 +1,18 @@
 #include<stdio.h>
 #include<stdlib.h>
 #include<math.h>
+#include<string.h>
+#include<stdbool.h>
 
+/* Value type */
 #define FLAG_EMPTY 0
 #define FLAG_NUMBER 1
 #define FLAG_STRING 2
 #define FLAG_SUBRANGE 3
+
+/* Status flag */
+#define CALCULATED 2
+#define IN_PROGRESS 4
 
 struct subrange_t;
 struct value_t;
@@ -277,4 +284,94 @@ value_p extend_floor(subrange_p range) {
 	setNumeric(result,val);
 	setFlag(result, FLAG_NUMBER);
 	return result;
+}
+
+/*
+ * VENDOR
+ */
+struct ExtendScope;
+typedef value_p (*FormulaFP) (struct ExtendScope *scope, int row, int col);
+
+struct ExtendFormula {
+  /* These 10 variables correspond to formula_row_start through formula_col_end,
+   * where bool singleRow/Col are true if formula_row_end is None */
+  bool fromFirstRow;
+  int rowStart_varnum;
+  bool toLastRow;
+  int rowEnd_varnum;
+  bool fromFirstCol;
+  int colStart_varnum;
+  bool toLastCol;
+  int colEnd_varnum;
+
+  FormulaFP formula;
+};
+struct var_defn {
+  /* This is like a class definition - for every declared variable in the
+   * Extend source, there should be one instance of these per compiled program.
+   * They should just live in the global program storage.
+   * It corresponds to Ast.variable */
+
+   int rows_varnum;
+   int cols_varnum;
+   int numFormulas;
+   struct ExtendFormula *formulas;
+};
+struct var_instance {
+  /* This is an actual instance of a variable - we get one of these
+   * per variable per time a function is called (assuming the contents
+   * of the variable get examined.  */
+  struct var_defn defi;
+  struct ExtendScope *closure;
+  char *status;
+  struct value_t *values;
+};
+struct ExtendScope {
+  struct var_defn *defns;
+  struct var_instance *vars;
+	int numVars;
+};
+struct ExtendScope *global_scope;
+
+bool assertInBounds(struct var_defn *defn, int x, int y) {
+	if(defn->rows_varnum < x && defn->cols_varnum < y) return true;
+	return false;
+}
+
+bool fitsDim(int dim, bool fromFirstRow, int rowStart_varnum, bool toLastRow, int rowEnd_varnum) {
+	return (fromFirstRow || (dim >= rowStart_varnum)) && (toLastRow || (dim <= rowEnd_varnum));
+}
+
+bool fitsRange(struct ExtendFormula *formula, int x, int y) {
+	return fitsDim(x, formula->fromFirstRow, formula->rowStart_varnum, formula->toLastRow, formula->rowEnd_varnum)
+		&& fitsDim(y, formula->fromFirstCol, formula->colStart_varnum, formula->toLastCol, formula->colEnd_varnum);
+}
+
+int calcVal(struct var_instance *inst, int x, int y, value_p target) {
+	struct ExtendFormula *form = inst->defi.formulas;
+	while(form < inst->defi.formulas + inst->defi.numFormulas) {
+		if(fitsRange(form, x, y)) {
+			goto found;
+		}
+		form++;
+	}
+	return -1;
+found: {
+		value_p res = (form->formula)(inst->closure, x, y);
+		memcpy(target, res, sizeof(struct value_t));
+		return 0;
+	}
+}
+
+value_p getVal(struct var_instance *inst, int x, int y) {
+	if(!assertInBounds(&inst->defi, x, y)) return new_val();
+	int offset = inst->defi.rows_varnum * y + x;
+	char *status = inst->status + offset;
+	if(*status & IN_PROGRESS) {
+		/* TODO: Circular dependency. Possibly throw? */
+		return new_val();
+	} else if (!(*status) & CALCULATED) { /* value not calculated */
+		calcVal(inst, x, y, inst->values + offset);
+	}
+	return (inst->values + offset);
 }

@@ -1,11 +1,12 @@
 extern "stdlib.o" {
   extend_open(a,b);
   extend_write(a,b);
+  extend_close(a);
   print(a,b);
 }
 
 [1,1] main(args){
-
-  foo := extend_write("Hello", extend_open("testcases/expected/test_file_write.xtnd.exp", "w")) -> 0;
-  return foo -> print(1,"Made it this far\n") -> 0;
+  return extend_close(extend_write(extend_open("testcases/assets/test_file_write.out", "w"), "Hello"))
+          -> print(1,"Made it this far\n")
+          -> 0;
 }

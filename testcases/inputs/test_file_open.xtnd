@@ -1,9 +1,0 @@
-extern "stdlib.o" {
-  extend_open(a,b);
-  print(a,b);
-}
-
-[1,1] main(args){
-  [1,1] foo := extend_open("./compile.sh", "r");
-  return foo -> 0;
-}

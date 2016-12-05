@@ -101,6 +101,14 @@ int assertText(value_p my_val) {
 	return (my_val->flags == FLAG_STRING);
 }
 
+int assertSingleString(subrange_p range) {
+	if (!assertSingle(range)) {
+		return 0;
+	}
+	value_p p = get_val(range, 0, 0);
+	return (p->flags == FLAG_STRING);
+}
+
 value_p new_val() {
 	value_p empty_val = malloc(sizeof(struct value_t));
 	setFlag(empty_val, FLAG_EMPTY);
@@ -123,7 +131,7 @@ double get_number(subrange_p p) {
 }
 
 value_p print(subrange_p whatever, subrange_p text) {
-	if(!assertSingle(text)) return new_val();
+	if(!assertSingleString(text)) return new_val();
 	value_p my_val = get_val(text,0,0);
 	if(!assertText(my_val)) return new_val();
 	printf("%s", my_val->str->text);
@@ -248,11 +256,15 @@ value_p extend_floor(subrange_p range) {
 	return new_number(val);
 }
 
-value_p extend_open(subrange_p range_one, subrange_p range_two){
+value_p extend_open(subrange_p rng_filename, subrange_p rng_mode){
 	FILE *val;
-	if(!assertSingle(range_one) || !assertSingle(range_two) || open_num_files + 1 > MAX_FILES) return new_val();
-	value_p filename = get_val(range_one, 0, 0);
-	value_p mode = get_val(range_two, 0,0);
+	if (   !assertSingleString(rng_filename)
+			|| !assertSingleString(rng_mode)
+			|| open_num_files + 1 > MAX_FILES) {
+				return new_val();
+	}
+	value_p filename = get_val(rng_filename, 0, 0);
+	value_p mode = get_val(rng_mode, 0,0);
 	val = fopen(filename->str->text, mode->str->text);
 	if(val == NULL) return new_val();
 	open_num_files++;
@@ -260,14 +272,14 @@ value_p extend_open(subrange_p range_one, subrange_p range_two){
 	return new_number((double) open_num_files);
 }
 
-value_p extend_close(subrange_p range){
-	if(!assertSingleNumber(range)) {
+value_p extend_close(subrange_p rng_file_handle){
+	if(!assertSingleNumber(rng_file_handle)) {
 		// Per the LRM this is actually supposed to crash the program.
 		fprintf(stderr, "EXITING - Attempted to close something that was not a valid file pointer\n");
 		exit(-1);
 	}
 
-	int fileNum = (int) get_number(range);
+	int fileNum = (int) get_number(rng_file_handle);
 	if (fileNum > open_num_files || open_files[fileNum] == NULL) {
 		// Per the LRM this is actually supposed to crash the program.
 		fprintf(stderr, "EXITING - Attempted to close something that was not a valid file pointer\n");
@@ -278,11 +290,14 @@ value_p extend_close(subrange_p range){
 	return new_val(); // asssuming it was an open valid handle, close() is just supposed to return empty
 }
 
-value_p extend_read(subrange_p n, subrange_p f){
-	if(!assertSingle(n)) return new_val();
-	if(!assertSingle(f)) return new_val();
-	char *buf = malloc(sizeof(char) * ((int)get_number(n) + 1));
-	int bytes_read = fread(buf, sizeof(char), (int)get_number(n), open_files[(int)get_number(f)]);
+value_p extend_read(subrange_p rng_file_handle, subrange_p rng_num_bytes){
+	/* TODO: Make it accept empty */
+	if(!assertSingleNumber(rng_file_handle) || !assertSingleNumber(rng_num_bytes)) return new_val();
+	int max_bytes = (int) get_number(rng_num_bytes);
+	int fileNum = (int) get_number(rng_file_handle);
+	if (fileNum > open_num_files || open_files[fileNum] == NULL)  return new_val();
+	char *buf = malloc(sizeof(char) * (max_bytes + 1));
+	int bytes_read = fread(buf, sizeof(char), max_bytes, open_files[fileNum]);
 	buf[bytes_read + 1] = 0;
 	value_p result = box_value_string(new_string(buf));
 	free(buf);
@@ -290,17 +305,18 @@ value_p extend_read(subrange_p n, subrange_p f){
 	//edge case: how to return the entire contents of the file if n == empty?
 }
 
-value_p extend_write(subrange_p buf, subrange_p f){
+value_p extend_write(subrange_p rng_file_handle, subrange_p buf){
 	int val;
-	if(!assertSingle(buf)) return new_val();
-	if(!assertSingle(f)) return new_val();
+	if(!assertSingleNumber(rng_file_handle) || !assertSingleString(buf)) return new_val();
 	value_p buffer = get_val(buf, 0, 0);
-	value_p fd = get_val(f, 0, 0);
-	val = fwrite(buffer->str->text, 1, sizeof buffer->str->text, open_files[(int)get_number(f)]);
-	if(val == 0 ){
-		fprintf(stderr, "EXITING - No bytes written.\n");
+	int fileNum = (int) get_number(rng_file_handle);
+	if (fileNum > open_num_files || open_files[fileNum] == NULL) {
+		// Per the LRM this is actually supposed to crash the program.
+		fprintf(stderr, "EXITING - Attempted to write to something that was not a valid file pointer\n");
 		exit(-1);
 	}
-	// return empty no matter what?
-	return new_val();
+	fwrite(buffer->str->text, 1, buffer->str->length, open_files[fileNum]);
+	// TODO: make this return empty once compiler handles Id(s)
+	// RN: Use the return value to close the file
+	return new_number((double) fileNum);
 }

@@ -6,5 +6,5 @@ extern "stdlib.o" {
 }
 
 [1,1] main(args){
-  return print(1, extend_read(5, extend_open("testcases/assets/test_file.txt", "r"))) -> 0;
+  return print(1, extend_read(extend_open("testcases/assets/test_file.txt", "r"),5)) -> 0;
 }

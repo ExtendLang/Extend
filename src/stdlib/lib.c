@@ -109,6 +109,14 @@ int assertSingleString(subrange_p range) {
 	return (p->flags == FLAG_STRING);
 }
 
+int assertEmpty(subrange_p range) {
+	if (!assertSingle(range)) {
+		return 0;
+	}
+	value_p p = get_val(range, 0, 0);
+	return (p->flags == FLAG_EMPTY);
+}
+
 value_p new_val() {
 	value_p empty_val = malloc(sizeof(struct value_t));
 	setFlag(empty_val, FLAG_EMPTY);
@@ -293,11 +301,19 @@ value_p extend_close(subrange_p rng_file_handle){
 value_p extend_read(subrange_p rng_file_handle, subrange_p rng_num_bytes){
 	/* TODO: Make it accept empty */
 	if(!assertSingleNumber(rng_file_handle) || !assertSingleNumber(rng_num_bytes)) return new_val();
-	int max_bytes = (int) get_number(rng_num_bytes);
-	int fileNum = (int) get_number(rng_file_handle);
+	int fileNum = (int) get_number(rng_file_handle), max_bytes;
 	if (fileNum > open_num_files || open_files[fileNum] == NULL)  return new_val();
+	FILE *f = open_files[fileNum];
+	max_bytes = (int) get_number(rng_num_bytes);
+	if (max_bytes == 0) {
+		long cur_pos = ftell(f);
+		fseek(f, 0, SEEK_END);
+		long end_pos = ftell(f);
+		fseek(f, cur_pos, SEEK_SET);
+		max_bytes = end_pos - cur_pos;
+	}
 	char *buf = malloc(sizeof(char) * (max_bytes + 1));
-	int bytes_read = fread(buf, sizeof(char), max_bytes, open_files[fileNum]);
+	int bytes_read = fread(buf, sizeof(char), max_bytes, f);
 	buf[bytes_read] = 0;
 	value_p result = box_value_string(new_string(buf));
 	free(buf);

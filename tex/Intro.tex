@@ -13,10 +13,10 @@ import "string.xtnd";
 		\end{lstlisting}
 		Extend imports act like \texttt{\#include} in C, except that multiple imports of the same file are ignored. The imports are all aggregated into a single namespace.
 	\subsection{Global Variables}
-		In essence, global variable declarations function as constants in Extend. They are written with the keyword \texttt{global}, followed by a variable declaration in the same form as a variable declaration within a function as described in section~\ref{sec:vardecl}. As with local variables, the value of a global variable, once computed, is immutable. A few examples follow:
+		In essence, global variable declarations function as constants in Extend. They are written with the keyword \texttt{global}, followed by a variable declaration in the same form as a variable declaration within a function as described in section~\ref{sec:vardecl}. As with local variables, the cell values of a global variable, once computed, are immutable. A few examples follow:
 		\lstinputlisting{./samples/global.xtnd}
 	\subsection{Function Definitions}
-		Function definitions are described in detail in section~\ref{sec:Functions}.
+		Function definitions, which comprise the bulk of an Extend program, are described in detail in section~\ref{sec:Functions}.
 	\subsection{External Library Declarations}
 	  An external library is declared with the \texttt{extern} keyword, followed by the name of an object file in double quotes, followed by a semicolon-delimited list of external function declarations enclosed by curly braces. A library declaration informs the compiler of the functions' names and signatures and instructs the compiler to link the
 		object file when producing an executable. An external function declared as \texttt{foo} will call an appropriately written C function \texttt{\detokenize{extend_foo}}. An example follows:

@@ -1,0 +1,4 @@
+extern "mylib.o" {
+  foo(arg1, arg2);
+  bar();
+}

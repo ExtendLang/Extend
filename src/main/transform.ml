@@ -17,7 +17,7 @@ let idgen =
 module StringSet = Set.Make (String);;
 let importSet = StringSet.empty;;
 
-let builtin_signatures = [("row", 0); ("column", 0); (*("printf", 2);*) ("toString", 1)]
+let builtin_signatures = [("cos", 1); ("column", 0); (*("printf", 2);*) ("toString", 1)]
 
 let expand_file filename =
   let print_error_location filename msg lexbuf =

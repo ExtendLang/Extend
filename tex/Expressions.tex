@@ -1,52 +1,52 @@
 \section{Expressions}
-	Expressions in Extend allows for arithmetic and boolean operations, function calls, conditional branching, and extraction of contents of other variables. The sections for boolean and conditional operators refer to truthy and falsey values. Any number besides zero is truthy; zero is falsey. \textbf{empty} is neither truthy nor falsey. 
-		\subsection{Arithmetic Operators} 
-			The arithmetic operators listed below take one or two expressions and return a number, if neither expression is empty, or empty, if either expression is empty. Operators grouped within the same inner box have the same level of precedence, and are listed from highest precedence to lowest precedence. All of the binary operators, with the exception of exponentiation, are left-associative. Exponentiation, bitwise negation, and unary negation are right-associative.
+	Expressions in Extend allows for arithmetic and boolean operations, function calls, conditional branching,  extraction of contents of other variables, string concatenation, and determination of the location of the cell containing the expression. The sections for boolean and conditional operators refer to truthy and falsey values. The \texttt{Number} 0 is the only falsey value; all other values are truthy. As \texttt{empty} represents the absence of a value, it is neither truthy nor falsey.
+		\subsection{Arithmetic Operators}
+			The arithmetic operators listed below take one or two expressions and return a number, if both expressions are Numbers, or empty otherwise. Operators grouped within the same inner box have the same level of precedence, and are listed from highest precedence to lowest precedence. All of the binary operators are infix operators, and, with the exception of exponentiation, are left-associative. Exponentiation, bitwise negation, and unary negation are right-associative. All of the unary operators are prefix operators. The bitwise operators coerce their operands to signed 32-bit integers before performing the operation and evaluate to a Number.
 			\begin{table}[H]
 			\begin{tabular}{ |p{2cm}|p{3cm}|p{8cm}|  }
 			\hline
 			\textbf{Operator} & \textbf{Description} & \textbf{Definition} \\ \hline
-			\texttt{\~} & \texttt{Bitwise NOT } & {Performs a bitwise negation on the binary representation of an expression.} \\
-			\texttt{-} & \texttt{Unary negation} & {A simple negative sign to negate expressions.} \\ \hline
-			\texttt{**} & \texttt{Power} & {Returns the first expression raised to the power of the second expression} \\ \hline
+			\rule{0pt}{3ex}\texttt{\~} & \texttt{Bitwise NOT } & {Performs a bitwise negation on the binary representation of an expression.} \\
+			\rule{0pt}{3ex}\texttt{-} & \texttt{Unary negation} & {A simple negative sign to negate expressions.} \\ \hline
+			\rule{0pt}{3ex}\texttt{**} & \texttt{Power} & {Returns the first expression raised to the power of the second expression} \\ \hline
 			\texttt{*} & \texttt{Multiplication} & {Multiplies two expressions} \\
-			\texttt{/} & \texttt{Division} & {Divides first expression by second}. \\
-			\texttt{\%} & \texttt{Modulo} & {Finds the remainder by dividing the expression on the left side of the modulo by the right side expression.} \\
-			\texttt{<<} & \texttt{Left Shift} & {Performs a bitwise left shift on the binary representation of an expression.} \\
-			\texttt{>>} & \texttt{Right Shift} & {Performs a bitwise right shift on the binary representation of an expression.} \\
-			\texttt{\&} & \texttt{Bitwise AND} & {Performs a bitwise AND between two expressions. If both expressions have a 1 at the same digit, the resultant expression will have a 1 there; otherwise, it is 0.} \\ \hline
-			\texttt{+} & \texttt{Addition} & {Adds two expressions together.} \\
-			\texttt{-} & \texttt{Subtraction} & {Subtracts second expression from first.} \\
-			\texttt{|} & \texttt{Bitwise OR} & {Performs a bitwise OR between two expressions. If at least one of the expressions has a one at the same digit, the resultant expression will have a 1 there; otherwise, it is 0.} \\
-			\texttt{\^} & \texttt{Bitwise XOR} & {Performs a bitwise exclusive OR between two expressions. If exactly one of the expressions has a one in the same digit, the resultant expression will have a 1 there; otherwise it is 0.} \\ \hline
+			\rule{0pt}{3ex}\texttt{/} & \texttt{Division} & {Divides first expression by second}. \\
+			\rule{0pt}{3ex}\texttt{\%} & \texttt{Modulo} & {Finds the remainder by dividing the expression on the left side of the modulo by the right side expression.} \\
+			\rule{0pt}{3ex}\texttt{<<} & \texttt{Left Shift} & {Performs a bitwise left shift on the binary representation of an expression.} \\
+			\rule{0pt}{3ex}\texttt{>>} & \texttt{Right Shift} & {Performs a sign-propagating bitwise right shift on the binary representation of an expression.} \\
+			\rule{0pt}{3ex}\texttt{\&} & \texttt{Bitwise AND} & {Performs a bitwise AND between two expressions. If both expressions have a 1 at the same digit, the resultant expression will have a 1 there; otherwise, it is 0.} \\ \hline
+			\rule{0pt}{3ex}\texttt{+} & \texttt{Addition} & {Adds two expressions together.} \\
+			\rule{0pt}{3ex}\texttt{-} & \texttt{Subtraction} & {Subtracts second expression from first.} \\
+			\rule{0pt}{3ex}\texttt{|} & \texttt{Bitwise OR} & {Performs a bitwise OR between two expressions.} \\
+			\rule{0pt}{3ex}\texttt{\^} & \texttt{Bitwise XOR} & {Performs a bitwise exclusive OR between two expressions.} \\ \hline
 			\end{tabular}
 			\end{table}
 		\subsection{Boolean Operators}
-			These operators take one or two expressions and evaluate to empty, if either expression is empty, or to 0 or 1 if both expressions are numeric. Operators grouped within the same inner box have the same level of precedence and are listed from highest precedence to lowest precedence. All of these operators besides logical negation are left-associative.
+			These operators take one or two expressions and evaluate to empty, 0 or 1. Operators grouped within the same inner box have the same level of precedence and are listed from highest precedence to lowest precedence. All of these operators besides logical negation are infix, left-associative operators. The logical AND and OR operators feature short-circuit evaluation. Logical NOT is a prefix, right-associative operator.
 			\begin{table}[H]
 			\begin{tabular}{ |p{2cm}|p{5cm}|p{7cm}|  }
 			\hline
 			\textbf{Operator} & \textbf{Description} & \textbf{Definition} \\ \hline
-			\texttt{!} & \texttt{Logical NOT} & {Returns 0 given a truthy value and 1 given a falsey value.} \\ \hline
-			\texttt{==} & \texttt{Equals} & {Evaluates to 1 if the two expressions are both numbers and have the same value, or 0 if the two expressions are both numbers that do not have the same value. If the two expressions are ranges, evaluates to 1 if the two ranges have the same dimensions and each cell of the first expression == the corresponding cell of the second expression} \\
-			\texttt{!=} & \texttt{Not equals} & {Evaluates to 1 if the expressions are not the same.} \\
-			\texttt{<} & \texttt{Less than} & {Evaluates to 1 if the first expression is less than the first.} \\
-			\texttt{>} & \texttt{Greater than} & {Evaluates to 1 if the first expression is greater than the first.}. \\
-			\texttt{<=} & \texttt{Less than or equals to} & {Evaluates to 1 if the first expression is less than or equals to the second.} \\
-			\texttt{>=} & \texttt{Greater than or equals to} & {Evaluates to 1 if the first expression is less than or equals to the second.} \\ \hline
-			\texttt{\&\&} & \texttt{Logical AND} & {Returns 1 if both expressions evaluate to truthy values, otherwise 0.} \\ \hline
-			\texttt{||} & \texttt{Logical OR} & {Returns 1 if at least one of the two expressions evaluate to a truthy value, otherwise 0.} \\ \hline
+			\rule{0pt}{3ex}\texttt{!} & \texttt{Logical NOT} & {Evaluates to 0 or 1 given a truthy or falsey value respectively. \texttt{!empty} evaluates to \texttt{empty}.} \\ \hline
+			\rule{0pt}{3ex}\texttt{==} & \texttt{Equals} & {Always evaluates to 0 if the two expressions have different types. If both expressions are primitive values, evaluates to 1 if they have the same type and the same value, or 0 otherwise. If both expressions are ranges, evaluates to 1 if the two ranges have the same dimensions and each cell of the first expression == the corresponding cell of the second expression.} \\
+			\rule{0pt}{3ex}\texttt{!=} & \texttt{Not equals} & {\texttt{x != y} is equivalent to \texttt{!(x == y)}.} \\
+			\rule{0pt}{3ex}\texttt{<} & \texttt{Less than} & {If the expressions are both Numbers or both Strings and the first expression is less than the first, evaluates to 1. If the expressions are both Numbers or both Strings and the first expression is greater than or equal to the first, evaluates to 0. Otherwise, evaluates to empty.} \\
+			\rule{0pt}{3ex}\texttt{>} & \texttt{Greater than} & {Evaluates to 1 if the first expression is greater than the first; equivalent rules about typing as for \texttt{<}.} \\
+			\rule{0pt}{3ex}\texttt{<=} & \texttt{Less than or equal to} & {Evaluates to 1 if the first expression is less than or equal to the second; equivalent rules about typing as for \texttt{<}.} \\
+			\rule{0pt}{3ex}\texttt{>=} & \texttt{Greater than or equal to} & {Evaluates to 1 if the first expression is less than or equal to the second; equivalent rules about typing as for \texttt{<}.} \\ \hline
+			\rule{0pt}{3ex}\texttt{\&\&} & \texttt{Short-circuit Logical AND} & {If the first expression is falsey or empty, evaluates to 0 or empty respectively. Otherwise, if the second expression is truthy, falsey, or empty, evaluates to 1, 0, or empty respectively.} \\ \hline
+			\rule{0pt}{3ex}\texttt{||} & \texttt{Short-circuit Logical OR} & {If the first expression is truthy or empty, evaluates to 1 or empty respectively. Otherwise, if the second expression is truthy, falsey, or empty, evaluates to 1, 0, or empty respectively.} \\ \hline
 			\end{tabular}
 			\end{table}
 		\subsection{Conditional Operators}
-			The conditional operators can be used to create expressions that evaluate to a specified expression based on the truthiness of a specified expression. There are two types of conditional expressions, ternary expressions and \texttt{switch} expressions.
-			
+			The conditional operators can be used to create expressions that evaluate to a specified expression based on the truthiness of a specified expression. There are two types of conditional expressions: a simple if-then-else expression written using the ternary operator \textbf{? :} and \texttt{switch} expressions which can represent more complex logic.
+
 \subsubsection{Ternary Expressions}
 \label{sec:Ternary}
-A ternary expression, written as \texttt{cond-expr ? expr-if-true : expr-if-false} works like an if-else conditional statement. It evaluates to \texttt{expr-if-true} if \texttt{cond-expr} is numeric and truthy, or  \texttt{expr-if-false} if \texttt{cond-expr} is numeric and falsey. If \texttt{cond-expr} is empty, the expression evaluates to empty. Both expr-if-true and expr-if-false are mandatory.
+A ternary expression, written as \texttt{cond-expr ? expr-if-true : expr-if-false} works like an if-else conditional statement. It evaluates to \texttt{expr-if-true} if \texttt{cond-expr} is numeric and truthy, or  \texttt{expr-if-false} if \texttt{cond-expr} is numeric and falsey. If \texttt{cond-expr} is empty, the expression evaluates to empty. Both expr-if-true and expr-if-false are mandatory. \texttt{expr-if-true} is only evaluated if \texttt{cond-expr} is truthy, and \texttt{expr-if-false} is only evaluated if \texttt{cond-expr} is falsey. If \texttt{cond-expr} is empty, neither expression is evaluated.
 
 \subsubsection{Switch Expressions}
-\label{sec:Switch}			
+\label{sec:Switch}
 A \texttt{switch} expression takes a optional condition, and a list of cases and expressions that the overall expression should evaluate to if the case applies. In the event that multiple cases are true, the expression of the first matching case encountered will be evaluated. An example is provided below:
 \begin{lstlisting}
 [1,1] foo := 3;
@@ -57,7 +57,7 @@ return switch (foo) {
 }
 
 /* Equivalently: */
-return switch() {
+return switch {
 	case foo == 2:
 		"foo is 2";
 	case foo == 3, foo == 4:
@@ -66,13 +66,28 @@ return switch() {
 		"none of the above";
 }
 \end{lstlisting}
-The format for a \texttt{switch} statement is the keyword \texttt{switch}, followed by pair of parentheses that optionally contain an expression \texttt{switch-expr}, followed by a list of case clauses enclosed in curly braces and delimited by semicolons. A case clause consists of the keyword \texttt{case} followed by a comma-separated list of expressions \texttt{case-expr1 [, case-expr2, [...]]}, a colon, and an expression \texttt{match-expr}, or the keyword \texttt{default}, a colon, and an expression \texttt{default-expr}. If \texttt{switch-expr} is omitted, the value 1 is assumed. The \texttt{switch} expression evaluates to the \texttt{match-expr} for the first case where one of the \texttt{case-expr}s is equal to \texttt{switch-expr}, with equality defined as for the \texttt{==} operator, or \texttt{default-expr}, if none of the \texttt{case-expr}s is equal to \texttt{switch-expr} for any of the cases. 
+The format for a \texttt{switch} statement is the keyword \texttt{switch}, optionally followed by pair of parentheses containing an expression \texttt{switch-expr}, followed by a list of case clauses enclosed in curly braces and delimited by semicolons. A case clause consists of the keyword \texttt{case} followed by a comma-separated list of expressions \texttt{case-expr1 [, case-expr2, [...]]}, a colon, and an expression \texttt{match-expr}, or the keyword \texttt{default}, a colon, and an expression \texttt{default-expr}. If \texttt{switch-expr} is omitted, the value 1 is assumed. The \texttt{switch} expression evaluates to the \texttt{match-expr} for the first case where one of the \texttt{case-expr}s is truthy, if \texttt{switch-expr} is omitted, or equal (with equality defined as for the \texttt{==} operator) to \texttt{switch-expr}, if \texttt{switch-expr} is present, or \texttt{default-expr}, if none of the \texttt{case-expr}s apply.
 
-The \texttt{switch} expression can be used to compactly represent what in most imperative languages would require a long string such as \texttt{if (cond1) \{...\} else if (cond2) \{...\}}.
+The \texttt{switch} expression can be used to compactly represent what in most imperative languages would require a long string such as \texttt{if (cond1) \{...\} else if (cond2) \{...\}}. The \texttt{switch} operator is internally converted to an equivalent (nested) ternary expression; as a result, it features short-circuit evaluation throughout.
+
+\subsection {Additional Operators}
+There are four additional operators available to determine the size and type of other expressions; in addition, the infix \texttt{+} operator is overloaded to perform string concatenation.
+\begin{table}[H]
+\begin{tabular}{ |p{2cm}|p{3cm}|p{8cm}|  }
+\hline
+\textbf{Operator} & \textbf{Description} & \textbf{Definition} \\ \hline
+\texttt{size(expr)} & \texttt{Dimensions} & {Evaluates to a Range consisting of one row and two columns; the first cell contains the number of rows of \texttt{expr} and the second contains the number of columns. If \texttt{expr} is a Number, a String, or Empty, both cells will contain 1.} \\ \hline
+\texttt{type(expr)} & \texttt{Value Type} & {Evaluates to "Number", "String", "Range", or "Empty".} \\ \hline
+\texttt{row()} & \texttt{Row Location} & {No arguments; returns the row of the cell containing the formula} \\ \hline
+\texttt{column()} & \texttt{Column Location} & {No arguments; returns the column of the cell containing the formula} \\ \hline
+\texttt{+} & \texttt{String concatenation} & {"Hello, " + "World!\textbackslash n" == "Hello, World!\textbackslash n"}\\ \hline
+\end{tabular}
+\end{table}
+
 \subsection {Function Calls}
 A function expression consists of an identifier and an optional list of expressions enclosed in parentheses and separated by commas. The value of the expression is the result of applying the function to the arguments passed in as expressions. For more detail, see section~\ref{sec:Functions}.
 \subsection{Range Expressions}
-Range expressions are used to select part or all of a range. A range expression consists of a bare identifier, a bare range literal, or an expression and a selector. If a range expression has exactly 1 row and 1 column, the value of the expression is the value of the formula of the single cell of the range. If it has more than 1 row or more than 1 column, the value of the expression is the selected range. If the range has zero or fewer rows or zero or fewer columns, the value of the expression is \texttt{empty}. If a range expression with a selector would access a row index or column index greater than the number of rows or columns of the range, or a negative row or column index, the value of the expression is \texttt{empty}. 
+Range expressions are used to select part or all of a range. A range expression consists of a bare identifier, a bare range literal, or an expression and a selector. If a range expression has exactly 1 row and 1 column, the value of the expression is the value of the formula of the single cell of the range. If it has more than 1 row or more than 1 column, the value of the expression is the selected range. If the range has zero or fewer rows or zero or fewer columns, the value of the expression is \texttt{empty}. If a range expression with a selector would access a row index or column index greater than the number of rows or columns of the range, or a negative row or column index, the value of the expression is \texttt{empty}.
 \subsubsection{Slices}
 A slice consists of an optional integer literal or expression \texttt{start}, a colon, and an optional integer literal or expression \texttt{end}, or a single integer literal or expression \texttt{index}. If \texttt{start} is omitted, it defaults to 0. If \texttt{end} is omitted, it defaults to the length of the dimension. A single \texttt{index} with no colon is equivalent to \texttt{index:index+1}. Enclosing \texttt{start} or \texttt{end} in square brackets is equivalent to the expression \texttt{row() + start} or \texttt{row() + end}, for a row slice, or \texttt{column() + start} or \texttt{column() + end} for a column slice. The slice includes \texttt{start} and excludes \texttt{end}, so the length of a slice is \texttt{end - start}. A negative value is interpreted as the length of the dimension minus the value.
 			As mentioned above, the value of a range that is not 1 by 1 is a range, but the value of a 1 by 1 range is essentially dereferenced to the result of the cell formula.
@@ -82,20 +97,20 @@ A selection expression consists of an expression and a pair of slices separated 
 foo[1,2] /* This evaluates to the cell value in the second row and third column. */
 foo[1,:] /* Evaluates to the range of cells in the second row of foo. */
 foo[:,2] /* Evaluates to the range of cells in the third column of foo. */
-foo[:,[1]] /* The internal brackets denote RELATIVE notation. 
-In this case, 1 column right of the column of the left-hand-side cell. */ 
+foo[:,[1]] /* The internal brackets denote RELATIVE notation.
+In this case, 1 column right of the column of the left-hand-side cell. */
 
 foo[1,] /* Equivalent to foo[1,[0]] if foo has more than one column
 or foo[1,0] if foo has one column */
 
 foo[5:, 7:] /* All cells starting from the 6th row and 8th column to the bottom right */
 
-foo[[1:2], [5:7]] 
-/* Selects the rows between the 1st and 2nd row after LHS row, and 
+foo[[1:2], [5:7]]
+/* Selects the rows between the 1st and 2nd row after LHS row, and
    between 5th and 7th column from LHS column */
 
-#foo 
-/* If foo has >=2 rows and >= 2 columns, equivalent to foo[[0],[0]]; 
+#foo
+/* If foo has >=2 rows and >= 2 columns, equivalent to foo[[0],[0]];
    If foo has 1 row and multiple columns, equivalent to foo[0,[0]]; etc. */
 \end{lstlisting}
 \subsection{Precedence Expressions}

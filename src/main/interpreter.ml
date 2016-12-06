@@ -134,6 +134,10 @@ let rec __printf__ scope cell exprs = (match (evaluate scope cell (List.hd (List
 
 and __toString__ scope cell exprs = ExtendString(string_of_val scope (evaluate scope cell (List.hd exprs)))
 
+and __cos__ scope cell exprs = (match (evaluate scope cell (List.hd exprs)) with
+      ExtendNumber(n) -> ExtendNumber(int_of_float (cos (float_of_int n)))
+    | _ -> EmptyValue)
+
 and string_of_val scope = function
        ExtendNumber(cv) -> string_of_int cv
      | ExtendString(s) -> quote_string s
@@ -407,8 +411,8 @@ let interpret ast_mapped =
   let builtins = List.fold_left2
       (fun m fname f -> StringMap.add fname f m)
       StringMap.empty
-      ["printf";"toString"]
-      [__printf__;__toString__] in
+      ["printf";"toString";"cos"]
+      [__printf__;__toString__;__cos__] in
   let global_scope = create_global_scope ast_mapped builtins in
   let main_args = [LitString("interpreter")] in
   ignore (string_of_val global_scope (evaluate global_scope (Cell(0,0)) (Call("main", main_args))))

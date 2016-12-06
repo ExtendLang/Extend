@@ -1,0 +1,9 @@
+extern "stdlib.o" {
+  extend_open(a,b);
+  extend_close(a);
+  print(a,b);
+}
+
+[1,1] main(args){
+  return extend_close(extend_open("testcases/assets/test_file.txt", "r")) -> print(1,"Made it this far\n") -> 0;
+}

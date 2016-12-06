@@ -7,6 +7,10 @@
 #define FLAG_STRING 2
 #define FLAG_SUBRANGE 3
 
+#define MAX_FILES 255
+FILE *open_files[1 + MAX_FILES] = {NULL};
+int open_num_files = 0;
+
 struct subrange_t;
 struct value_t;
 
@@ -59,7 +63,9 @@ struct subrange_t {
 
 typedef struct subrange_t* subrange_p;
 
-//value_p get_val(range_p range, int row, int col);
+string_p new_string(char *str);
+
+value_p box_value_string(string_p);
 
 value_p get_val(subrange_p range, int row, int col) {
 	//TODO: assertions
@@ -71,6 +77,10 @@ double setNumeric(value_p result, double val) {
 	return (result->numericVal = val);
 }
 
+char* setString(value_p result, char *str) {
+	return (result->str->text = str);
+}
+
 double setFlag(value_p result, double flag_num) {
 	return (result->flags = FLAG_NUMBER);
 }
@@ -79,8 +89,32 @@ int assertSingle(subrange_p range) {
 	return (range->subrangeRow == 1 && range->subrangeCol == 1);
 }
 
+int assertSingleNumber(subrange_p range) {
+	if (!assertSingle(range)) {
+		return 0;
+	};
+	value_p p = get_val(range, 0, 0);
+	return (p->flags == FLAG_NUMBER);
+}
+
 int assertText(value_p my_val) {
 	return (my_val->flags == FLAG_STRING);
+}
+
+int assertSingleString(subrange_p range) {
+	if (!assertSingle(range)) {
+		return 0;
+	}
+	value_p p = get_val(range, 0, 0);
+	return (p->flags == FLAG_STRING);
+}
+
+int assertEmpty(subrange_p range) {
+	if (!assertSingle(range)) {
+		return 0;
+	}
+	value_p p = get_val(range, 0, 0);
+	return (p->flags == FLAG_EMPTY);
 }
 
 value_p new_val() {
@@ -89,8 +123,23 @@ value_p new_val() {
 	return empty_val;
 }
 
+value_p new_number(double val) {
+	value_p new_v = malloc(sizeof(struct value_t));
+	setFlag(new_v, FLAG_NUMBER);
+	setNumeric(new_v, val);
+	return new_v;
+}
+
+double get_number(subrange_p p) {
+	/* Assumes the calling function has
+	 * already verified that subrange_p
+	 * points to a single Number */
+	value_p v = get_val(p, 0, 0);
+	return v->numericVal;
+}
+
 value_p print(subrange_p whatever, subrange_p text) {
-	if(!assertSingle(text)) return new_val();
+	if(!assertSingleString(text)) return new_val();
 	value_p my_val = get_val(text,0,0);
 	if(!assertText(my_val)) return new_val();
 	printf("%s", my_val->str->text);
@@ -104,177 +153,186 @@ value_p printd(subrange_p whatever, subrange_p text) {
 }
 
 value_p extend_sin(subrange_p range) {
-	double val;
-	if(!assertSingle(range)) return new_val();
-	value_p initial = get_val(range, 0, 0);
-	val = sin(initial->numericVal);
-	value_p result = new_val();
-	setNumeric(result,val);
-	setFlag(result, FLAG_NUMBER);
-	return result;
+	if(!assertSingleNumber(range)) return new_val();
+	double initial = get_number(range);
+	double val = sin(initial);
+	return new_number(val);
 }
 
 value_p extend_cos(subrange_p range) {
-	double val;
-	if(!assertSingle(range)) return new_val();
-	value_p initial = get_val(range, 0, 0);
-	val = cos(initial->numericVal);
-	value_p result = new_val();
-	setNumeric(result,val);
-	setFlag(result, FLAG_NUMBER);
-	return result;
+	if(!assertSingleNumber(range)) return new_val();
+	double initial = get_number(range);
+	double val = cos(initial);
+	return new_number(val);
 }
 
 value_p extend_tan(subrange_p range) {
-	double val;
-	if(!assertSingle(range)) return new_val();
-	value_p initial = get_val(range, 0, 0);
-	val = tan(initial->numericVal);
-	value_p result = new_val();
-	setNumeric(result,val);
-	setFlag(result, FLAG_NUMBER);
-	return result;
+	if(!assertSingleNumber(range)) return new_val();
+	double initial = get_number(range);
+	double val = tan(initial);
+	return new_number(val);
 }
 
 value_p extend_asin(subrange_p range) {
-	double val;
-	if(!assertSingle(range)) return new_val();
-	value_p initial = get_val(range, 0, 0);
-	val = asin(initial->numericVal);
-	value_p result = new_val();
-	setNumeric(result,val);
-	setFlag(result, FLAG_NUMBER);
-	return result;
+	if(!assertSingleNumber(range)) return new_val();
+	double initial = get_number(range);
+	double val = asin(initial);
+	return new_number(val);
 }
 
 value_p extend_acos(subrange_p range) {
-	double val;
-	if(!assertSingle(range)) return new_val();
-	value_p initial = get_val(range, 0, 0);
-	val = acos(initial->numericVal);
-	value_p result = new_val();
-	setNumeric(result,val);
-	setFlag(result, FLAG_NUMBER);
-	return result;
+	if(!assertSingleNumber(range)) return new_val();
+	double initial = get_number(range);
+	double val = acos(initial);
+	return new_number(val);
 }
 
 value_p extend_atan(subrange_p range) {
-	double val;
-	if(!assertSingle(range)) return new_val();
-	value_p initial = get_val(range, 0, 0);
-	val = atan(initial->numericVal);
-	value_p result = new_val();
-	setNumeric(result,val);
-	setFlag(result, FLAG_NUMBER);
-	return result;
+	if(!assertSingleNumber(range)) return new_val();
+	double initial = get_number(range);
+	double val = atan(initial);
+	return new_number(val);
 }
 
 value_p extend_sinh(subrange_p range) {
-	double val;
-	if(!assertSingle(range)) return new_val();
-	value_p initial = get_val(range, 0, 0);
-	val = sinh(initial->numericVal);
-	value_p result = new_val();
-	setNumeric(result,val);
-	setFlag(result, FLAG_NUMBER);
-	return result;
+	if(!assertSingleNumber(range)) return new_val();
+	double initial = get_number(range);
+	double val = sinh(initial);
+	return new_number(val);
 }
 
 value_p extend_cosh(subrange_p range) {
-	double val;
-	if(!assertSingle(range)) return new_val();
-	value_p initial = get_val(range, 0, 0);
-	val = cosh(initial->numericVal);
-	value_p result = new_val();
-	setNumeric(result,val);
-	setFlag(result, FLAG_NUMBER);
-	return result;
+	if(!assertSingleNumber(range)) return new_val();
+	double initial = get_number(range);
+	double val = cosh(initial);
+	return new_number(val);
 }
 
 value_p extend_tanh(subrange_p range) {
-	double val;
-	if(!assertSingle(range)) return new_val();
-	value_p initial = get_val(range, 0, 0);
-	val = tanh(initial->numericVal);
-	value_p result = new_val();
-	setNumeric(result,val);
-	setFlag(result, FLAG_NUMBER);
-	return result;
+	if(!assertSingleNumber(range)) return new_val();
+	double initial = get_number(range);
+	double val = tanh(initial);
+	return new_number(val);
 }
 
 value_p extend_exp(subrange_p range) {
-	double val;
-	if(!assertSingle(range)) return new_val();
-	value_p initial = get_val(range, 0, 0);
-	val = exp(initial->numericVal);
-	value_p result = new_val();
-	setNumeric(result,val);
-	setFlag(result, FLAG_NUMBER);
-	return result;
+	if(!assertSingleNumber(range)) return new_val();
+	double initial = get_number(range);
+	double val = exp(initial);
+	return new_number(val);
 }
 
 value_p extend_log(subrange_p range) {
-	double val;
-	if(!assertSingle(range)) return new_val();
-	value_p initial = get_val(range, 0, 0);
-	val = log(initial->numericVal);
-	value_p result = new_val();
-	setNumeric(result,val);
-	setFlag(result, FLAG_NUMBER);
-	return result;
+	if(!assertSingleNumber(range)) return new_val();
+	double initial = get_number(range);
+	double val = log(initial);
+	return new_number(val);
 }
 
 value_p extend_log10(subrange_p range) {
-	double val;
-	if(!assertSingle(range)) return new_val();
-	value_p initial = get_val(range, 0, 0);
-	val = log10(initial->numericVal);
-	value_p result = new_val();
-	setNumeric(result,val);
-	setFlag(result, FLAG_NUMBER);
-	return result;
+	if(!assertSingleNumber(range)) return new_val();
+	double initial = get_number(range);
+	double val = log10(initial);
+	return new_number(val);
 }
 
 value_p extend_sqrt(subrange_p range) {
-	double val;
-	if(!assertSingle(range)) return new_val();
-	value_p initial = get_val(range, 0, 0);
-	val = sqrt(initial->numericVal);
-	value_p result = new_val();
-	setNumeric(result,val);
-	setFlag(result, FLAG_NUMBER);
-	return result;
+	if(!assertSingleNumber(range)) return new_val();
+	double initial = get_number(range);
+	double val = sqrt(initial);
+	return new_number(val);
 }
 
 value_p extend_ceil(subrange_p range) {
-	double val;
-	if(!assertSingle(range)) return new_val();
-	value_p initial = get_val(range, 0, 0);
-	val = ceil(initial->numericVal);
-	value_p result = new_val();
-	setNumeric(result,val);
-	setFlag(result, FLAG_NUMBER);
-	return result;
+	if(!assertSingleNumber(range)) return new_val();
+	double initial = get_number(range);
+	double val = ceil(initial);
+	return new_number(val);
 }
 
 value_p extend_fabs(subrange_p range) {
-	double val;
-	if(!assertSingle(range)) return new_val();
-	value_p initial = get_val(range, 0, 0);
-	val = fabs(initial->numericVal);
-	value_p result = new_val();
-	setNumeric(result,val);
-	setFlag(result, FLAG_NUMBER);
-	return result;
+	if(!assertSingleNumber(range)) return new_val();
+	double initial = get_number(range);
+	double val = fabs(initial);
+	return new_number(val);
 }
 
 value_p extend_floor(subrange_p range) {
-	double val;
-	if(!assertSingle(range)) return new_val();
-	value_p initial = get_val(range, 0, 0);
-	val = floor(initial->numericVal);
-	value_p result = new_val();
-	setNumeric(result,val);
-	setFlag(result, FLAG_NUMBER);
+	if(!assertSingleNumber(range)) return new_val();
+	double initial = get_number(range);
+	double val = floor(initial);
+	return new_number(val);
+}
+
+value_p extend_open(subrange_p rng_filename, subrange_p rng_mode){
+	FILE *val;
+	if (   !assertSingleString(rng_filename)
+			|| !assertSingleString(rng_mode)
+			|| open_num_files + 1 > MAX_FILES) {
+				return new_val();
+	}
+	value_p filename = get_val(rng_filename, 0, 0);
+	value_p mode = get_val(rng_mode, 0,0);
+	val = fopen(filename->str->text, mode->str->text);
+	if(val == NULL) return new_val();
+	open_num_files++;
+	open_files[open_num_files] = val;
+	return new_number((double) open_num_files);
+}
+
+value_p extend_close(subrange_p rng_file_handle){
+	if(!assertSingleNumber(rng_file_handle)) {
+		// Per the LRM this is actually supposed to crash the program.
+		fprintf(stderr, "EXITING - Attempted to close something that was not a valid file pointer\n");
+		exit(-1);
+	}
+
+	int fileNum = (int) get_number(rng_file_handle);
+	if (fileNum > open_num_files || open_files[fileNum] == NULL) {
+		// Per the LRM this is actually supposed to crash the program.
+		fprintf(stderr, "EXITING - Attempted to close something that was not a valid file pointer\n");
+		exit(-1);
+	}
+	fclose(open_files[fileNum]);
+	open_files[fileNum] = NULL; // Empty the container for the pointer.
+	return new_val(); // asssuming it was an open valid handle, close() is just supposed to return empty
+}
+
+value_p extend_read(subrange_p rng_file_handle, subrange_p rng_num_bytes){
+	/* TODO: Make it accept empty */
+	if(!assertSingleNumber(rng_file_handle) || !assertSingleNumber(rng_num_bytes)) return new_val();
+	int fileNum = (int) get_number(rng_file_handle), max_bytes;
+	if (fileNum > open_num_files || open_files[fileNum] == NULL)  return new_val();
+	FILE *f = open_files[fileNum];
+	max_bytes = (int) get_number(rng_num_bytes);
+	if (max_bytes == 0) {
+		long cur_pos = ftell(f);
+		fseek(f, 0, SEEK_END);
+		long end_pos = ftell(f);
+		fseek(f, cur_pos, SEEK_SET);
+		max_bytes = end_pos - cur_pos;
+	}
+	char *buf = malloc(sizeof(char) * (max_bytes + 1));
+	int bytes_read = fread(buf, sizeof(char), max_bytes, f);
+	buf[bytes_read] = 0;
+	value_p result = box_value_string(new_string(buf));
+	free(buf);
 	return result;
+	//edge case: how to return the entire contents of the file if n == empty?
+}
+
+value_p extend_write(subrange_p rng_file_handle, subrange_p buf){
+	int val;
+	if(!assertSingleNumber(rng_file_handle) || !assertSingleString(buf)) return new_val();
+	value_p buffer = get_val(buf, 0, 0);
+	int fileNum = (int) get_number(rng_file_handle);
+	if (fileNum > open_num_files || open_files[fileNum] == NULL) {
+		// Per the LRM this is actually supposed to crash the program.
+		fprintf(stderr, "EXITING - Attempted to write to something that was not a valid file pointer\n");
+		exit(-1);
+	}
+	fwrite(buffer->str->text, 1, buffer->str->length, open_files[fileNum]);
+	// TODO: make this return empty once compiler handles Id(s)
+	// RN: Use the return value to close the file
+	return new_number((double) fileNum);
 }

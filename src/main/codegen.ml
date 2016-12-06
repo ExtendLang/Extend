@@ -4,21 +4,30 @@
 exception NotImplemented
 
 type something = {
-  range_t : Llvm.lltype;
+  var_instance_t : Llvm.lltype;
   subrange_t : Llvm.lltype;
-  formula_t : Llvm.lltype;
+  resolved_formula_t : Llvm.lltype;
   status_t : Llvm.lltype;
   value_t : Llvm.lltype;
   dimensions_t : Llvm.lltype;
+  var_defn_t : Llvm.lltype;
+  var_defn_p : Llvm.lltype;
   string_t : Llvm.lltype;
   number_t : Llvm.lltype;
-  range_p : Llvm.lltype;
-  subrange_p : Llvm.lltype;
+  extend_scope_t : Llvm.lltype;
+  formula_t : Llvm.lltype;
+  formula_call_t : Llvm.lltype;
   formula_p : Llvm.lltype;
+  formula_call_p : Llvm.lltype;
+  var_instance_p : Llvm.lltype;
+  subrange_p : Llvm.lltype;
+  resolved_formula_p : Llvm.lltype;
   status_p : Llvm.lltype;
   value_p : Llvm.lltype;
+  extend_scope_p : Llvm.lltype;
   string_p : Llvm.lltype;
   string_p_p : Llvm.lltype;
+  var_instance_p_p : Llvm.lltype;
   int_t : Llvm.lltype;
   long_t : Llvm.lltype;
   flags_t : Llvm.lltype;
@@ -34,6 +43,12 @@ type something = {
 let helper_functions = Hashtbl.create 10
 let extern_functions = Hashtbl.create 10
 
+type scope_field_type = VarDefn | VarInst | VarNum
+let scope_field_type_index = function
+    VarDefn -> 0
+  | VarInst -> 1
+  | VarNum -> 2
+
 type value_field_flags = Empty | Number | String | Range
 let value_field_flags_index = function
     Empty -> 0
@@ -48,13 +63,22 @@ let value_field_index = function
   | String -> 2
   | Subrange -> 3
 
-type range_field = Rows | Columns | Values | Statuses | Formulas
-let range_field_index = function
+type var_defn_field = Rows | Cols | NumFormulas | Formulas
+let var_defn_field_index = function
     Rows -> 0
-  | Columns -> 1
-  | Values -> 2
-  | Statuses -> 3
-  | Formulas -> 4
+  | Cols -> 1
+  | NumFormulas -> 2
+  | Formulas -> 3
+
+type var_instance_field = Rows | Cols | NumFormulas | Formulas | Closure | Values | Status
+let var_instance_field_index = function
+    Rows -> 0
+  | Cols -> 1
+  | NumFormulas -> 2
+  | Formulas -> 3
+  | Closure -> 4
+  | Values -> 5
+  | Status -> 6
 
 type subrange_field = BaseRangePtr | BaseOffsetRow | BaseOffsetCol | SubrangeRows | SubrangeCols
 let subrange_field_index = function
@@ -193,17 +217,17 @@ let create_helper_functions ctx bt the_module =
     let (fn_def, fn_bod) = create_def_bod fname bt.subrange_p [bt.value_p] in
     let value = Llvm.param fn_def 0 in
     let subrange = Llvm.build_malloc bt.subrange_t "" fn_bod in
-    let range = Llvm.build_malloc bt.range_t "" fn_bod in
+    let var_instance = Llvm.build_malloc bt.var_instance_t "" fn_bod in
     let rp = Llvm.build_struct_gep subrange (subrange_field_index BaseRangePtr) "range_p" fn_bod in
-    let vp = Llvm.build_struct_gep range (range_field_index Values) "value_p" fn_bod in
+    let vp = Llvm.build_struct_gep var_instance (var_instance_field_index Values) "value_p" fn_bod in
     let _ = Llvm.build_store value vp fn_bod in
-    let _ = Llvm.build_store range rp fn_bod in
+    let _ = Llvm.build_store var_instance rp fn_bod in
     let _ = Llvm.build_store (Llvm.const_int bt.int_t 0) (Llvm.build_struct_gep subrange (subrange_field_index BaseOffsetCol) "" fn_bod) fn_bod in
     let _ = Llvm.build_store (Llvm.const_int bt.int_t 0) (Llvm.build_struct_gep subrange (subrange_field_index BaseOffsetRow) "" fn_bod) fn_bod in
     let _ = Llvm.build_store (Llvm.const_int bt.int_t 1) (Llvm.build_struct_gep subrange (subrange_field_index SubrangeRows) "" fn_bod) fn_bod in
     let _ = Llvm.build_store (Llvm.const_int bt.int_t 1) (Llvm.build_struct_gep subrange (subrange_field_index SubrangeCols) "" fn_bod) fn_bod in
-    let _ = Llvm.build_store (Llvm.const_int bt.int_t 1) (Llvm.build_struct_gep range (range_field_index Rows) "" fn_bod) fn_bod in
-    let _ = Llvm.build_store (Llvm.const_int bt.int_t 1) (Llvm.build_struct_gep range (range_field_index Columns) "" fn_bod) fn_bod in
+    let _ = Llvm.build_store (Llvm.const_int bt.int_t 1) (Llvm.build_struct_gep var_instance (var_instance_field_index Rows) "" fn_bod) fn_bod in
+    let _ = Llvm.build_store (Llvm.const_int bt.int_t 1) (Llvm.build_struct_gep var_instance (var_instance_field_index Cols) "" fn_bod) fn_bod in
     let _ = Llvm.build_ret subrange fn_bod in
     Hashtbl.add helper_functions fname fn_def in
 
@@ -247,7 +271,7 @@ let translate (globals, functions, externs) =
     my_struct*)
   let context = Llvm.global_context () in
   let setup_types ctx =
-    let range_t = Llvm.named_struct_type ctx "range" (*Range struct is a 2D Matrix of values*)
+    let var_instance_t = Llvm.named_struct_type ctx "var_instance" (*Range struct is a 2D Matrix of values*)
     and subrange_t = Llvm.named_struct_type ctx "subrange" (*Subrange is a wrapper around a range to cut cells*)
     and int_t = Llvm.i32_type ctx (*Integer*)
     and long_t = Llvm.i64_type ctx
@@ -259,28 +283,55 @@ let translate (globals, functions, externs) =
     and value_t = Llvm.named_struct_type ctx "value" (*Value encapsulates the content of a cell*)
     and dimensions_t = Llvm.named_struct_type ctx "dimensions" (**)
     and status_t = Llvm.named_struct_type ctx "status" (*Status indicates how a cell must be treated*)
-    and formula_t = Llvm.named_struct_type ctx "formula" (*Formula is a hint on how to calculate the value of a cell*)
+    and resolved_formula_t = Llvm.named_struct_type ctx "resolved_formula"
+    and extend_scope_t = Llvm.named_struct_type ctx "extend_scope"
+    and var_defn_t = Llvm.named_struct_type ctx "var_def"
+    and formula_t = Llvm.named_struct_type ctx "formula"
     and string_t = Llvm.named_struct_type ctx "string" in
-    let range_p = (Llvm.pointer_type range_t)
+    let var_instance_p = (Llvm.pointer_type var_instance_t)
+    and var_defn_p = Llvm.pointer_type var_defn_t
+    and resolved_formula_p = (Llvm.pointer_type resolved_formula_t)
     and subrange_p = (Llvm.pointer_type subrange_t)
     and value_p = (Llvm.pointer_type value_t)
     and status_p = (Llvm.pointer_type status_t)
-    and formula_p = (Llvm.pointer_type formula_t)
+    and extend_scope_p = (Llvm.pointer_type extend_scope_t)
     and char_p = (Llvm.pointer_type char_t)
     and string_p = (Llvm.pointer_type string_t)
     and char_p_p = (Llvm.pointer_type (Llvm.pointer_type char_t))
     and string_p_p = (Llvm.pointer_type (Llvm.pointer_type string_t))
     and number_t = float_t
+    and formula_p = (Llvm.pointer_type formula_t)
     (*and void_p = (Llvm.pointer_type void_t)*) in
-    let _ = Llvm.struct_set_body range_t (Array.of_list [
+    let var_instance_p_p = (Llvm.pointer_type var_instance_p)
+    and formula_call_t = (Llvm.function_type value_p [|extend_scope_p(*scope*); int_t(*row*); int_t(*col*)|]) in
+    let formula_call_p = Llvm.pointer_type formula_call_t in
+    let _ = Llvm.struct_set_body var_instance_t (Array.of_list [
         int_t(*rows*);
         int_t(*columns*);
+        int_t(*numFormulas*);
+        resolved_formula_t(*formula with resolved dimensions*);
+        extend_scope_t(*scope that contains all variables of a function*);
         value_p(*2D array of cell values*);
         status_p(*2D array of calculation status for each cell*);
-        formula_p(*List of formulas for a cell range*)
+      ]) false
+    and _ = Llvm.struct_set_body formula_t (Array.of_list [
+        bool_t (*from First row*);
+        int_t (*row Start num*);
+        bool_t (*to last row*);
+        int_t (*row end num*);
+        bool_t (*from first col*);
+        int_t (*col start*);
+        bool_t (*to last col*);
+        int_t (*col end num*);
+        formula_call_p (*formula to call*);
+      ]) false
+    and _ = Llvm.struct_set_body extend_scope_t (Array.of_list [
+        var_defn_p(*variable definitions*);
+        var_instance_p_p(*variable instances*);
+        int_t(*number of variables*)
       ]) false
     and _ = Llvm.struct_set_body subrange_t (Array.of_list [
-        range_p(*The target range*);
+        var_instance_p(*The target range*);
         int_t(*row offset*);
         int_t(*column offset*);
         int_t(*row count*);
@@ -300,22 +351,32 @@ let translate (globals, functions, externs) =
       ]) false
     and _ = Llvm.struct_set_body dimensions_t (Array.of_list [int_t; int_t]) false in
     {
-      range_t = range_t;
+      var_instance_t = var_instance_t;
       value_t = value_t;
       status_t = status_t;
       subrange_t = subrange_t;
-      formula_t = formula_t;
+      resolved_formula_t = resolved_formula_t;
       dimensions_t = dimensions_t;
       number_t = number_t;
       string_t = string_t;
+      extend_scope_t = extend_scope_t;
+      formula_t = formula_t;
+      formula_call_t = formula_call_t;
 
-      range_p = range_p;
+      var_defn_t = var_defn_t;
+      var_defn_p = var_defn_p;
+      var_instance_p = var_instance_p;
       subrange_p = subrange_p;
       value_p = value_p;
       status_p = status_p;
-      formula_p = formula_p;
+      resolved_formula_p = resolved_formula_p;
       string_p = string_p;
       char_p = char_p;
+      extend_scope_p = extend_scope_p;
+      formula_p = formula_p;
+      formula_call_p = formula_call_p;
+
+      var_instance_p_p = var_instance_p_p;
 
       int_t = int_t;
       long_t = long_t;
@@ -368,6 +429,33 @@ let translate (globals, functions, externs) =
 
   (* Define the LLVM entry point for the program *)
   create_main build_function_names context base_types base_module ;
+
+  let build_function =
+    let getVal = Llvm.declare_function "getVal" (Llvm.function_type base_types.value_p [|base_types.var_instance_p; base_types.int_t; base_types.int_t|]) base_module
+    and getVar = Llvm.declare_function "get_variable" (Llvm.function_type base_types.var_instance_p [|base_types.extend_scope_p; base_types.int_t|]) base_module
+    and getDefn x sm = match x with Ast.DimId(a) -> Ast.StringMap.find a sm | Ast.DimInt(a) -> a in
+    Ast.StringMap.mapi (fun key (desc, func) ->
+      let builder = Llvm.builder_at_end context (Llvm.entry_block func)
+      and cardinal = Ast.StringMap.cardinal desc.Ast.func_body in
+      let var_defns = Llvm.build_array_malloc (base_types.var_defn_t) (Llvm.const_int base_types.int_t cardinal) "" builder
+      and var_insts = Llvm.build_array_malloc (base_types.var_instance_p) (Llvm.const_int base_types.int_t cardinal) "" builder
+      and scope_obj = Llvm.build_malloc (base_types.extend_scope_t) "" builder in
+      let _ = Llvm.build_store var_defns (Llvm.build_struct_gep scope_obj (scope_field_type_index VarDefn) "" builder)
+      and _ = Llvm.build_store var_insts (Llvm.build_struct_gep scope_obj (scope_field_type_index VarInst) "" builder)
+      and _ = Llvm.build_store (Llvm.const_int base_types.int_t cardinal) (Llvm.build_struct_gep scope_obj (scope_field_type_index VarNum) "" builder) in
+      let scope = Ast.StringMap.fold (fun ke va (sm, count) ->
+        let defn = (Llvm.build_struct_gep var_defns count "" builder)
+        and numForm = List.length va.Ast.var_formulas in
+        let formulas = Llvm.build_array_malloc base_types.formula_t (Llvm.const_int base_types.int_t numForm) "" builder in
+        let _ = Llvm.build_store (Llvm.const_int base_types.int_t (getDefn va.Ast.var_rows sm)) (Llvm.build_struct_gep scope_obj (var_defn_field_index Rows) "" builder) builder
+        and _ = Llvm.build_store (Llvm.const_int base_types.int_t (getDefn va.Ast.var_cols sm)) (Llvm.build_struct_gep scope_obj (var_defn_field_index Cols) "" builder) builder
+        and _ = Llvm.build_store (Llvm.const_int base_types.int_t numForm) (Llvm.build_struct_gep scope_obj (var_defn_field_index NumFormulas) "" builder) builder
+        and _ = Llvm.build_store formulas (Llvm.build_struct_gep scope_obj (var_defn_field_index Formulas) "" builder) builder
+        in (Ast.StringMap.add ke count sm, count + 1)
+        (*List.fold_left (fun s v -> v :: s) st va.Ast.var_formulas*)
+      ) desc.Ast.func_body (Ast.StringMap.empty, 0) in scope
+    ) build_function_names
+  in
 
   let build_function_body =
     Ast.StringMap.iter (fun key (desc, func) ->
@@ -423,9 +511,9 @@ let translate (globals, functions, externs) =
                     let sp = Llvm.build_struct_gep col_val (value_field_index Number) "" builder in
                     let _ = Llvm.build_store cols sp builder in
                     let subrange = Llvm.build_malloc bt.subrange_t "" builder in
-                    let range = Llvm.build_malloc bt.range_t "" builder in
+                    let range = Llvm.build_malloc bt.var_instance_t "" builder in
                     let rp = Llvm.build_struct_gep subrange (subrange_field_index BaseRangePtr) "range_p" builder in
-                    let vp = Llvm.build_struct_gep range (range_field_index Values) "value_p" builder in
+                    let vp = Llvm.build_struct_gep range (var_instance_field_index Values) "value_p" builder in
                     let _ = Llvm.build_store row_val vp builder in
                     let _ = Llvm.build_store range rp builder in
                     let _ = Llvm.build_store (Llvm.const_int bt.int_t 0) (Llvm.build_struct_gep subrange (subrange_field_index BaseOffsetCol) "" builder) in
@@ -438,7 +526,7 @@ let translate (globals, functions, externs) =
           | _ -> print_endline (Ast.string_of_expr expr);raise NotImplemented in
         let builder = Llvm.builder_at_end context (Llvm.entry_block func) in
         let scope = Ast.StringMap.fold (
-            fun a b c -> base_types.range_p :: c
+            fun a b c -> base_types.var_instance_p :: c
           ) desc.Ast.func_body [] in
         let struct_f = Llvm.struct_type context (Array.of_list scope) in
         let struct_r = Llvm.build_malloc struct_f "_scope" builder in

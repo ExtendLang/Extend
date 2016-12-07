@@ -63,12 +63,13 @@ let value_field_index = function
   | String -> 2
   | Subrange -> 3
 
-type var_defn_field = Rows | Cols | NumFormulas | Formulas
+type var_defn_field = Rows | Cols | NumFormulas | Formulas | OneByOne
 let var_defn_field_index = function
     Rows -> 0
   | Cols -> 1
   | NumFormulas -> 2
   | Formulas -> 3
+  | OneByOne -> 4
 
 type formula_field  = FromFirstRow | RowStartNum | ToLastRow | RowEndNum | FromFirstCols | ColStartNum | ToLastCol | ColEndNum | FormulaCall
 let formula_field_index = function
@@ -330,6 +331,7 @@ let translate (globals, functions, externs) =
         int_t(*Cols*);
         int_t(*Number of formulas*);
         formula_p;
+        bool_t(*Is one by one range*);
       ]) false
     and _ = Llvm.struct_set_body formula_t (Array.of_list [
         bool_t (*from First row*);
@@ -475,16 +477,22 @@ let translate (globals, functions, externs) =
       let var_defns = Llvm.build_array_malloc base_types.var_defn_t (Llvm.const_int base_types.int_t cardinal) "" builder
       and var_insts = Llvm.build_array_malloc base_types.var_instance_p (Llvm.const_int base_types.int_t cardinal) "" builder
       and scope_obj = Llvm.build_malloc base_types.extend_scope_t "" builder in
-      let _ = Llvm.build_store var_defns (Llvm.build_struct_gep scope_obj (scope_field_type_index VarDefn) "" builder)
-      and _ = Llvm.build_store var_insts (Llvm.build_struct_gep scope_obj (scope_field_type_index VarInst) "" builder)
-      and _ = Llvm.build_store (Llvm.const_int base_types.int_t cardinal) (Llvm.build_struct_gep scope_obj (scope_field_type_index VarNum) "" builder) in
+      let _ = Llvm.build_store var_defns (Llvm.build_struct_gep scope_obj (scope_field_type_index VarDefn) "" builder) builder
+      and _ = Llvm.build_store var_insts (Llvm.build_struct_gep scope_obj (scope_field_type_index VarInst) "" builder) builder
+      and _ = Llvm.build_store (Llvm.const_int base_types.int_t cardinal) (Llvm.build_struct_gep scope_obj (scope_field_type_index VarNum) "" builder) builder in
       let (scope, i) = Ast.StringMap.fold (fun ke va (sm, count) ->
         let defn = (Llvm.build_in_bounds_gep var_defns [|Llvm.const_int base_types.int_t count|] "" builder)
         and numForm = List.length va.Ast.var_formulas in
         let formulas = Llvm.build_array_malloc base_types.formula_t (Llvm.const_int base_types.int_t numForm) "" builder in
-        let _ = Llvm.build_store (Llvm.const_int base_types.int_t (getDefn va.Ast.var_rows sm)) (Llvm.build_struct_gep defn (var_defn_field_index Rows) "" builder) builder
-        and _ = Llvm.build_store (Llvm.const_int base_types.int_t (getDefn va.Ast.var_cols sm)) (Llvm.build_struct_gep defn (var_defn_field_index Cols) "" builder) builder
-        and _ = Llvm.build_store (Llvm.const_int base_types.int_t numForm) (Llvm.build_struct_gep defn (var_defn_field_index NumFormulas) "" builder) builder
+        let _ = (match va.Ast.var_rows with
+          Ast.DimInt(a) -> Llvm.build_store (Llvm.const_int base_types.bool_t 1) (Llvm.build_struct_gep defn (var_defn_field_index OneByOne) "" builder) builder
+        | Ast.DimId(a) -> (
+            Llvm.build_store (Llvm.const_int base_types.bool_t 0) (Llvm.build_struct_gep defn (var_defn_field_index OneByOne) "" builder) builder;
+            Llvm.build_store (Llvm.const_int base_types.int_t (getDefn va.Ast.var_rows sm)) (Llvm.build_struct_gep defn (var_defn_field_index Rows) "" builder) builder;
+            Llvm.build_store (Llvm.const_int base_types.int_t (getDefn va.Ast.var_cols sm)) (Llvm.build_struct_gep defn (var_defn_field_index Cols) "" builder) builder
+          )
+        ) in
+        let _ = Llvm.build_store (Llvm.const_int base_types.int_t numForm) (Llvm.build_struct_gep defn (var_defn_field_index NumFormulas) "" builder) builder
         and _ = Llvm.build_store formulas (Llvm.build_struct_gep defn (var_defn_field_index Formulas) "" builder) builder in
         let _  = List.fold_left (fun st elem -> build_formula st elem sm builder; Llvm.build_in_bounds_gep st [|Llvm.const_int base_types.int_t 1|] "" builder) formulas va.Ast.var_formulas
         in (Ast.StringMap.add ke count sm, count + 1)

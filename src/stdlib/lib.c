@@ -82,6 +82,7 @@ struct var_defn {
    int cols_varnum;
    int numFormulas;
    struct ExtendFormula *formulas;
+	 bool isOneByOne;
 };
 struct var_instance {
   /* This is an actual instance of a variable - we get one of these
@@ -383,17 +384,27 @@ struct ExtendScope *global_scope;
 struct var_instance *get_variable(struct ExtendScope *scope_ptr, int varnum);
 
 struct var_instance *instantiate_variable(struct ExtendScope *scope_ptr, struct var_defn def) {
-	struct var_instance *rows_var = get_variable(scope_ptr, def.rows_varnum);
-	value_p rows = __get_val(rows_var,0,0);
-	struct var_instance *cols_var = get_variable(scope_ptr, def.cols_varnum);
-	value_p cols = __get_val(cols_var,0,0);
-	if(rows->flags == FLAG_NUMBER || cols->flags == FLAG_NUMBER) {
-		/* TODO: throw error */
+	printf("Hello\n");
+	double rowVal, colVal;
+	if(def.isOneByOne) {
+		rowVal = 1;
+		colVal = 1;
+	} else {
+		struct var_instance *rows_var = get_variable(scope_ptr, def.rows_varnum);
+		value_p rows = __get_val(rows_var,0,0);
+		struct var_instance *cols_var = get_variable(scope_ptr, def.cols_varnum);
+		value_p cols = __get_val(cols_var,0,0);
+		if(rows->flags == FLAG_NUMBER || cols->flags == FLAG_NUMBER) {
+			/* TODO: throw error */
+		}
+		rowVal = (int)(rows->numericVal + 0.5);
+		colVal = (int)(cols->numericVal + 0.5);
 	}
+	printf("%f %f\n",rowVal, colVal);
 	// TODO: do the same thing for each FormulaFP to turn an ExtendFormula into a ResolvedFormula
 	struct var_instance *inst = malloc(sizeof(struct var_instance));
-	inst->rows = (int)(rows->numericVal + 0.5);
-	inst->cols = (int)(cols->numericVal + 0.5);
+	inst->rows = (int)(rowVal + 0.5);
+	inst->cols = (int)(colVal + 0.5);
 	inst->numFormulas = def.numFormulas;
 	inst->closure = scope_ptr;
 	int size = inst->rows * inst->cols;
@@ -407,9 +418,18 @@ struct var_instance *get_variable(struct ExtendScope *scope_ptr, int varnum) {
 		fprintf(stderr, "Runtime error: Asked for nonexistant variable number\n");
 		exit(-1);
 	}
+	printf("%p\n", scope_ptr->defns);
+	printf("Num vars: %d, target: %d\n", scope_ptr->numVars, varnum);
+	int i;
+	for(i = 0; i < scope_ptr->numVars; i++)
+		printf("%p %d\n", scope_ptr->vars[i], scope_ptr->vars[i] == NULL);
 	if (scope_ptr->vars[varnum] == NULL) {
+		printf("A\n");
 		scope_ptr->vars[varnum] = instantiate_variable(scope_ptr, scope_ptr->defns[varnum]);
 	}
+	printf("B: %p, ", scope_ptr->vars[varnum]);
+	fflush(stdout);
+	printf("%d\n", scope_ptr->vars[varnum]->cols);
 	return scope_ptr->vars[varnum];
 }
 
@@ -440,7 +460,9 @@ value_p calcVal(struct var_instance *inst, int x, int y, value_p target) {
 }
 
 value_p getVal(struct var_instance *inst, int x, int y) {
+	printf("Bye %d %d %d\n", inst->cols, x, y);
 	if(!assertInBounds(inst, x, y)) return new_val();
+	printf("Bye2\n");
 	int offset = inst->rows * y + x;
 	char *status = inst->status + offset;
 	if(*status & IN_PROGRESS) {

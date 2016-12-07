@@ -100,7 +100,7 @@ A selection expression consists of an expression and a pair of slices separated 
 A very common selection to make is the cell in the "corresponding location" of a different variable. Since this case is so common, \texttt{\#var}
 is syntactic sugar for \texttt{var{[},{]}}. As a result, if \texttt{var} has more than column and more than one row, \texttt{\#var} is equivalent to \texttt{var{[}row(),column(){]}}. If \texttt{var} has multiple rows and one column, it is equivalent to \texttt{var{[}row(),0{]}}. If \texttt{var} has one row and multiple columns, it is equivalent to \texttt{var{[}0,column(){]}}; and if \texttt{var} has one row and one column, it is equal to \texttt{var{[}0,0{]}}.
 
-\subsubsection{Examples}
+\subsubsection{Selection Examples}
 \begin{lstlisting}
 foo[1,2] /* This evaluates to the cell value in the second row and third column. */
 foo[1,:] /* Evaluates to the range of cells in the second row of foo. */

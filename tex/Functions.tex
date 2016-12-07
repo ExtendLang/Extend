@@ -1,37 +1,37 @@
 \section{Functions}
 \label{sec:Functions}
-Functions lie at Extend's core; however, they are not \textit{first class objects}. Since it can be verbose to write certain operations in Extend, the language will feature a comprehensive standard library. An important set of standard library functions will handle file I/O (see section~\ref{sec:IO}). All functions written purely in Extend are free of side effects.
+The bulk of an Extend program consists of functions. Although Extend has some features, such as immutability and lazy evaluation, that are inspired by functional languages, its functions are not \textit{first class objects}. All functions written purely in Extend are free of side effects, but some of the functions in the standard library, such as the file I/O functions described in section~\ref{sec:IO}, do have side effects.
 \subsection{Format}
 \label{sec:funcdecl}
-Every function in Extend follows the same format, but allows some optional declarations. As in most programming languages, the header of the function declares the parameters it accepts and the dimensions of the return value. The body of the function consists of an optional set of variable declarations and formula assignments, which can occur in any order, and a return statement, which must be the last statement in the function body. All variable declarations and formula assignments, in addition to the return statement, must be terminated by a semicolon.
+As in most programming languages, the header of the function declares the parameters it accepts. The body of the function consists of an optional set of variable declarations and formula assignments, which can occur in any order, and a return statement, which must be the last statement in the function body. All variable declarations and formula assignments, in addition to the return statement, must be terminated by a semicolon.
 This very simple function returns whatever value is passed into it:
 \lstinputlisting{./samples/functions_simple.xtnd}
-The leading \texttt{[1,1]} marks the return dimensions. \texttt{foo} is the function name. In parentheses the function arguments are declared, again with dimensions of the input. The body of the function follows, which in this case is only the return statement.
-\subsection{Variable Declaration}
+\subsection{Variable Declarations}
 \label{sec:vardecl}
-A variable declaration associates an identifier with a range of the specified dimensions, which are listed in square brackets before the identifier. For convenience, if the square brackets and dimensions are omitted, the identifier will be associated with a 1x1 range, and if only a single dimension is listed instead of two, the identifier will be associated with a range consisting of one row and the specified number of columns. In addition, multiple identifiers, separated by commas, can be listed after the dimensions; all of these identifiers will be separate ranges, but with equal dimension sizes. The dimensions can be specified either as literal integers or as expressions that evaluate to integers.
+A variable declaration associates an identifier with a range of cells of the specified dimensions, which are listed in square brackets before the identifier. For convenience, if the square brackets and dimensions are omitted, the identifier will be associated with a 1x1 range. In addition, multiple identifiers, separated by commas, can be listed after the dimensions; all of these identifiers will be separate ranges, but with equal dimension sizes. The dimensions can be specified as any valid expression that evaluates to a Number, which will be rounded to the nearest signed 32-bit integer. If either dimension is zero or negative, or if the expression does not evaluate to a Number, a runtime error causing the program to halt will occur.
 \begin{lstlisting}
 [2, 5] foo; // Declares foo as a range with 2 rows and 5 columns
 [m, n] bar; // Declares bar as a range with m rows and n columns
+[3, 3] ham, eggs, spam; // Declares ham, eggs and spam as distinct 3x3 ranges
 baz; // Declares baz as a 1x1 range
-[10] ham, eggs, spam; // Declares ham, eggs and spam as distinct 1x10 ranges
 \end{lstlisting}
 \subsection{Formula Assignment}
 \label{sec:formula}
-A formula assignment assigns an expression to a subset of the cells of a variable. Unlike most imperative languages, this expression is not immediately evaluated, but is instead only evaluated if and when it is needed to calculate the return value of the function. A formula assignment consists of an identifier, an optional pair of slices enclosed in square brackets specifying the subset of the cells that the assignment applies to, an \texttt{=}, and an expression, followed by a semicolon. The slices specifying the cell subset can contain arbitrary expressions, as long as the expression taken as a whole evaluates to an integer.
+A formula assignment assigns an expression to a subset of the cells of a variable. Unlike most imperative languages, this expression is not immediately evaluated, but is instead only evaluated if and when it is needed to calculate the return value of the function. A formula assignment consists of an identifier, an optional pair of slices enclosed in square brackets specifying the subset of the cells that the assignment applies to, an \texttt{=}, and an expression, followed by a semicolon. As with the expressions specifying the dimensions of a range, these slices specifying the cell subset can contain arbitrary expressions, as long as the expression taken as a whole evaluates to a Number, which will be rounded to the nearest signed 32-bit integer. Negative numbers are legal in these slices, and correspond to (dimension length + expression).
 \begin{lstlisting}
-[5, 2] foo, bar;
+[5, 2] foo, bar, baz; // Declares foo, bar, and baz as distinct 5x2 ranges
 foo[0,0] = 42; // Assigns the expression 42 to the first cell of the first row of foo
 foo[0,1] = foo[0,0] * 2; // Assigns (foo[0,0] * 2) to the 2nd cell of the 1st row of foo
 bar = 3.14159; // Assigns pi to every cell of every row of bar
+baz[1:-1,0:1] = 2.71828; // Assigns e to cells (1,0) through (3,1) of baz
 
 /* The next line assigns foo[[-1],0] + 1 to every cell in
    both columns of foo, besides the first row */
-foo[1:,0:1] = foo[[-1],0] + 2;
+foo[1:,:] = foo[[-1],0] + 2;
 \end{lstlisting}
-The last line of the source snippet above demonstrates the idiomatic Extend way of simulating an imperative language's loop; foo[4,0] would evaluate to 42+2+2+2+2 = 50 and foo[4,1] would evaluate to (42*2)+2+2+2+2 = 92. Although this may appear wasteful, intermediate values can be garbage collected once they are no longer needed to calculate the function's return value.
+The last line of the source snippet above demonstrates the idiomatic Extend way of simulating an imperative language's loop; foo[4,0] would evaluate to 42+2+2+2+2 = 50 and foo[4,1] would evaluate to (42*2)+2+2+2+2 = 92.
 \subsubsection{Combined Variable Declaration and Formula Assignment}
-For convenience, a variable declaration and a formula assignment to all cells of that variable can be combined on a single line by inserting a \texttt{:=} and an expression after the identifier. Multiple variables and assignments, separated by commas, can be declared on a single line as well.
+For convenience, a variable declaration and a formula assignment to all cells of that variable can be combined on a single line by inserting a \texttt{:=} and an expression after the identifier. Multiple variables and assignments, separated by commas, can be declared on a single line as well. All global variables must be defined using the combined declaration and formula assignment syntax.
 \begin{lstlisting}
 /* Creates two 2x2 ranges; every cell of foo evaluates to 1 and every cell of
    bar evaluates to 2. */
@@ -39,23 +39,10 @@ For convenience, a variable declaration and a formula assignment to all cells of
 \end{lstlisting}
 \subsubsection{Formula Assignment Errors}
 If the developer writes code in such a way that more than one formula applies to a cell, this causes a compile-time error if the compiler can detect it or a runtime error if the compiler cannot detect it in advance and the cell is evaluated. If there is no formula assigned to a cell, the cell will evaluate to \texttt{empty}.
-\subsection{Dimension Assignment}
-\par Extend will feature gradual typing for function declarations. This will enable users with a weak experience in typing to use the language, while allowing more sophisticated developers to enforce type checking at compile time. In addition, it allows the developer to return ranges whose size is an unpredictable or complex function of the inputs.
-\par To avoid specifying the precise return dimensions, an underscore can be used. This marks a variable range. Thus our function now looks like this:
-\lstinputlisting{./samples/functions_dim_range_u.xtnd}
-Here we are selecting a range from arg1 that depends on the value of arg2 and can therefore not be known ahead of time.
 \subsection{Parameter Declarations}
-If a parameter is declared with an identifier for the dimensions, instead of an integer literal, that identifier will contain the dimension size of the argument inside the function. In addition, expressions consisting solely of other identifiers are allowed, and will cause a run-time error if the sizes of the arguments are not consistent.
-\par However Extend will feature even more options to specify ranges. If a certain operation should be applied to a range of numbers of unknown size, the size can be inferred at runtime and match the return size:
+If a parameter is declared with an identifier for the dimensions, instead of an integer literal, that identifier will contain the dimension size of the argument inside the function. Therefore, if a certain operation should be applied to a range of numbers of unknown size, the size can be inferred at runtime:
 \lstinputlisting{./samples/functions_dim_range_v.xtnd}
-This function will add 1 to each element in arg. Notice, that \texttt{m} is used across the function as a variable identifier to apply the operation to the range.
-\par Summarizing, we have 3 ways of specifying a return range:\newline
-\begin{tabularx}{\columnwidth}{| c | c | X |} \hline
-Type & Symbol Example & Description \\ \hline
-Number & 3 & A number is the simplest descriptor. It specifies the absolute return size \\ \hline
-Expression & bar * 2 & An expression that can be anything, ranging from a simple arithmetic operation to a function call. To use this, any identifier used, must also be present as a range descriptor in a function parameter. \\ \hline
-Underscore & \_ & This marker is unique, since it is a wildcard. While the other options aim to be specific, the underscore circumvents declaring the range size. \\ \hline
-\end{tabularx}
+This function will add 1 to each element in arg. Notice, that \texttt{m} is used across the function as a variable identifier to apply the operation to the range. If the same identifier is used for the dimensions of multiple arguments, a run-time error will occur if the sizes of the arguments are not consistent. 
 \subsection{Application on Ranges}
 Extend gives the developer the power to easily apply operations in a functional style on ranges. As outlined in the section above, there are various ways to apply functions to ranges. A feature unique to Extend is the powerful operation on values and ranges. To apply a function on a per cell basis, the corresponding variable needs to be preceded by "\#". The following function applies cell wise addition:
 \lstinputlisting{./samples/functions_range_single.xtnd}

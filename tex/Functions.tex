@@ -8,22 +8,22 @@ This very simple function returns whatever value is passed into it:
 \lstinputlisting{./samples/functions_simple.xtnd}
 \subsection{Variable Declarations}
 \label{sec:vardecl}
-A variable declaration associates an identifier with a range of cells of the specified dimensions, which are listed in square brackets before the identifier. For convenience, if the square brackets and dimensions are omitted, the identifier will be associated with a 1x1 range. In addition, multiple identifiers, separated by commas, can be listed after the dimensions; all of these identifiers will be separate ranges, but with equal dimension sizes. The dimensions can be specified as any valid expression that evaluates to a Number, which will be rounded to the nearest signed 32-bit integer. If either dimension is zero or negative, or if the expression does not evaluate to a Number, a runtime error causing the program to halt will occur.
+A variable declaration associates an identifier with a range of cells of the specified dimensions, which are listed in square brackets before the identifier. For convenience, if the square brackets and dimensions are omitted, the identifier will be associated with a single cell. In addition, multiple identifiers, separated by commas, can be listed after the dimensions; all of these identifiers will be separate ranges, but with equal dimension sizes. The dimensions can be specified as any valid expression that evaluates to a Number, which will be rounded to the nearest signed 32-bit integer. If either dimension is zero or negative, or if the expression does not evaluate to a Number, a runtime error causing the program to halt will occur.
 \begin{lstlisting}
 [2, 5] foo; // Declares foo as a range with 2 rows and 5 columns
 [m, n] bar; // Declares bar as a range with m rows and n columns
 [3, 3] ham, eggs, spam; // Declares ham, eggs and spam as distinct 3x3 ranges
-baz; // Declares baz as a 1x1 range
+baz; // Declares baz as a single cell
 \end{lstlisting}
 \subsection{Formula Assignment}
 \label{sec:formula}
-A formula assignment assigns an expression to a subset of the cells of a variable. Unlike most imperative languages, this expression is not immediately evaluated, but is instead only evaluated if and when it is needed to calculate the return value of the function. A formula assignment consists of an identifier, an optional pair of slices enclosed in square brackets specifying the subset of the cells that the assignment applies to, an \texttt{=}, and an expression, followed by a semicolon. As with the expressions specifying the dimensions of a range, these slices specifying the cell subset can contain arbitrary expressions, as long as the expression taken as a whole evaluates to a Number, which will be rounded to the nearest signed 32-bit integer. Negative numbers are legal in these slices, and correspond to (dimension length + expression).
+A formula assignment assigns an expression to a subset of the cells of a variable. Unlike most imperative languages, this expression is not immediately evaluated, but is instead only evaluated if and when it is needed to calculate the return value of the function. A formula assignment consists of an identifier, an optional pair of slices enclosed in square brackets specifying the subset of the cells that the assignment applies to, an \texttt{=}, and an expression, followed by a semicolon. As with the expressions specifying the dimensions of a range, these slices specifying the cell subset can contain arbitrary expressions, as long as the expression taken as a whole evaluates to a Number, which will be rounded to the nearest signed 32-bit integer. Negative numbers are legal in these slices, and correspond to (dimension length + value).
 \begin{lstlisting}
 [5, 2] foo, bar, baz; // Declares foo, bar, and baz as distinct 5x2 ranges
 foo[0,0] = 42; // Assigns the expression 42 to the first cell of the first row of foo
 foo[0,1] = foo[0,0] * 2; // Assigns (foo[0,0] * 2) to the 2nd cell of the 1st row of foo
 bar = 3.14159; // Assigns pi to every cell of every row of bar
-baz[1:-1,0:1] = 2.71828; // Assigns e to cells (1,0) through (3,1) of baz
+baz[1:-1,0:1] = 2.71828; // Assigns e to cells (1,0) through (3,1), inclusive, of baz
 
 /* The next line assigns foo[[-1],0] + 1 to every cell in
    both columns of foo, besides the first row */
@@ -42,7 +42,7 @@ If the developer writes code in such a way that more than one formula applies to
 \subsection{Parameter Declarations}
 If a parameter is declared with an identifier for the dimensions, instead of an integer literal, that identifier will contain the dimension size of the argument inside the function. Therefore, if a certain operation should be applied to a range of numbers of unknown size, the size can be inferred at runtime:
 \lstinputlisting{./samples/functions_dim_range_v.xtnd}
-This function will add 1 to each element in arg. Notice, that \texttt{m} is used across the function as a variable identifier to apply the operation to the range. If the same identifier is used for the dimensions of multiple arguments, a run-time error will occur if the sizes of the arguments are not consistent. 
+This function will add 1 to each element in arg. Notice, that \texttt{m} is used across the function as a variable identifier to apply the operation to the range. If the same identifier is used for the dimensions of multiple arguments, a run-time error will occur if the sizes of the arguments are not consistent.
 \subsection{Application on Ranges}
 Extend gives the developer the power to easily apply operations in a functional style on ranges. As outlined in the section above, there are various ways to apply functions to ranges. A feature unique to Extend is the powerful operation on values and ranges. To apply a function on a per cell basis, the corresponding variable needs to be preceded by "\#". The following function applies cell wise addition:
 \lstinputlisting{./samples/functions_range_single.xtnd}

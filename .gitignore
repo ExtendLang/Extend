@@ -8,6 +8,7 @@
 *.cmxs
 *.cmxa
 *.ll
+gdchart0.94b
 # ocamlbuild working directory
 _build/
 

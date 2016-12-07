@@ -40,29 +40,15 @@ For convenience, a variable declaration and a formula assignment to all cells of
 \subsubsection{Formula Assignment Errors}
 If the developer writes code in such a way that more than one formula applies to a cell, this causes a compile-time error if the compiler can detect it or a runtime error if the compiler cannot detect it in advance and the cell is evaluated. If there is no formula assigned to a cell, the cell will evaluate to \texttt{empty}.
 \subsection{Parameter Declarations}
-If a parameter is declared with an identifier for the dimensions, instead of an integer literal, that identifier will contain the dimension size of the argument inside the function. Therefore, if a certain operation should be applied to a range of numbers of unknown size, the size can be inferred at runtime:
-\lstinputlisting{./samples/functions_dim_range_v.xtnd}
-This function will add 1 to each element in arg. Notice, that \texttt{m} is used across the function as a variable identifier to apply the operation to the range. If the same identifier is used for the dimensions of multiple arguments, a run-time error will occur if the sizes of the arguments are not consistent. 
+Parameters can be declared with or without dimensions. If dimensions are declared, they can either be specified as integer literals or as identifiers. If a dimension is specified as an integer literal, the program will verify the dimension of the argument before evaluating the return expression; if it does not match, a runtime error will occur causing the program to halt. If it is specified as an identifier, that variable will contain the dimension size and will be available inside the function body. If the same identifier is repeated in the function declaration, the program will verify that every parameter dimension with that identifier has equal dimension size; if they differ, a runtime error will occur causing the program to halt. A few examples follow:
+\lstinputlisting{./samples/param_decl_examples.xtnd}
 \subsection{Application on Ranges}
-Extend gives the developer the power to easily apply operations in a functional style on ranges. As outlined in the section above, there are various ways to apply functions to ranges. A feature unique to Extend is the powerful operation on values and ranges. To apply a function on a per cell basis, the corresponding variable needs to be preceded by "\#". The following function applies cell wise addition:
+Extend gives the developer the power to easily apply operations in a functional style on ranges. For example, the following function performs cell wise addition:
 \lstinputlisting{./samples/functions_range_single.xtnd}
-While both function above result in the same value, and only show the syntactical difference. If we wanted each cell to to be the square root divided by the sum of the input we have the following:
+This function normalizes a column vector to have unit norm:
 \lstinputlisting{./samples/functions_range_mix.xtnd}
-Notice that \texttt{arg} is only once preceded by \texttt{\#}.
-\subsection{Dependencies Illustrated}
-The dependency resolution is another asset that sets Extend apart from other languages. Most languages compile ordinarily and execute the given commands sequentially. Extend builds a dependency graph. The advantage of this is that only relevant code segments will be executed. Given the function
-\lstinputlisting{./samples/functions_dep_graph.xtnd}
-The dependency graph will look like this: \newline
-\begin{tikzpicture}[->,>=stealth',shorten >=0pt,auto,node distance=3cm,
-        thick,main/.style={circle,draw,minimum size=0.6cm,inner sep=0pt]}]
-		\node [main] (1) at (0, 2) {arg1};
-		\node [main] (2) at (4, 2) {arg2};
-		\node [main] (3) at (0, 0) {bar = \#arg + 1};
-		\node [main] (4) at (0, -3) {baz = bar + arg2};
-		\node [main] (5) at (0, -6) {foo = baz};
-		\draw (1) to (3);
-		\draw (3) to (4);
-		\draw (4) to (5);
-		\draw (2) to (4);
-\end{tikzpicture} \newline
-Notice that \texttt{faz} does not appear in the graph, because it is not relevant for the return value. Ultimately this graph enables Extend to find the leaves, evaluate code paths in the best configuration and even in parallel.
+\subsection{Lazy Evaluation and Circular References}
+All cell values and variable dimensions are evaluated lazily if and when they are needed to calculate the return expression. Using lazy evaluation ensures that the cell values are calculated in a valid topological sort order and allows for detection of circular references; internally this is accomplished by constructing a function for each formula which is called if the cell's value is needed, and marking the cell as "in-progress" once it starts being evaluated and as "complete" once the value has been calculated. The only guarantees the language places on the order of cell evaluation are: (1) It will be a valid topological ordering; (2) In conditional expressions and in short-circuiting operator expressions, only the relevant conditional branches will be evaluated; and (3) In an expression using the precedence operator, the preceeding expression will be evaluated before the succeeding expression. A range selection consisting of multiple cells will not cause all the constituent cells to be evaluated; however, selection of a single cell will cause that cell's value to be evaluated.
+If a program is written in such a way as to cause a circular dependency of one cell on another, and the return expression is dependent on that cell's value, a runtime error will occur. For example, in the following function:
+\lstinputlisting{./samples/maybe_circular.xtnd}
+A runtime error will occur if maybeCircular(1) is called; but if maybeCircular(0) is called, the function will simply return 0.

@@ -1,6 +1,9 @@
 \section{Entry Point, External Libraries, Scoping and Namespace}
 \subsection{\texttt{main} function}
-When a compiled Extend program is executed, the \texttt{main} function is evaluated. All computations necessary to calculate the return value of the function are performed, after which the program terminates. If the function declaration includes parameters, the first argument will be a 1-by-n range containing the command line arguments. Any other parameters, if declared, will evaluate to \texttt{empty}.
-\subsection{External Libraries}
-\label{sec:ExternFunctionSignatures}
+When a compiled Extend program is executed, the \texttt{main} function is evaluated. All computations necessary to calculate the return value of the function are performed, after which the program terminates. The \texttt{main} function must be a function of a single argument, conventionally denoted args, which is guaranteed to be a 1-by-n range containing the command line arguments.
 \subsection{Scoping and Namespace}
+There is a single namespace for functions and global variables that is shared between all files composing an Extend program. As a result, multiple definitions of functions with the same name, whether in the same file or not, will cause a compile-time error. However, functions may declare local variables sharing a name with a global variable; the local variable defintion will override the global variable within that function. Function definitions may not be nested. If an outer function passes a variable into an inner function call, lazy evaluation may mean that the inner function indirectly has access to variables defined in the outer function call; however, 
+
+\subsection{External Libraries}
+
+\label{sec:ExternFunctionSignatures}

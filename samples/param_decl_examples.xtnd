@@ -1,0 +1,21 @@
+number_of_cells([m,n] arg) {
+  return m*n; // m and n are initialized with the dimensions of arg
+}
+
+die_unless_primitive([1,1] arg) {
+  return 0; // If arg is not a primitive value, a runtime error will occur
+}
+
+num_cells_if_column_vector([m,1] arg) {
+  // If arg has one column, return number of cells; otherwise runtime error
+  return m;
+}
+
+die_unless_square([m,m] arg) {
+  return 0; // Runtime error if number of rows != number of columns
+}
+
+num_cells_if_same_size([m,n] arg1, [m,n] arg2) {
+  // If arguments are the same size, return # of cells, otherwise runtime error
+  return m*n;
+}

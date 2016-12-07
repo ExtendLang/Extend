@@ -71,7 +71,7 @@ return switch {
 \end{lstlisting}
 The format for a \texttt{switch} statement is the keyword \texttt{switch}, optionally followed by pair of parentheses containing an expression \texttt{switch-expr}, followed by a list of case clauses enclosed in curly braces and delimited by semicolons. A case clause consists of the keyword \texttt{case} followed by a comma-separated list of expressions \texttt{case-expr1 [, case-expr2, [...]]}, a colon, and an expression \texttt{match-expr}, or the keyword \texttt{default}, a colon, and an expression \texttt{default-expr}. If \texttt{switch-expr} is omitted, the value 1 is assumed. The \texttt{switch} expression evaluates to the \texttt{match-expr} for the first case where one of the \texttt{case-expr}s is truthy, if \texttt{switch-expr} is omitted, or equal (with equality defined as for the \texttt{==} operator) to \texttt{switch-expr}, if \texttt{switch-expr} is present, or \texttt{default-expr}, if none of the \texttt{case-expr}s apply.
 
-The \texttt{switch} expression can be used to compactly represent what in most imperative languages would require a long string such as \texttt{if (cond1) \{...\} else if (cond2) \{...\}}. The \texttt{switch} operator is internally converted to an equivalent (nested) ternary expression; as a result, it features short-circuit evaluation throughout.
+The \texttt{switch} expression can be used to compactly represent what in most imperative languages would require a long string such as \texttt{if (cond1) \{...\} else if (cond2) \{...\}}. The \texttt{switch} operator is internally converted to an equivalent (possibly nested) ternary expression; as a result, it features short-circuit evaluation throughout.
 
 \subsection {Additional Operators}
 There are four additional operators available to determine the size and type of other expressions. In addition, the infix \texttt{+} operator is overloaded to perform string concatenation.
@@ -90,17 +90,17 @@ There are four additional operators available to determine the size and type of 
 \subsection {Function Calls}
 A function expression consists of an identifier and an optional list of expressions enclosed in parentheses and separated by commas. The value of the expression is the result of applying the function to the arguments passed in as expressions. For more detail, see section~\ref{sec:Functions}.
 \subsection{Range Expressions}
-Range expressions are used to select part or all of a range. A range expression consists of a bare identifier, a bare range literal, or an expression and a selector. If a range expression has exactly 1 row and 1 column, the value of the expression is the value of the formula of the single cell of the range. If it has more than 1 row or more than 1 column, the value of the expression is the selected range. If the range has zero or fewer rows or zero or fewer columns, the value of the expression is \texttt{empty}. If a range expression with a selector would access a row index or column index greater than the number of rows or columns of the range, or a negative row or column index, the value of the expression is \texttt{empty}.
+Range expressions are used to select part or all of a range. A range expression consists of a bare identifier, a bare range literal, or an expression and a selector. If a range expression has exactly 1 row and 1 column, the value of the expression is the value of the single cell of the range. If it has more than 1 row or more than 1 column, the value of the expression is the selected range. If the range has zero or fewer rows or zero or fewer columns, the value of the expression is \texttt{empty}. If a range expression with a selector would access a row index or column index greater than the number of rows or columns of the range, or a negative row or column index, the value of the expression is \texttt{empty}.
 \subsubsection{Slices}
 A slice consists of an optional integer literal or expression \texttt{start}, a colon, and an optional integer literal or expression \texttt{end}, or a single integer literal or expression \texttt{index}. If \texttt{start} is omitted, it defaults to 0. If \texttt{end} is omitted, it defaults to the length of the dimension. A single \texttt{index} with no colon is equivalent to \texttt{index:index+1}. Enclosing \texttt{start} or \texttt{end} in square brackets is equivalent to the expression \texttt{row() + start} or \texttt{row() + end}, for a row slice, or \texttt{column() + start} or \texttt{column() + end} for a column slice. The slice includes \texttt{start} and excludes \texttt{end}, so the length of a slice is \texttt{end - start}. A negative value is interpreted as the length of the dimension minus the value.
 			As mentioned above, the value of a range that is not 1 by 1 is a range, but the value of a 1 by 1 range is essentially dereferenced to the result of the cell formula.
 \subsubsection{Selections}
 A selection expression consists of an expression and a pair of slices separated by a comma and enclosed in square brackets, i.e. {[}\texttt{row\_slice, column\_slice}{]}. It can also be written as the hash symbol \texttt{\#} and an expression. As mentioned earlier, the composite \textbf{range} type has the ability to slice in both an absolute and relative fashion. If one of the dimensions of the range has length 1, the comma and the slice for that dimension can be omitted. If the comma is present but a slice is omitted, that slice defaults to {[}\texttt{0}{]} for a slice corresponding to a dimension of length greater than one, or \texttt{0} for a slice corresponding to a dimension of length one.
 \subsubsection{Corresponding Cell}
-A very common selection to make is the cell in the "corresponding location" of a different variable. Since this case is so common, \texttt{\#RHSvariable}
-is syntactic sugar for \texttt{RHSvariable}{[},{]}. If \texttt{RHSvariable} has more than column and more than one row, it is equal to \texttt{RHSvariable{[}row(),column(){]}}. If \texttt{RHSvariable} has multiple rows and one column, it is equal to \texttt{RHSvariable{[}row(),0{]}}. If \texttt{RHSvariable} has one row and multiple columns, it is equal to \texttt{RHSvariable{[}0,column(){]}}; and if \texttt{RHSvariable} has one row and one column, it is equal to \texttt{RHSvariable{[}0,0{]}}.
+A very common selection to make is the cell in the "corresponding location" of a different variable. Since this case is so common, \texttt{\#var}
+is syntactic sugar for \texttt{var{[},{]}}. As a result, if \texttt{var} has more than column and more than one row, \texttt{\#var} is equivalent to \texttt{var{[}row(),column(){]}}. If \texttt{var} has multiple rows and one column, it is equivalent to \texttt{var{[}row(),0{]}}. If \texttt{var} has one row and multiple columns, it is equivalent to \texttt{var{[}0,column(){]}}; and if \texttt{var} has one row and one column, it is equal to \texttt{var{[}0,0{]}}.
 
-These possibilities mean that there are multiple ways to slice ranges, which are illustrated below.\newline
+\subsubsection{Examples}
 \begin{lstlisting}
 foo[1,2] /* This evaluates to the cell value in the second row and third column. */
 foo[1,:] /* Evaluates to the range of cells in the second row of foo. */
@@ -117,9 +117,25 @@ foo[[1:2], [5:7]]
 /* Selects the rows between the 1st and 2nd row after LHS row, and
    between 5th and 7th column from LHS column */
 
-#foo
-/* If foo has >=2 rows and >= 2 columns, equivalent to foo[[0],[0]];
-   If foo has 1 row and multiple columns, equivalent to foo[0,[0]]; etc. */
+/* In this example, each cell of bar would be equal to the cell
+ * in foo in the equivalent location plus 1. */
+[5,5] foo;
+[5,5] bar := #foo + 1; // #foo = foo[[0],[0]]
+
+/* In this example, bar would be a 3x5 range where in each row,
+ * the value in bar is equal to the value in foo in the same column.
+ * In other words, each row of bar would be a copy of foo. */
+[1,5] foo; // foo has 1 row, 5 columns
+[3,5] bar := #foo; // #foo = foo[0,[0]]
+
+/* In this example, the values of baz would be
+ * 11, 12, 13 in the first row;
+ * 21, 22, 23 in the second row;
+ * 31, 32, 33 in the third row. */
+foo := {1,2,3}; // 1 row, 3 columns
+bar := {10;20;30}; // 3 rows, 1 column
+baz := #foo + #bar; // Equivalent to foo[0,[0]] + bar[[0],0]
+
 \end{lstlisting}
 \subsection{Precedence Expressions}
 A precedence expression is used to force the evaluation of one expression before another, when that order of operation is required for functions with side-effects. It consists of an expression \texttt{prec-expr}, the precedence operator \texttt{->}, and an expression \texttt{succ-expr}. The value of the expression is \texttt{succ-expr}, but the value of \texttt{prec-expr} will be calculated first and the result ignored. The only functions with side effects in Extend are the built-in file I/O functions described in section~\ref{sec:IO} or user-defined functions that call those built-in functions; an example is located in that section.

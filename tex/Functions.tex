@@ -1,6 +1,6 @@
 \section{Functions}
 \label{sec:Functions}
-Functions lie at Extend's core; however, they are not \textit{first class objects}. Since it can be verbose to write certain operations in Extend, the language will feature a small number of built-in functions and and a comprehensive standard library. An important set of built-in functions will handle I/O (see section~\ref{sec:IO}). Besides the built-in file I/O functions, all functions in Extend are free of side effects.
+Functions lie at Extend's core; however, they are not \textit{first class objects}. Since it can be verbose to write certain operations in Extend, the language will feature a comprehensive standard library. An important set of standard library functions will handle file I/O (see section~\ref{sec:IO}). All functions written purely in Extend are free of side effects.
 \subsection{Format}
 \label{sec:funcdecl}
 Every function in Extend follows the same format, but allows some optional declarations. As in most programming languages, the header of the function declares the parameters it accepts and the dimensions of the return value. The body of the function consists of an optional set of variable declarations and formula assignments, which can occur in any order, and a return statement, which must be the last statement in the function body. All variable declarations and formula assignments, in addition to the return statement, must be terminated by a semicolon.

@@ -115,11 +115,15 @@ string_p new_string(char *str);
 
 value_p box_value_string(string_p);
 
+value_p getVal(struct var_instance *inst, int x, int y);
+
 value_p __get_val(struct var_instance *range, int row, int col) {
 	//TODO: assertions
 	printf("Getting %p %d %d\n", range, row, col);
+	return getVal(range, row, col);
+	/*
 	value_p val = range->values[row * range->cols + col];
-	return val;
+	return val;*/
 }
 
 value_p get_val(subrange_p range, int row, int col) {
@@ -186,6 +190,7 @@ double get_number(subrange_p p) {
 }
 
 value_p print(subrange_p whatever, subrange_p text) {
+	printf("Hellooooo\n");
 	if(!assertSingleString(text)) return new_val();
 	value_p my_val = get_val(text,0,0);
 	if(!assertText(my_val)) return new_val();
@@ -383,7 +388,6 @@ value_p extend_write(subrange_p rng_file_handle, subrange_p buf){
 struct ExtendScope *global_scope;
 
 struct var_instance *get_variable(struct ExtendScope *scope_ptr, int varnum);
-value_p getVal(struct var_instance *inst, int x, int y);
 void null_init(struct ExtendScope *scope_ptr) {
 	int i;
 	for(i = 0; i < scope_ptr->numVars; i++)
@@ -485,7 +489,7 @@ bool fitsRange(struct ResolvedFormula *formula, int x, int y) {
 		&& fitsDim(y, formula->rowStart, formula->rowEnd);
 }
 
-value_p calcVal(struct var_instance *inst, int x, int y, value_p target) {
+value_p calcVal(struct var_instance *inst, int x, int y) {
 	struct ResolvedFormula *form = inst->formulas;
 	while(form < inst->formulas + inst->numFormulas) {
 		if(fitsRange(form, x, y)) {
@@ -494,6 +498,7 @@ value_p calcVal(struct var_instance *inst, int x, int y, value_p target) {
 		}
 		form++;
 	}
+	printf("Whuut\n");
 	return new_val();
 }
 
@@ -505,6 +510,7 @@ value_p getVal(struct var_instance *inst, int x, int y) {
 	printf("Offset: %d %p\n", offset, inst->status);
 	char *status = inst->status + offset;
 	printf("Stat %p %d %d %d\n", status, (int)*status, *status & IN_PROGRESS, ~(*status));
+	printf("Val %p\n", inst->values[offset]);
 	if(*status & IN_PROGRESS) {
 		/* TODO: Circular dependency. Possibly throw? */
 		printf("Why?\n");
@@ -513,7 +519,7 @@ value_p getVal(struct var_instance *inst, int x, int y) {
 	} else if ((~(*status)) & CALCULATED) { /* value not calculated */
 		printf("Calc val...\n");
 		fflush(stdout);
-		value_p val = calcVal(inst, x, y, inst->values[offset]);
+		value_p val = calcVal(inst, x, y);
 			printf("Calc val...\n");
 			fflush(stdout);
 		inst->values[offset] = val;

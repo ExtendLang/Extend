@@ -5,28 +5,8 @@ main([1,n] args) {
   seq1 := readline(seqFP)[:-2]; // discard newline
   seq2 := seq1 -> readline(seqFP)[:-2]; */
 
-  [10,1] seq1;
-  [10,1] seq2;
-  seq1[0,0] = "A";
-  seq1[1,0] = "A";
-  seq1[2,0] = "B";
-  seq1[3,0] = "B";
-  seq1[4,0] = "C";
-  seq1[5,0] = "C";
-  seq1[6,0] = "D";
-  seq1[7,0] = "D";
-  seq1[8,0] = "E";
-  seq1[9,0] = "E";
-  seq2[0,0] = "A";
-  seq2[1,0] = "A";
-  seq2[2,0] = "B";
-  seq2[3,0] = "C";
-  seq2[4,0] = "C";
-  seq2[5,0] = "D";
-  seq2[6,0] = "D";
-  seq2[7,0] = "E";
-  seq2[8,0] = "E";
-  seq2[9,0] = "F";
+  seq1 := {"A"; "A"; "B"; "B"; "C"; "C"; "D"; "D"; "E"; "E"};
+  seq2 := {"A"; "A"; "B"; "C"; "C"; "D"; "D"; "E"; "E"; "F"};
   alignment := computeSequenceAlignment(seq1, seq2, 1, -1, -3);
 /*  output := write(alignment[:,0], STDOUT) ->
             write(alignment[:,1], STDOUT) ->

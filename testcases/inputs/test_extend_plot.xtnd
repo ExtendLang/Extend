@@ -1,0 +1,8 @@
+extern "stdlib.o"{
+  print(a,b);
+  extend_plot(a);
+}
+
+main(args){
+  return extend_plot("img.png") -> 0;
+}

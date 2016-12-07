@@ -3,6 +3,9 @@
 #include<math.h>
 #include<string.h>
 #include<stdbool.h>
+#include <values.h>
+#include "../../gdchart0.94b/gdc.h"
+#include "../../gdchart0.94b/gdchart.h"
 
 /* Value type */
 #define FLAG_EMPTY 0
@@ -262,14 +265,9 @@ value_p extend_close(value_p fileNum){
 
 value_p extend_read(value_p file_handle, value_p num_bytes){
 	/* TODO: Make it accept empty */
-//<<<<<<< HEAD
 	if(!assertSingleNumber(file_handle) || !assertSingleNumber(num_bytes)) return new_val();
 	int max_bytes = (int)num_bytes->numericVal;
 	int fileNum = (int)file_handle->numericVal;
-//=======
-//	if(!assertSingleNumber(rng_file_handle) || !assertSingleNumber(rng_num_bytes)) return new_val();
-//	int fileNum = (int) get_number(rng_file_handle), max_bytes;
-//>>>>>>> finish-transformations
 	if (fileNum > open_num_files || open_files[fileNum] == NULL)  return new_val();
 	FILE *f = open_files[fileNum];
 	max_bytes = (int) num_bytes->numericVal;
@@ -303,6 +301,24 @@ value_p extend_write(value_p file_handle, value_p buffer){
 	return new_number((double) fileNum);
 }
 
+value_p extend_plot(value_p file_name){
+	// extract the numerical values from the first parameter - values
+	if(!assertSingle(file_name)) return new_val();
+	float a[6]  = { 0.5, 0.09, 0.6, 0.85, 0.0, 0.90 },
+				b[6]  = { 1.9, 1.3,  0.6, 0.75, 0.1, 2.0 };
+	char *t[6] = { "Chicago", "New York", "L.A.", "Atlanta", "Paris, MD\n(USA) ", "London" };
+	unsigned long sc[2]    = { 0xFF8080, 0x8080FF };
+	GDC_BGColor   = 0xFFFFFFL;
+	GDC_LineColor = 0x000000L;
+	GDC_SetColor  = &(sc[0]);
+	GDC_stack_type = GDC_STACK_BESIDE;
+	// Using the line below, can also spit to stdout and fwrite from Extend
+	// printf( "Content-Type: image/png\n\n" );
+	FILE *outpng = fopen("extend.png", "wb");
+	out_graph(250, 200, outpng, GDC_3DBAR, 6, t, 2, a, b);
+	fclose(outpng);
+	return new_val();
+}
 /*
  * VENDOR
  */

@@ -430,10 +430,24 @@ struct var_instance *instantiate_variable(struct ExtendScope *scope_ptr, struct 
 	int i;
 	for(i = 0; i < inst->numFormulas; i++) {
 		inst->formulas[i].formula = def.formulas[i].formula;
-		inst->formulas[i].colEnd = 1;
-		inst->formulas[i].colStart = 0;
-		inst->formulas[i].rowEnd = 1;
-		inst->formulas[i].rowStart = 0;
+		printf("%d\n", def.formulas[0].fromFirstCol);
+		if(def.formulas[i].fromFirstRow)
+			inst->formulas[i].rowStart = 0;
+		else
+			inst->formulas[i].rowStart = def.formulas[i].rowStart_varnum; //TODO eval;
+		if(def.formulas[i].toLastRow)
+			inst->formulas[i].rowEnd = inst->rows;
+		else
+			inst->formulas[i].rowEnd = def.formulas[i].rowEnd_varnum; //TODO eval;
+		if(def.formulas[i].fromFirstCol)
+			inst->formulas[i].colStart = 0;
+		else
+			inst->formulas[i].colStart = def.formulas[i].colStart_varnum; //TODO eval;
+		if(def.formulas[i].toLastCol)
+			inst->formulas[i].colEnd = 0;
+		else
+			inst->formulas[i].colEnd = def.formulas[i].colEnd_varnum; //TODO eval;
+		printf("Dims: %d %d %d %d\n", inst->formulas[i].rowStart, inst->formulas[i].rowEnd, inst->formulas[i].colStart, inst->formulas[i].colEnd);
 	}
 	for(i = 0; i < inst->rows * inst->cols; i++)
 		(*inst->status) = 0;

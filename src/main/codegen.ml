@@ -449,11 +449,6 @@ let translate (globals, functions, externs) =
   create_main build_function_names context base_types base_module ;
 
   let build_function =
-    let getVal = Llvm.declare_function "getVal" (Llvm.function_type base_types.value_p [|base_types.var_instance_p; base_types.int_t; base_types.int_t|]) base_module
-    and getVar = Llvm.declare_function "get_variable" (Llvm.function_type base_types.var_instance_p [|base_types.extend_scope_p; base_types.int_t|]) base_module
-    and nullAll = Llvm.declare_function "null_init" (Llvm.function_type (Llvm.void_type context) [|base_types.extend_scope_p|]) base_module
-    and getDefn x sm = match x with Ast.DimId(a) -> Ast.StringMap.find a sm | Ast.DimInt(a) -> a
-    and buildDimSide index boolAll intDim = () in
     let build_expr expr builder = match expr with
         Ast.LitInt(i) -> let vvv = Llvm.const_float base_types.float_t (float_of_int i) in
         let ret_val = Llvm.build_malloc base_types.value_t "" builder in
@@ -462,11 +457,33 @@ let translate (globals, functions, externs) =
         let _ = Llvm.build_store vvv sp builder in
         ret_val
       | _ -> raise NotImplemented in
+    let getVal = Llvm.declare_function "getVal" (Llvm.function_type base_types.value_p [|base_types.var_instance_p; base_types.int_t; base_types.int_t|]) base_module
+    and getVar = Llvm.declare_function "get_variable" (Llvm.function_type base_types.var_instance_p [|base_types.extend_scope_p; base_types.int_t|]) base_module
+    and nullAll = Llvm.declare_function "null_init" (Llvm.function_type (Llvm.void_type context) [|base_types.extend_scope_p|]) base_module
+    and getDefn x sm = match x with Ast.DimId(a) -> Ast.StringMap.find a sm | Ast.DimInt(a) -> a
+    and buildDimSide index boolAll intDim builder atstart ids = (*print_endline (Ast.string_of_index index);*) (match index with
+        None -> Llvm.build_store (Llvm.const_int base_types.bool_t 1) boolAll builder
+      | Some(Ast.Abs(e)) -> (
+          Llvm.build_store (Llvm.const_int base_types.bool_t 0) boolAll builder;
+          Llvm.build_store (match e with LitInt(i) -> Llvm.const_int base_types.int_t i) intDim builder
+        )
+      | Some(Ast.Rel(e)) -> (
+          Llvm.build_store (Llvm.const_int base_types.bool_t 0) boolAll builder;
+          Llvm.build_store (match e with LitInt(i) -> Llvm.const_int base_types.int_t i) intDim builder
+        )
+      | _ -> if (atstart) then (
+            Llvm.build_store (Llvm.const_int base_types.bool_t 0) boolAll builder;
+            Llvm.build_store (Llvm.const_int base_types.int_t 0) intDim builder
+          ) else (
+              Llvm.build_store (Llvm.const_int base_types.bool_t 0) boolAll builder;
+              Llvm.build_store (Llvm.const_int base_types.int_t 1) intDim builder
+          )
+    ) in
     let build_formula storage_addr element scopeMapping builder =
-      buildDimSide (Some element.Ast.formula_col_start) (Llvm.build_struct_gep storage_addr (formula_field_index FromFirstCols) "" builder) (Llvm.build_struct_gep storage_addr (formula_field_index ColStartNum) "" builder);
-      buildDimSide (Some element.Ast.formula_row_start) (Llvm.build_struct_gep storage_addr (formula_field_index FromFirstRow) "" builder) (Llvm.build_struct_gep storage_addr (formula_field_index RowStartNum) "" builder);
-      buildDimSide element.Ast.formula_col_end (Llvm.build_struct_gep storage_addr (formula_field_index ToLastCol) "" builder) (Llvm.build_struct_gep storage_addr (formula_field_index ColEndNum) "" builder);
-      buildDimSide element.Ast.formula_row_end (Llvm.build_struct_gep storage_addr (formula_field_index ToLastRow) "" builder) (Llvm.build_struct_gep storage_addr (formula_field_index RowEndNum) "" builder);
+      buildDimSide (Some element.Ast.formula_col_start) (Llvm.build_struct_gep storage_addr (formula_field_index FromFirstCols) "" builder) (Llvm.build_struct_gep storage_addr (formula_field_index ColStartNum) "" builder) builder true scopeMapping;
+      buildDimSide (Some element.Ast.formula_row_start) (Llvm.build_struct_gep storage_addr (formula_field_index FromFirstRow) "" builder) (Llvm.build_struct_gep storage_addr (formula_field_index RowStartNum) "" builder) builder true scopeMapping;
+      buildDimSide element.Ast.formula_col_end (Llvm.build_struct_gep storage_addr (formula_field_index ToLastCol) "" builder) (Llvm.build_struct_gep storage_addr (formula_field_index ColEndNum) "" builder) builder false scopeMapping;
+      buildDimSide element.Ast.formula_row_end (Llvm.build_struct_gep storage_addr (formula_field_index ToLastRow) "" builder) (Llvm.build_struct_gep storage_addr (formula_field_index RowEndNum) "" builder) builder false scopeMapping;
       let form_decl = Llvm.define_function "" base_types.formula_call_t base_module in
       let nbuilder = Llvm.builder_at_end context (Llvm.entry_block form_decl)
       and _ = Llvm.build_store form_decl (Llvm.build_struct_gep storage_addr (formula_field_index FormulaCall) "" builder) builder in

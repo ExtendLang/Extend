@@ -1,0 +1,5 @@
+[1,1] main(arg) {
+  [1,1] foo := 1;
+  return foo;
+
+}

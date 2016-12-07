@@ -192,7 +192,7 @@ value_p print(subrange_p whatever, subrange_p text) {
 }
 
 value_p printd(subrange_p whatever, subrange_p text) {
-	printf("%f\n", text->range->values->numericVal);
+	printf("%f\n", (*text->range->values)->numericVal);
 	value_p result = malloc(sizeof(struct value_t));
 	return result;
 }
@@ -342,10 +342,10 @@ value_p extend_close(subrange_p rng_file_handle){
 	open_files[fileNum] = NULL; // Empty the container for the pointer.
 	return new_val(); // asssuming it was an open valid handle, close() is just supposed to return empty
 }
-
+/*
 value_p extend_read(subrange_p rng_file_handle, subrange_p rng_num_bytes){
 	/* TODO: Make it accept empty */
-	if(!assertSingleNumber(rng_file_handle) || !assertSingleNumber(rng_num_bytes)) return new_val();
+	/*if(!assertSingleNumber(rng_file_handle) || !assertSingleNumber(rng_num_bytes)) return new_val();
 	int max_bytes = (int) get_number(rng_num_bytes);
 	int fileNum = (int) get_number(rng_file_handle);
 	if (fileNum > open_num_files || open_files[fileNum] == NULL)  return new_val();
@@ -356,7 +356,7 @@ value_p extend_read(subrange_p rng_file_handle, subrange_p rng_num_bytes){
 	free(buf);
 	return result;
 	//edge case: how to return the entire contents of the file if n == empty?
-}
+}*/
 
 value_p extend_write(subrange_p rng_file_handle, subrange_p buf){
 	int val;

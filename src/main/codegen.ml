@@ -434,6 +434,7 @@ let translate (globals, functions, externs) =
     let getVal = Llvm.declare_function "getVal" (Llvm.function_type base_types.value_p [|base_types.var_instance_p; base_types.int_t; base_types.int_t|]) base_module
     and getVar = Llvm.declare_function "get_variable" (Llvm.function_type base_types.var_instance_p [|base_types.extend_scope_p; base_types.int_t|]) base_module
     and getDefn x sm = match x with Ast.DimId(a) -> Ast.StringMap.find a sm | Ast.DimInt(a) -> a in
+    let build_formula storage_addr element scopeMapping = raise NotImplemented; () in
     Ast.StringMap.mapi (fun key (desc, func) ->
       let builder = Llvm.builder_at_end context (Llvm.entry_block func)
       and cardinal = Ast.StringMap.cardinal desc.Ast.func_body in
@@ -450,7 +451,8 @@ let translate (globals, functions, externs) =
         let _ = Llvm.build_store (Llvm.const_int base_types.int_t (getDefn va.Ast.var_rows sm)) (Llvm.build_struct_gep scope_obj (var_defn_field_index Rows) "" builder) builder
         and _ = Llvm.build_store (Llvm.const_int base_types.int_t (getDefn va.Ast.var_cols sm)) (Llvm.build_struct_gep scope_obj (var_defn_field_index Cols) "" builder) builder
         and _ = Llvm.build_store (Llvm.const_int base_types.int_t numForm) (Llvm.build_struct_gep scope_obj (var_defn_field_index NumFormulas) "" builder) builder
-        and _ = Llvm.build_store formulas (Llvm.build_struct_gep scope_obj (var_defn_field_index Formulas) "" builder) builder
+        and _ = Llvm.build_store formulas (Llvm.build_struct_gep scope_obj (var_defn_field_index Formulas) "" builder) builder in
+        let _  = List.fold_left (fun st elem -> build_formula st elem sm; Llvm.build_in_bounds_gep st [|Llvm.const_int base_types.int_t 1|] "" builder) formulas va.Ast.var_formulas
         in (Ast.StringMap.add ke count sm, count + 1)
         (*List.fold_left (fun s v -> v :: s) st va.Ast.var_formulas*)
       ) desc.Ast.func_body (Ast.StringMap.empty, 0) in scope

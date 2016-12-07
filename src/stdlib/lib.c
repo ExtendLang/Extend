@@ -117,6 +117,7 @@ value_p box_value_string(string_p);
 
 value_p __get_val(struct var_instance *range, int row, int col) {
 	//TODO: assertions
+	printf("Getting %p %d %d\n", range, row, col);
 	value_p val = range->values[row * range->cols + col];
 	return val;
 }
@@ -382,18 +383,32 @@ value_p extend_write(subrange_p rng_file_handle, subrange_p buf){
 struct ExtendScope *global_scope;
 
 struct var_instance *get_variable(struct ExtendScope *scope_ptr, int varnum);
+value_p getVal(struct var_instance *inst, int x, int y);
+void null_init(struct ExtendScope *scope_ptr) {
+	int i;
+	for(i = 0; i < scope_ptr->numVars; i++)
+		scope_ptr->vars[i] = NULL;
+}
 
 struct var_instance *instantiate_variable(struct ExtendScope *scope_ptr, struct var_defn def) {
 	printf("Hello\n");
 	double rowVal, colVal;
 	if(def.isOneByOne) {
+		printf("OneByOne\n");
 		rowVal = 1;
 		colVal = 1;
 	} else {
+		printf("Bigger\n");
 		struct var_instance *rows_var = get_variable(scope_ptr, def.rows_varnum);
-		value_p rows = __get_val(rows_var,0,0);
+		printf("Got var\n");
+		fflush(stdout);
+		value_p rows = getVal(rows_var,0,0);
+		printf("Got val %f\n", rows->numericVal);
+		fflush(stdout);
 		struct var_instance *cols_var = get_variable(scope_ptr, def.cols_varnum);
-		value_p cols = __get_val(cols_var,0,0);
+		printf("Got var2 rows are %f\n", rows->numericVal);
+		fflush(stdout);
+		value_p cols = getVal(cols_var,0,0);
 		if(rows->flags == FLAG_NUMBER || cols->flags == FLAG_NUMBER) {
 			/* TODO: throw error */
 		}
@@ -408,8 +423,20 @@ struct var_instance *instantiate_variable(struct ExtendScope *scope_ptr, struct 
 	inst->numFormulas = def.numFormulas;
 	inst->closure = scope_ptr;
 	int size = inst->rows * inst->cols;
+	printf("Size: %d %p\n", size, inst);
 	inst->values = malloc(sizeof(value_p) * size);
 	inst->status = malloc(sizeof(struct status_t) * size);
+	inst->formulas = malloc(sizeof(struct ResolvedFormula) * inst->numFormulas);
+	int i;
+	for(i = 0; i < inst->numFormulas; i++) {
+		inst->formulas[i].formula = def.formulas[i].formula;
+		inst->formulas[i].colEnd = 1;
+		inst->formulas[i].colStart = 0;
+		inst->formulas[i].rowEnd = 1;
+		inst->formulas[i].rowStart = 0;
+	}
+	for(i = 0; i < inst->rows * inst->cols; i++)
+		(*inst->status) = 0;
 	return inst;
 }
 
@@ -420,9 +447,6 @@ struct var_instance *get_variable(struct ExtendScope *scope_ptr, int varnum) {
 	}
 	printf("%p\n", scope_ptr->defns);
 	printf("Num vars: %d, target: %d\n", scope_ptr->numVars, varnum);
-	int i;
-	for(i = 0; i < scope_ptr->numVars; i++)
-		printf("%p %d\n", scope_ptr->vars[i], scope_ptr->vars[i] == NULL);
 	if (scope_ptr->vars[varnum] == NULL) {
 		printf("A\n");
 		scope_ptr->vars[varnum] = instantiate_variable(scope_ptr, scope_ptr->defns[varnum]);
@@ -434,7 +458,7 @@ struct var_instance *get_variable(struct ExtendScope *scope_ptr, int varnum) {
 }
 
 bool assertInBounds(struct var_instance *defn, int x, int y) {
-	if(defn->rows < x && defn->cols < y) return true;
+	if(defn->rows > x && defn->cols > y) return true;
 	return false;
 }
 
@@ -460,20 +484,31 @@ value_p calcVal(struct var_instance *inst, int x, int y, value_p target) {
 }
 
 value_p getVal(struct var_instance *inst, int x, int y) {
-	printf("Bye %d %d %d\n", inst->cols, x, y);
+	printf("Bye %d %d %d %d\n", inst->cols, inst->rows, x, y);
 	if(!assertInBounds(inst, x, y)) return new_val();
-	printf("Bye2\n");
+	printf("Bye2 %p\n", inst);
 	int offset = inst->rows * y + x;
+	printf("Offset: %d %p\n", offset, inst->status);
 	char *status = inst->status + offset;
+	printf("Stat %p %d %d %d\n", status, (int)*status, *status & IN_PROGRESS, ~(*status));
 	if(*status & IN_PROGRESS) {
 		/* TODO: Circular dependency. Possibly throw? */
+		printf("Why?\n");
+		fflush(stdout);
 		return new_val();
-	} else if (!(*status) & CALCULATED) { /* value not calculated */
+	} else if ((~(*status)) & CALCULATED) { /* value not calculated */
+		printf("Calc val...\n");
+		fflush(stdout);
 		value_p val = calcVal(inst, x, y, inst->values[offset]);
+			printf("Calc val...\n");
+			fflush(stdout);
 		inst->values[offset] = val;
 		*status = (*status && !IN_PROGRESS) | CALCULATED;
+		printf("Calculated: %f\n", inst->values[offset]->numericVal);
 		return val;
 	} else {
+		printf("Cached: %f\n", inst->values[offset]->numericVal);
+		fflush(stdout);
 		return inst->values[offset];
 	}
 }

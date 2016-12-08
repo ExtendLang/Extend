@@ -3,6 +3,6 @@ extern "stdlib.o"{
   extend_plot(a);
 }
 
-main(args){
+[1,1] main(args){
   return extend_plot("img.png") -> 0;
 }

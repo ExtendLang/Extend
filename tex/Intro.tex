@@ -13,7 +13,7 @@ import "string.xtnd";
 		\end{lstlisting}
 		Extend imports act like \texttt{\#include} in C, except that multiple imports of the same file are ignored. The imports are all aggregated into a single namespace.
 		\subsection{Function Definitions}
-			Function definitions comprise the bulk of an Extend program. In short, a function consists of a set of variable declarations, formula assignments, and a return expression. Each variable consists of cells; the values of each cell are, if necessary, calculated according to formulas which each apply to a specified subset of the cells. Each cell value, once calculated, is immutable. A couple examples follow for context; the details are described in detail in section~\ref{sec:Functions}.
+			Function definitions comprise the bulk of an Extend program. In short, a function consists of a set of variable declarations, formula assignments, and a return expression. Each variable consists of cells; the values of each cell are, if necessary, calculated according to formulas which each apply to a specified subset of the cells. Each cell value, once calculated, is immutable. A couple examples follow for context; functions are described in detail in section~\ref{sec:Functions}.
 			\lstinputlisting{./samples/sum_column.xtnd}
 	\subsection{Global Variables}
 		In essence, global variable declarations function as constants in Extend. They are written with the keyword \texttt{global}, followed by a variable declaration in the same form as a variable declaration within a function as described in section~\ref{sec:vardecl}. As with local variables, the cell values of a global variable, once computed, are immutable. A few examples follow:
@@ -23,27 +23,7 @@ import "string.xtnd";
 		object file when producing an executable. An external function declared as \texttt{foo} will call an appropriately written C function \texttt{\detokenize{extend_foo}}. An example follows:
 		\lstinputlisting{./samples/extern.xtnd}
 		This declaration would cause the compiler to link \texttt{mylib.o} and would make the C functions \texttt{\detokenize{extend_foo}} and \texttt{\detokenize{extend_bar}} available to Extend programs as \texttt{foo} and \texttt{bar} respectively. The required signature and format of the external functions is specified precisely in section~\ref{sec:ExternFunctionSignatures}.
-\section{Types and Literals}
-		Extend has three primitive data types, \textbf{Number}, \textbf{String}, and \textbf{Empty}, and one composite type, \textbf{Range}.
-	\subsection{Primitive Data Types}
-		A \textbf{Number} is an immutable primitive value corresponding to a double-precision 64-bit binary format IEEE 754 value. Numbers can be written in an Extend source file as either integer or floating point constants; both are represented internally as floating-point values. There is no separate type representing an integer.
-
-		A \textbf{String} is a immutable primitive value that is internally represented a C-style null-terminated byte array corresponding to ASCII values. A string can be written in an Extend source file as a sequence of characters enclosed in double quotes, with the usual escaping conventions. Extend does not allow for slicing of strings to access specific characters; access to the contents of a string will only be available through standard library functions.
-
-		The \textbf{Empty} type can be written as the keyword \texttt{empty}, and serves a similar function to \texttt{NULL} in SQL; it represents the absence of a value.
-		\newline
-		\begin{table}[H]
-		\centering
-		\begin{tabular} {| l | l |}
-			\hline
-			\textbf{Primitive Data Types} & \textbf{Examples} \\ \hline
-			Number & \texttt{42 or -5 or 2.71828 or 314159e-5} \\ \hline
-			String & \texttt{"Hello, World!\textbackslash n" or "foo" or ""} \\ \hline
-			Empty & \texttt{empty} \\ \hline
-		\end{tabular}
-		\end{table}
-	\subsection{Ranges}
-		Extend has one composite type, \textbf{Range}. A range borrows conceptually from spreadsheets; it is a group of cells with two dimensions, described as rows and columns. Each cell contains a formula that either evaluates to a Number, a String, or another Range. Cell formulas are described in detail in section~\ref{sec:formula}. A range can either be declared as described in section~\ref{sec:vardecl} or with a range literal expression. Ranges can be nested arbitrarily deeply and can be used to represent (immutable) lists, matrices, or more complicated data structures.
-\subsubsection{Range Literals}
-		A range literal is a semicolon-delimited list of rows, enclosed in curly brackets. Each row is a comma-delimited list of numbers, strings, or range literals. A few examples follow:
-		\lstinputlisting{./samples/legal_range_literals.xtnd}
+		\subsection{\texttt{main} function}
+		When a compiled Extend program is executed, the \texttt{main} function is evaluated. All computations necessary to calculate the return value of the function are performed, after which the program terminates. The \texttt{main} function must be a function of a single argument, conventionally denoted args, which is guaranteed to be a 1-by-n range containing the command line arguments.
+		\subsection{Scoping and Namespace}
+		For functions and for global variables, there is a single namespace that is shared between all files composing an Extend program, and they are visible throughout the entire program. Functions declared in external libraries share this namespace as well. For a local variable, the scope is the entire body of the function in which it is defined. Functions may declare local variables sharing a name with a global variable; inside that function, the name will refer to the local variable.

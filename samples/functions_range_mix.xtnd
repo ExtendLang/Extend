@@ -1,5 +1,5 @@
 normalize_column_vector([m,1] arg) {
-  [m,1] squared_lengths = #arg * #arg, normalized := #arg / vector_norm;
+  [m,1] squared_lengths := #arg * #arg, normalized := #arg / vector_norm;
   vector_norm := sqrt(sum(squared_lengths));
   return normalized;
 }

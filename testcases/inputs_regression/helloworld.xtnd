@@ -2,7 +2,7 @@ extern "stdlib.o" {
 	print(a,b);
 }
 
-[1,1] main([1,1] args) {
+[1,1] main(args) {
   foo := print(1,"Hello World\n") -> 0;
   return foo;
 }

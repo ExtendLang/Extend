@@ -83,6 +83,7 @@ struct var_defn {
    int numFormulas;
    struct ExtendFormula *formulas;
 	 bool isOneByOne;
+	 char *name;
 };
 struct var_instance {
   /* This is an actual instance of a variable - we get one of these
@@ -94,6 +95,7 @@ struct var_instance {
   struct ExtendScope *closure;
   value_p *values;
 	char *status;
+	char *name;
 };
 struct ExtendScope {
   struct var_defn *defns;
@@ -417,7 +419,7 @@ void null_init(struct ExtendScope *scope_ptr) {
 }
 
 struct var_instance *instantiate_variable(struct ExtendScope *scope_ptr, struct var_defn def) {
-	printf("Hello\n");
+	printf("Hello %s\n", def.name);
 	double rowVal, colVal;
 	if(def.isOneByOne) {
 		printf("OneByOne\n");
@@ -448,6 +450,7 @@ struct var_instance *instantiate_variable(struct ExtendScope *scope_ptr, struct 
 	inst->cols = (int)(colVal + 0.5);
 	inst->numFormulas = def.numFormulas;
 	inst->closure = scope_ptr;
+	inst->name = def.name;
 	int size = inst->rows * inst->cols;
 	printf("Size: %d %p\n", size, inst);
 	inst->values = malloc(sizeof(value_p) * size);
@@ -524,8 +527,14 @@ value_p calcVal(struct var_instance *inst, int x, int y) {
 	return new_val();
 }
 
+value_p getSize(struct var_instance *inst) {
+	value_p res = malloc(sizeof(struct value_t));
+	setNumeric(res, 1); /*TODO*/
+	return res;
+}
+
 value_p getVal(struct var_instance *inst, int x, int y) {
-	printf("Bye %d %d %d %d\n", inst->cols, inst->rows, x, y);
+	printf("Bye %s %d %d %d %d\n", inst->name, inst->cols, inst->rows, x, y);
 	if(!assertInBounds(inst, x, y)) return new_val();
 	printf("Bye2 %p\n", inst);
 	int offset = inst->rows * y + x;

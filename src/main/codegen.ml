@@ -325,6 +325,7 @@ let translate (globals, functions, externs) =
         extend_scope_p(*scope that contains all variables of a function*);
         value_p(*2D array of cell values*);
         status_p(*2D array of calculation status for each cell*);
+        char_p(*Name*);
       ]) false
     and _ = Llvm.struct_set_body var_defn_t (Array.of_list [
         int_t(*Rows*);
@@ -332,6 +333,7 @@ let translate (globals, functions, externs) =
         int_t(*Number of formulas*);
         formula_p;
         bool_t(*Is one by one range*);
+        char_p(*Name*);
       ]) false
     and _ = Llvm.struct_set_body formula_t (Array.of_list [
         bool_t (*from First row*);
@@ -449,16 +451,19 @@ let translate (globals, functions, externs) =
   create_main build_function_names context base_types base_module ;
 
   let build_function =
-    let rec build_expr expr builder = match expr with
+    let getVal = Llvm.declare_function "getVal" (Llvm.function_type base_types.value_p [|base_types.var_instance_p; base_types.int_t; base_types.int_t|]) base_module
+    and sizeof = Llvm.declare_function "getSize" (Llvm.function_type base_types.value_p [|base_types.var_instance_p;|]) base_module
+    and getVar = Llvm.declare_function "get_variable" (Llvm.function_type base_types.var_instance_p [|base_types.extend_scope_p; base_types.int_t|]) base_module in
+    let rec build_expr expr builder mapping scope = match expr with
         Ast.LitInt(i) -> let vvv = Llvm.const_float base_types.float_t (float_of_int i) in
         let ret_val = Llvm.build_malloc base_types.value_t "" builder in
         let sp = Llvm.build_struct_gep ret_val (value_field_index Number) "num_pointer" builder in
         let _ = Llvm.build_store (Llvm.const_int base_types.char_t (value_field_flags_index Number)) (Llvm.build_struct_gep ret_val (value_field_index Flags) "" builder) builder in
         let _ = Llvm.build_store vvv sp builder in
         ret_val
-      | Ast.Id(name) -> Llvm.const_string context name (*TODO*)
-      | Ast.Selection(expr, sel) -> build_expr expr builder
-      | Ast.Precedence(a,b) -> build_expr a builder; build_expr b builder
+      | Ast.Id(name) -> (try (Llvm.build_call getVal [|(Llvm.build_call getVar [|scope; Llvm.const_int base_types.int_t (Ast.StringMap.find name mapping)|] "" builder); Llvm.const_int base_types.int_t 0; Llvm.const_int base_types.int_t 0|] "" builder) with Not_found -> Llvm.build_malloc base_types.value_t "" builder) (*TODO*)
+      | Ast.Selection(expr, sel) -> build_expr expr builder mapping scope
+      | Ast.Precedence(a,b) -> build_expr a builder mapping scope; build_expr b builder mapping scope
       | Ast.LitString(str) ->
           let boxxx = Llvm.build_call
           (Hashtbl.find helper_functions "new_string")
@@ -475,7 +480,7 @@ let translate (globals, functions, externs) =
               fun a b -> (
                 Llvm.build_call
                 (Hashtbl.find helper_functions "box_single_value")
-                (Array.of_list [(build_expr b builder)])
+                (Array.of_list [(build_expr b builder mapping scope)])
                 ""
                 builder
               ) :: a) [] exl)) in
@@ -483,30 +488,10 @@ let translate (globals, functions, externs) =
             Ast.StringMap.find fn build_public_functions
           ) args "" builder
       | Ast.UnOp(op,expr) -> (match op with
-            Ast.SizeOf -> let subrange = (build_expr expr builder) in
-                let rows = Llvm.const_float base_types.float_t 1.0 and cols = Llvm.const_float base_types.float_t 1.0 in
-                let row_val = Llvm.build_array_malloc base_types.value_t (Llvm.const_int base_types.int_t 2) "" builder in
-                let sp = Llvm.build_struct_gep row_val (value_field_index Number) "" builder in
-                let _ = Llvm.build_store rows sp builder in
-                let col_val = Llvm.build_in_bounds_gep row_val [|Llvm.const_int base_types.int_t 1|] "" builder in
-                let sp = Llvm.build_struct_gep col_val (value_field_index Number) "" builder in
-                let _ = Llvm.build_store cols sp builder in
-                let subrange = Llvm.build_malloc base_types.subrange_t "" builder in
-                let range = Llvm.build_malloc base_types.var_instance_t "" builder in
-                let rp = Llvm.build_struct_gep subrange (subrange_field_index BaseRangePtr) "range_pfff" builder in
-                let vp = Llvm.build_struct_gep range (var_instance_field_index Values) "value_p" builder in
-                let _ = Llvm.build_store row_val vp builder in
-                let _ = Llvm.build_store range rp builder in
-                let _ = Llvm.build_store (Llvm.const_int base_types.int_t 0) (Llvm.build_struct_gep subrange (subrange_field_index BaseOffsetCol) "" builder) in
-                let _ = Llvm.build_store (Llvm.const_int base_types.int_t 0) (Llvm.build_struct_gep subrange (subrange_field_index BaseOffsetRow) "" builder) in
-                let _ = Llvm.build_store (Llvm.const_int base_types.int_t 1) (Llvm.build_struct_gep subrange (subrange_field_index SubrangeRows) "" builder) in
-                let _ = Llvm.build_store (Llvm.const_int base_types.int_t 2) (Llvm.build_struct_gep subrange (subrange_field_index SubrangeCols) "" builder) in
-                Llvm.build_malloc base_types.value_t "" builder (*subrange*)
+            Ast.SizeOf -> print_endline (Ast.string_of_expr expr); raise NotImplemented
           | _ -> print_endline (Ast.string_of_expr expr);raise NotImplemented)
       | _ -> print_endline (Ast.string_of_expr expr);raise NotImplemented in
-    let getVal = Llvm.declare_function "getVal" (Llvm.function_type base_types.value_p [|base_types.var_instance_p; base_types.int_t; base_types.int_t|]) base_module
-    and getVar = Llvm.declare_function "get_variable" (Llvm.function_type base_types.var_instance_p [|base_types.extend_scope_p; base_types.int_t|]) base_module
-    and nullAll = Llvm.declare_function "null_init" (Llvm.function_type (Llvm.void_type context) [|base_types.extend_scope_p|]) base_module
+    let nullAll = Llvm.declare_function "null_init" (Llvm.function_type (Llvm.void_type context) [|base_types.extend_scope_p|]) base_module
     and getDefn x sm = match x with Ast.DimId(a) -> Ast.StringMap.find a sm | Ast.DimInt(a) -> a
     and buildDimSide index boolAll intDim builder atstart ids = (*print_endline (Ast.string_of_index index);*) (match index with
         None -> Llvm.build_store (Llvm.const_int base_types.bool_t 1) boolAll builder
@@ -534,7 +519,7 @@ let translate (globals, functions, externs) =
       let form_decl = Llvm.define_function "" base_types.formula_call_t base_module in
       let nbuilder = Llvm.builder_at_end context (Llvm.entry_block form_decl)
       and _ = Llvm.build_store form_decl (Llvm.build_struct_gep storage_addr (formula_field_index FormulaCall) "" builder) builder in
-        Llvm.build_ret (build_expr element.Ast.formula_expr nbuilder) nbuilder;
+        Llvm.build_ret (build_expr element.Ast.formula_expr nbuilder scopeMapping (Llvm.param form_decl 0)) nbuilder;
     () in
     Ast.StringMap.mapi (fun key (desc, func) ->
       let builder = Llvm.builder_at_end context (Llvm.entry_block func)
@@ -559,7 +544,8 @@ let translate (globals, functions, externs) =
           )
         ) in
         let _ = Llvm.build_store (Llvm.const_int base_types.int_t numForm) (Llvm.build_struct_gep defn (var_defn_field_index NumFormulas) "" builder) builder
-        and _ = Llvm.build_store formulas (Llvm.build_struct_gep defn (var_defn_field_index Formulas) "" builder) builder in
+        and _ = Llvm.build_store formulas (Llvm.build_struct_gep defn (var_defn_field_index Formulas) "" builder) builder
+        and _ = Llvm.build_store (Llvm.build_global_stringptr ke "" builder) (Llvm.build_struct_gep defn 5 "" builder) builder in
         let _  = List.fold_left (fun st elem -> build_formula st elem sm builder; Llvm.build_in_bounds_gep st [|Llvm.const_int base_types.int_t 1|] "" builder) formulas va.Ast.var_formulas
         in (Ast.StringMap.add ke count sm, count + 1)
         (*List.fold_left (fun s v -> v :: s) st va.Ast.var_formulas*)

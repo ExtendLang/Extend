@@ -1,4 +1,5 @@
 [1,1] main(arg) {
-  [1,1] foo := 77;
+  [1,1] a := 33;
+  [1,1] foo := a;
   return foo;
 }

@@ -1,0 +1,8 @@
+extern "stdlib.o"{
+  print(a,b);
+  extend_plot(a);
+}
+
+[1,1] main(args){
+  return extend_plot("Hi") -> 0;
+}

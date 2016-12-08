@@ -421,8 +421,6 @@ value_p calcVal(struct var_instance *inst, int x, int y) {
 		}
 		form++;
 	}
-	return new_val();
-}
 
 value_p getSize(struct var_instance *inst) {
 	value_p res = malloc(sizeof(struct value_t));

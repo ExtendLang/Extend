@@ -60,11 +60,9 @@ let expand_expressions (imports, globals, functions, externs) =
   let entire_range = (Some entire_dimension, Some entire_dimension) in
 
   let expand_expr expr_loc = function
-    (* If expression is not sufficiently atomic, create a new variable
-       to hold the expression; return the new expression and whatever
-       new statements are necessary to create the new variable *)
-      Id(s)     -> (Id(s), [])
-    | Empty     -> raise (IllegalExpression("Empty not allowed in " ^ expr_loc))
+    (* Create a new variable for all expressions on the LHS to hold the result;
+       return the new expression and whatever new statements are necessary to create the new variable *)
+      Empty     -> raise (IllegalExpression("Empty not allowed in " ^ expr_loc))
     | Wild      -> raise (IllegalExpression("wild - this shouldn't be possible"))
     | LitString(s) -> raise (IllegalExpression("String literal " ^ quote_string s ^ " not allowed in " ^ expr_loc))
     | LitRange(rl) -> raise (IllegalExpression("Range literal " ^ string_of_list (Rows rl) ^ " not allowed in " ^ expr_loc))
@@ -492,7 +490,8 @@ let check_semantics (globals, functions, externs) =
       check_index f.formula_col_end ;
       check_expr f.formula_expr in
     let check_dim = function
-        DimInt(_) -> ()
+        DimInt(1) -> ()
+      | DimInt(i) -> raise(IllegalExpression("This is not going to work right"))
       | DimId(s) -> check_expr (Id(s)) in
     let check_variable v =
       check_dim v.var_rows ;

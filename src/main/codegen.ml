@@ -451,9 +451,13 @@ let translate (globals, functions, externs) =
   create_main build_function_names context base_types base_module ;
 
   let build_function =
+    (*getVal retrieves the value of a variable instance for a specific x and y*)
     let getVal = Llvm.declare_function "getVal" (Llvm.function_type base_types.value_p [|base_types.var_instance_p; base_types.int_t; base_types.int_t|]) base_module
+    (*getSize does not work yet*)
     and sizeof = Llvm.declare_function "getSize" (Llvm.function_type base_types.value_p [|base_types.var_instance_p;|]) base_module
+    (*getVar retrieves a variable instance based on the offset. It instanciates the variable if it does not exist yet*)
     and getVar = Llvm.declare_function "get_variable" (Llvm.function_type base_types.var_instance_p [|base_types.extend_scope_p; base_types.int_t|]) base_module in
+    (*build_expr simply builds naive LLVM expressions.*)
     let rec build_expr expr builder mapping scope = match expr with
         Ast.LitInt(i) -> let vvv = Llvm.const_float base_types.float_t (float_of_int i) in
         let ret_val = Llvm.build_malloc base_types.value_t "" builder in
@@ -474,7 +478,7 @@ let translate (globals, functions, externs) =
           (Hashtbl.find helper_functions "box_value_string")
           (Array.of_list [boxxx]) "box_value_str" builder
           in boxx
-      | Ast.Call(fn,exl) ->
+      | Ast.Call(fn,exl) -> (*TODO: Call needs to be reviewed. Possibly switch call arguments to value_p*)
           let args = Array.of_list
             (List.rev (List.fold_left (
               fun a b -> (
@@ -491,8 +495,11 @@ let translate (globals, functions, externs) =
             Ast.SizeOf -> print_endline (Ast.string_of_expr expr); raise NotImplemented
           | _ -> print_endline (Ast.string_of_expr expr);raise NotImplemented)
       | _ -> print_endline (Ast.string_of_expr expr);raise NotImplemented in
+    (*Call to nullAll nulls the scope variable instances, since they are not null initialized*)
     let nullAll = Llvm.declare_function "null_init" (Llvm.function_type (Llvm.void_type context) [|base_types.extend_scope_p|]) base_module
+    (*getDefn simply looks up the correct definition for a dimension declaration of a variable. Note that currently it is ambiguous whether it is a variable or a literal. TOOD: consider negative numbers*)
     and getDefn x sm = match x with Ast.DimId(a) -> Ast.StringMap.find a sm | Ast.DimInt(a) -> a
+    (*buildDimSide builds one end (e.g. row start, row end, col start, ...) of a formula definition, TODO: remove literals for (not atstart)*)
     and buildDimSide index boolAll intDim builder atstart ids = (*print_endline (Ast.string_of_index index);*) (match index with
         None -> Llvm.build_store (Llvm.const_int base_types.bool_t 1) boolAll builder
       | Some(Ast.Abs(e)) -> (
@@ -511,6 +518,7 @@ let translate (globals, functions, externs) =
               Llvm.build_store (Llvm.const_int base_types.int_t 1) intDim builder
           )
     ) in
+    (*build formula creates a formula declaration in a separate method from the function it belongs to*)
     let build_formula storage_addr element scopeMapping builder =
       buildDimSide (Some element.Ast.formula_col_start) (Llvm.build_struct_gep storage_addr (formula_field_index FromFirstCols) "" builder) (Llvm.build_struct_gep storage_addr (formula_field_index ColStartNum) "" builder) builder true scopeMapping;
       buildDimSide (Some element.Ast.formula_row_start) (Llvm.build_struct_gep storage_addr (formula_field_index FromFirstRow) "" builder) (Llvm.build_struct_gep storage_addr (formula_field_index RowStartNum) "" builder) builder true scopeMapping;
@@ -521,16 +529,20 @@ let translate (globals, functions, externs) =
       and _ = Llvm.build_store form_decl (Llvm.build_struct_gep storage_addr (formula_field_index FormulaCall) "" builder) builder in
         Llvm.build_ret (build_expr element.Ast.formula_expr nbuilder scopeMapping (Llvm.param form_decl 0)) nbuilder;
     () in
+    (*iterates over function definitions*)
     Ast.StringMap.mapi (fun key (desc, func) ->
+      (*Instanciate builder and allocate memory for scope*)
       let builder = Llvm.builder_at_end context (Llvm.entry_block func)
       and cardinal = Ast.StringMap.cardinal desc.Ast.func_body in
       let var_defns = Llvm.build_array_malloc base_types.var_defn_t (Llvm.const_int base_types.int_t cardinal) "" builder
       and var_insts = Llvm.build_array_malloc base_types.var_instance_p (Llvm.const_int base_types.int_t cardinal) "" builder
       and scope_obj = Llvm.build_malloc base_types.extend_scope_t "" builder in
+      (*Store variable definition and instance*)
       let _ = Llvm.build_store var_defns (Llvm.build_struct_gep scope_obj (scope_field_type_index VarDefn) "" builder) builder
       and _ = Llvm.build_store var_insts (Llvm.build_struct_gep scope_obj (scope_field_type_index VarInst) "" builder) builder
       and _ = Llvm.build_store (Llvm.const_int base_types.int_t cardinal) (Llvm.build_struct_gep scope_obj (scope_field_type_index VarNum) "" builder) builder in
       let _ = Llvm.build_call nullAll [|scope_obj|] "" builder in
+      (*iterates over formulas defined*)
       let (scope, i) = Ast.StringMap.fold (fun ke va (sm, count) ->
         let defn = (Llvm.build_in_bounds_gep var_defns [|Llvm.const_int base_types.int_t count|] "" builder)
         and numForm = List.length va.Ast.var_formulas in

@@ -170,18 +170,18 @@ let translate (globals, functions, externs) =
   (* Build function_llvalues, which is a StringMap from function name to llvalue.
    * It includes both functions from external libraries, such as the standard library,
    * and functions declared within Extend. *)
-  let declare_extern_function fname func accum_map =
+  let declare_library_function fname func accum_map =
     let llvm_ftype = Llvm.function_type base_types.value_p (Array.of_list (List.map (fun a -> base_types.subrange_p) func.extern_fn_params)) in
     let llvm_fn = Llvm.declare_function fname llvm_ftype base_module in
     StringMap.add fname llvm_fn accum_map in
-  let build_externs = StringMap.fold declare_extern_function externs StringMap.empty in
+  let library_functions = StringMap.fold declare_library_function externs StringMap.empty in
   let define_user_function fname func =
     let llvm_fname = "extend_" ^ fname in
     let llvm_ftype = Llvm.function_type base_types.value_p (Array.of_list (List.map (fun a -> base_types.subrange_p) func.func_params)) in
     let llvm_fn = Llvm.define_function llvm_fname llvm_ftype base_module in
     (func, llvm_fn) in
-  let build_function_names = StringMap.mapi define_user_function functions in
-  let function_llvalues = StringMap.fold (fun k a b -> StringMap.add k a b) (StringMap.map (fun (b, c) -> c) build_function_names) build_externs in
+  let extend_functions = StringMap.mapi define_user_function functions in
+  let function_llvalues = StringMap.fold (fun k a b -> StringMap.add k a b) (StringMap.map (fun (b, c) -> c) extend_functions) library_functions in
 
   let getVal = Hashtbl.find runtime_functions "getVal" in (*getVal retrieves the value of a variable instance for a specific x and y*)
   let sizeof = Hashtbl.find runtime_functions "getSize" in (*getSize does not work yet*)
@@ -296,7 +296,7 @@ let translate (globals, functions, externs) =
     | _ -> print_endline (string_of_expr ret);raise NotImplemented in
 
   (*iterates over function definitions*)
-  StringMap.iter build_function build_function_names ;
+  StringMap.iter build_function extend_functions ;
 
   (* Define the LLVM entry point for the program *)
   let entry_point = StringMap.find "main" function_llvalues in

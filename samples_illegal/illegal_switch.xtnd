@@ -1,0 +1,7 @@
+main([1,1] args){
+	x := switch() {
+    default: "foo";
+    case 1: "bar";
+	};
+	return printf(1,toString(x)+"\n") -> 0;
+}

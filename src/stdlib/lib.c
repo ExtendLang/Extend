@@ -1,11 +1,18 @@
 #include<stdio.h>
 #include<stdlib.h>
 #include<math.h>
+#include<string.h>
+#include<stdbool.h>
 
+/* Value type */
 #define FLAG_EMPTY 0
 #define FLAG_NUMBER 1
 #define FLAG_STRING 2
 #define FLAG_SUBRANGE 3
+
+/* Status flag */
+#define CALCULATED 2
+#define IN_PROGRESS 4
 
 #define MAX_FILES 255
 FILE *open_files[1 + MAX_FILES] = {NULL};
@@ -43,18 +50,61 @@ struct status_t {
 
 typedef struct status_t* status_p;
 
-struct range_t {
-	int rows;
-	int cols;
-	value_p values;
-	status_p statuses;
-	formula_p formulas;
+struct ExtendScope;
+typedef value_p (*FormulaFP) (struct ExtendScope *scope, int row, int col);
+
+struct ExtendFormula {
+  /* These 10 variables correspond to formula_row_start through formula_col_end,
+   * where bool singleRow/Col are true if formula_row_end is None */
+  bool fromFirstRow;
+  int rowStart_varnum;
+  bool toLastRow;
+  int rowEnd_varnum;
+  bool fromFirstCol;
+  int colStart_varnum;
+  bool toLastCol;
+  int colEnd_varnum;
+
+  FormulaFP formula;
 };
 
-typedef struct range_t* range_p;
+struct ResolvedFormula {
+	int rowStart, rowEnd, colStart, colEnd;
+	FormulaFP formula;
+};
+
+struct var_defn {
+  /* This is like a class definition - for every declared variable in the
+   * Extend source, there should be one instance of these per compiled program.
+   * They should just live in the global program storage.
+   * It corresponds to Ast.variable */
+   int rows_varnum;
+   int cols_varnum;
+   int numFormulas;
+   struct ExtendFormula *formulas;
+	 bool isOneByOne;
+	 char *name;
+};
+struct var_instance {
+  /* This is an actual instance of a variable - we get one of these
+   * per variable per time a function is called (assuming the contents
+   * of the variable get examined.  */
+	int rows, cols;
+	int numFormulas;
+	struct ResolvedFormula *formulas;
+  struct ExtendScope *closure;
+  value_p *values;
+	char *status;
+	char *name;
+};
+struct ExtendScope {
+  struct var_defn *defns;
+  struct var_instance **vars;
+	int numVars;
+};
 
 struct subrange_t {
-	range_p range;
+	struct var_instance *range;
 	int offsetRow;
 	int offsetCol;
 	int subrangeRow;
@@ -67,9 +117,20 @@ string_p new_string(char *str);
 
 value_p box_value_string(string_p);
 
+value_p getVal(struct var_instance *inst, int x, int y);
+
+value_p __get_val(struct var_instance *range, int row, int col) {
+	//TODO: assertions
+	printf("Getting %p %d %d\n", range, row, col);
+	return getVal(range, row, col);
+	/*
+	value_p val = range->values[row * range->cols + col];
+	return val;*/
+}
+
 value_p get_val(subrange_p range, int row, int col) {
 	//TODO: assertions
-	value_p val = range->range->values + (row + range->offsetRow) * range->range->cols + col + range->offsetCol;
+	value_p val =  __get_val(range->range, row + range->offsetRow, col + range->offsetCol);
 	return val;
 }
 
@@ -85,15 +146,15 @@ double setFlag(value_p result, double flag_num) {
 	return (result->flags = FLAG_NUMBER);
 }
 
-int assertSingle(subrange_p range) {
-	return (range->subrangeRow == 1 && range->subrangeCol == 1);
+int assertSingle(value_p value) {
+	/* TODO: dereference 1 by 1 subrange */
+	return !(value->flags == FLAG_SUBRANGE);
 }
 
-int assertSingleNumber(subrange_p range) {
-	if (!assertSingle(range)) {
+int assertSingleNumber(value_p p) {
+	if (!assertSingle(p)) {
 		return 0;
-	};
-	value_p p = get_val(range, 0, 0);
+	}
 	return (p->flags == FLAG_NUMBER);
 }
 
@@ -101,19 +162,17 @@ int assertText(value_p my_val) {
 	return (my_val->flags == FLAG_STRING);
 }
 
-int assertSingleString(subrange_p range) {
-	if (!assertSingle(range)) {
+int assertSingleString(value_p p) {
+	if (!assertSingle(p)) {
 		return 0;
 	}
-	value_p p = get_val(range, 0, 0);
 	return (p->flags == FLAG_STRING);
 }
 
-int assertEmpty(subrange_p range) {
-	if (!assertSingle(range)) {
+int assertEmpty(value_p p) {
+	if (!assertSingle(p)) {
 		return 0;
 	}
-	value_p p = get_val(range, 0, 0);
 	return (p->flags == FLAG_EMPTY);
 }
 
@@ -138,141 +197,51 @@ double get_number(subrange_p p) {
 	return v->numericVal;
 }
 
-value_p print(subrange_p whatever, subrange_p text) {
+value_p print(value_p whatever, value_p text) {
 	if(!assertSingleString(text)) return new_val();
-	value_p my_val = get_val(text,0,0);
-	if(!assertText(my_val)) return new_val();
-	printf("%s", my_val->str->text);
+	if(!assertText(text)) return new_val();
+	printf("%s", text->str->text);
 	return new_val();
 }
 
-value_p printd(subrange_p whatever, subrange_p text) {
-	printf("%f\n", text->range->values->numericVal);
+
+value_p printv(value_p whatever, value_p text) {
+	printf("%s", text->str->text);
+	return new_val();
+}
+
+
+value_p printd(value_p whatever, value_p text) {
+	printf("%f\n", text->numericVal);
 	value_p result = malloc(sizeof(struct value_t));
 	return result;
 }
 
-value_p extend_sin(subrange_p range) {
-	if(!assertSingleNumber(range)) return new_val();
-	double initial = get_number(range);
-	double val = sin(initial);
-	return new_number(val);
-}
+#define FUNC(name) value_p extend_##name(value_p a){if(!assertSingleNumber(a)) return new_val();double val = name(a->numericVal);return new_number(val);}
+FUNC(sin)
+FUNC(cos)
+FUNC(tan)
+FUNC(acos)
+FUNC(asin)
+FUNC(atan)
+FUNC(sinh)
+FUNC(cosh)
+FUNC(tanh)
+FUNC(exp)
+FUNC(log)
+FUNC(log10)
+FUNC(sqrt)
+FUNC(ceil)
+FUNC(fabs)
+FUNC(floor)
 
-value_p extend_cos(subrange_p range) {
-	if(!assertSingleNumber(range)) return new_val();
-	double initial = get_number(range);
-	double val = cos(initial);
-	return new_number(val);
-}
-
-value_p extend_tan(subrange_p range) {
-	if(!assertSingleNumber(range)) return new_val();
-	double initial = get_number(range);
-	double val = tan(initial);
-	return new_number(val);
-}
-
-value_p extend_asin(subrange_p range) {
-	if(!assertSingleNumber(range)) return new_val();
-	double initial = get_number(range);
-	double val = asin(initial);
-	return new_number(val);
-}
-
-value_p extend_acos(subrange_p range) {
-	if(!assertSingleNumber(range)) return new_val();
-	double initial = get_number(range);
-	double val = acos(initial);
-	return new_number(val);
-}
-
-value_p extend_atan(subrange_p range) {
-	if(!assertSingleNumber(range)) return new_val();
-	double initial = get_number(range);
-	double val = atan(initial);
-	return new_number(val);
-}
-
-value_p extend_sinh(subrange_p range) {
-	if(!assertSingleNumber(range)) return new_val();
-	double initial = get_number(range);
-	double val = sinh(initial);
-	return new_number(val);
-}
-
-value_p extend_cosh(subrange_p range) {
-	if(!assertSingleNumber(range)) return new_val();
-	double initial = get_number(range);
-	double val = cosh(initial);
-	return new_number(val);
-}
-
-value_p extend_tanh(subrange_p range) {
-	if(!assertSingleNumber(range)) return new_val();
-	double initial = get_number(range);
-	double val = tanh(initial);
-	return new_number(val);
-}
-
-value_p extend_exp(subrange_p range) {
-	if(!assertSingleNumber(range)) return new_val();
-	double initial = get_number(range);
-	double val = exp(initial);
-	return new_number(val);
-}
-
-value_p extend_log(subrange_p range) {
-	if(!assertSingleNumber(range)) return new_val();
-	double initial = get_number(range);
-	double val = log(initial);
-	return new_number(val);
-}
-
-value_p extend_log10(subrange_p range) {
-	if(!assertSingleNumber(range)) return new_val();
-	double initial = get_number(range);
-	double val = log10(initial);
-	return new_number(val);
-}
-
-value_p extend_sqrt(subrange_p range) {
-	if(!assertSingleNumber(range)) return new_val();
-	double initial = get_number(range);
-	double val = sqrt(initial);
-	return new_number(val);
-}
-
-value_p extend_ceil(subrange_p range) {
-	if(!assertSingleNumber(range)) return new_val();
-	double initial = get_number(range);
-	double val = ceil(initial);
-	return new_number(val);
-}
-
-value_p extend_fabs(subrange_p range) {
-	if(!assertSingleNumber(range)) return new_val();
-	double initial = get_number(range);
-	double val = fabs(initial);
-	return new_number(val);
-}
-
-value_p extend_floor(subrange_p range) {
-	if(!assertSingleNumber(range)) return new_val();
-	double initial = get_number(range);
-	double val = floor(initial);
-	return new_number(val);
-}
-
-value_p extend_open(subrange_p rng_filename, subrange_p rng_mode){
+value_p extend_open(value_p filename, value_p mode){
 	FILE *val;
-	if (   !assertSingleString(rng_filename)
-			|| !assertSingleString(rng_mode)
+	if (   !assertSingleString(filename)
+			|| !assertSingleString(mode)
 			|| open_num_files + 1 > MAX_FILES) {
 				return new_val();
 	}
-	value_p filename = get_val(rng_filename, 0, 0);
-	value_p mode = get_val(rng_mode, 0,0);
 	val = fopen(filename->str->text, mode->str->text);
 	if(val == NULL) return new_val();
 	open_num_files++;
@@ -280,31 +249,36 @@ value_p extend_open(subrange_p rng_filename, subrange_p rng_mode){
 	return new_number((double) open_num_files);
 }
 
-value_p extend_close(subrange_p rng_file_handle){
-	if(!assertSingleNumber(rng_file_handle)) {
+value_p extend_close(value_p fileNum){
+	if(!assertSingleNumber(fileNum)) {
 		// Per the LRM this is actually supposed to crash the program.
 		fprintf(stderr, "EXITING - Attempted to close something that was not a valid file pointer\n");
 		exit(-1);
 	}
 
-	int fileNum = (int) get_number(rng_file_handle);
-	if (fileNum > open_num_files || open_files[fileNum] == NULL) {
+	if (fileNum->numericVal > open_num_files || open_files[(int)fileNum->numericVal] == NULL) {
 		// Per the LRM this is actually supposed to crash the program.
 		fprintf(stderr, "EXITING - Attempted to close something that was not a valid file pointer\n");
 		exit(-1);
 	}
-	fclose(open_files[fileNum]);
-	open_files[fileNum] = NULL; // Empty the container for the pointer.
+	fclose(open_files[(int)fileNum->numericVal]);
+	open_files[(int)fileNum->numericVal] = NULL; // Empty the container for the pointer.
 	return new_val(); // asssuming it was an open valid handle, close() is just supposed to return empty
 }
 
-value_p extend_read(subrange_p rng_file_handle, subrange_p rng_num_bytes){
+value_p extend_read(value_p file_handle, value_p num_bytes){
 	/* TODO: Make it accept empty */
-	if(!assertSingleNumber(rng_file_handle) || !assertSingleNumber(rng_num_bytes)) return new_val();
-	int fileNum = (int) get_number(rng_file_handle), max_bytes;
+//<<<<<<< HEAD
+	if(!assertSingleNumber(file_handle) || !assertSingleNumber(num_bytes)) return new_val();
+	int max_bytes = (int)num_bytes->numericVal;
+	int fileNum = (int)file_handle->numericVal;
+//=======
+//	if(!assertSingleNumber(rng_file_handle) || !assertSingleNumber(rng_num_bytes)) return new_val();
+//	int fileNum = (int) get_number(rng_file_handle), max_bytes;
+//>>>>>>> finish-transformations
 	if (fileNum > open_num_files || open_files[fileNum] == NULL)  return new_val();
 	FILE *f = open_files[fileNum];
-	max_bytes = (int) get_number(rng_num_bytes);
+	max_bytes = (int) num_bytes->numericVal;
 	if (max_bytes == 0) {
 		long cur_pos = ftell(f);
 		fseek(f, 0, SEEK_END);
@@ -321,11 +295,9 @@ value_p extend_read(subrange_p rng_file_handle, subrange_p rng_num_bytes){
 	//edge case: how to return the entire contents of the file if n == empty?
 }
 
-value_p extend_write(subrange_p rng_file_handle, subrange_p buf){
-	int val;
-	if(!assertSingleNumber(rng_file_handle) || !assertSingleString(buf)) return new_val();
-	value_p buffer = get_val(buf, 0, 0);
-	int fileNum = (int) get_number(rng_file_handle);
+value_p extend_write(value_p file_handle, value_p buffer){
+	if(!assertSingleNumber(file_handle) || !assertSingleString(buffer)) return new_val();
+	int fileNum = (int) file_handle->numericVal;
 	if (fileNum > open_num_files || open_files[fileNum] == NULL) {
 		// Per the LRM this is actually supposed to crash the program.
 		fprintf(stderr, "EXITING - Attempted to write to something that was not a valid file pointer\n");
@@ -335,4 +307,132 @@ value_p extend_write(subrange_p rng_file_handle, subrange_p buf){
 	// TODO: make this return empty once compiler handles Id(s)
 	// RN: Use the return value to close the file
 	return new_number((double) fileNum);
+}
+
+/*
+ * VENDOR
+ */
+
+struct ExtendScope *global_scope;
+
+struct var_instance *get_variable(struct ExtendScope *scope_ptr, int varnum);
+void null_init(struct ExtendScope *scope_ptr) {
+	int i;
+	for(i = 0; i < scope_ptr->numVars; i++)
+		scope_ptr->vars[i] = NULL;
+}
+
+struct var_instance *instantiate_variable(struct ExtendScope *scope_ptr, struct var_defn def) {
+	double rowVal, colVal;
+	if(def.isOneByOne) {
+		rowVal = 1;
+		colVal = 1;
+	} else {
+		struct var_instance *rows_var = get_variable(scope_ptr, def.rows_varnum);
+		fflush(stdout);
+		value_p rows = getVal(rows_var,0,0);
+		fflush(stdout);
+		struct var_instance *cols_var = get_variable(scope_ptr, def.cols_varnum);
+		fflush(stdout);
+		value_p cols = getVal(cols_var,0,0);
+		if(rows->flags == FLAG_NUMBER || cols->flags == FLAG_NUMBER) {
+			/* TODO: throw error */
+		}
+		rowVal = (int)(rows->numericVal + 0.5);
+		colVal = (int)(cols->numericVal + 0.5);
+	}
+	// TODO: do the same thing for each FormulaFP to turn an ExtendFormula into a ResolvedFormula
+	struct var_instance *inst = malloc(sizeof(struct var_instance));
+	inst->rows = (int)(rowVal + 0.5);
+	inst->cols = (int)(colVal + 0.5);
+	inst->numFormulas = def.numFormulas;
+	inst->closure = scope_ptr;
+	inst->name = def.name;
+	int size = inst->rows * inst->cols;
+	inst->values = malloc(sizeof(value_p) * size);
+	inst->status = malloc(sizeof(struct status_t) * size);
+	inst->formulas = malloc(sizeof(struct ResolvedFormula) * inst->numFormulas);
+	int i;
+	for(i = 0; i < inst->numFormulas; i++) {
+		inst->formulas[i].formula = def.formulas[i].formula;
+		if(def.formulas[i].fromFirstRow)
+			inst->formulas[i].rowStart = 0;
+		else
+			inst->formulas[i].rowStart = def.formulas[i].rowStart_varnum; //TODO eval;
+		if(def.formulas[i].toLastRow)
+			inst->formulas[i].rowEnd = inst->rows;
+		else
+			inst->formulas[i].rowEnd = def.formulas[i].rowEnd_varnum; //TODO eval;
+		if(def.formulas[i].fromFirstCol)
+			inst->formulas[i].colStart = 0;
+		else
+			inst->formulas[i].colStart = def.formulas[i].colStart_varnum; //TODO eval;
+		if(def.formulas[i].toLastCol)
+			inst->formulas[i].colEnd = 0;
+		else
+			inst->formulas[i].colEnd = def.formulas[i].colEnd_varnum; //TODO eval;
+	}
+	for(i = 0; i < inst->rows * inst->cols; i++)
+		(*inst->status) = 0;
+	return inst;
+}
+
+struct var_instance *get_variable(struct ExtendScope *scope_ptr, int varnum) {
+	if (varnum >= scope_ptr->numVars) {
+		fprintf(stderr, "Runtime error: Asked for nonexistant variable number\n");
+		exit(-1);
+	}
+	if (scope_ptr->vars[varnum] == NULL) {
+		scope_ptr->vars[varnum] = instantiate_variable(scope_ptr, scope_ptr->defns[varnum]);
+	}
+	return scope_ptr->vars[varnum];
+}
+
+bool assertInBounds(struct var_instance *defn, int x, int y) {
+	if(defn->rows > x && defn->cols > y) return true;
+	return false;
+}
+
+bool fitsDim(int dim, int rowStart_varnum, int rowEnd_varnum) {
+	return (dim >= rowStart_varnum) && (dim <= rowEnd_varnum);
+}
+
+bool fitsRange(struct ResolvedFormula *formula, int x, int y) {
+	return fitsDim(x, formula->colStart, formula->colEnd)
+		&& fitsDim(y, formula->rowStart, formula->rowEnd);
+}
+
+value_p calcVal(struct var_instance *inst, int x, int y) {
+	struct ResolvedFormula *form = inst->formulas;
+	while(form < inst->formulas + inst->numFormulas) {
+		if(fitsRange(form, x, y)) {
+				value_p res = (form->formula)(inst->closure, x, y);
+				return res;
+		}
+		form++;
+	}
+	return new_val();
+}
+
+value_p getSize(struct var_instance *inst) {
+	value_p res = malloc(sizeof(struct value_t));
+	setNumeric(res, 1); /*TODO*/
+	return res;
+}
+
+value_p getVal(struct var_instance *inst, int x, int y) {
+	if(!assertInBounds(inst, x, y)) return new_val();
+	int offset = inst->rows * y + x;
+	char *status = inst->status + offset;
+	if(*status & IN_PROGRESS) {
+		/* TODO: Circular dependency. Possibly throw? */
+		return new_val();
+	} else if ((~(*status)) & CALCULATED) { /* value not calculated */
+		value_p val = calcVal(inst, x, y);
+		inst->values[offset] = val;
+		*status = (*status && !IN_PROGRESS) | CALCULATED;
+		return val;
+	} else {
+		return inst->values[offset];
+	}
 }

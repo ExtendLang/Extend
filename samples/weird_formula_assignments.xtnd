@@ -1,0 +1,17 @@
+rng_size() {
+  return 8;
+}
+
+breakpoint() {
+  return 3;
+}
+
+main([1,n] args) {
+  [rng_size(),1] foo;
+  foo[:breakpoint(),0] = "before";
+  foo[breakpoint():,0] = "after";
+
+  return
+    printf(1, toString(foo) + "\n") ->
+    0;
+}

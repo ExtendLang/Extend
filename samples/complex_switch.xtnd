@@ -1,0 +1,25 @@
+main([1,n] args) {
+  [10,1] foo;
+  foo[0,0] = 0;
+  foo[1:,0] = foo[[-1]] + 1;
+  [10,1] bar := switch {
+    case #foo < 3:
+      "first_three_" + switch(#foo % 3) {
+        case 0: "a";
+        case 1: "b";
+        case 2: "c";
+      };
+    case #foo < 6:
+      "second_three_" + switch(printf(1, "three times\n") -> #foo % 3) {
+        case 0: "x";
+        case 1: printf(1, "only once\n") -> "y";
+        case 2: "z";
+      };
+    default:
+      "the_end";
+  };
+  return
+    printf(1, toString(foo) + "\n") ->
+    printf(1, toString(bar) + "\n") ->
+    0;
+}

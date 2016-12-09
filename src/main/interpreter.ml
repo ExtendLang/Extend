@@ -186,8 +186,8 @@ and evaluate scope cell e =
         | Lt -> if n1 < n2 then ExtendNumber(1) else ExtendNumber(0)
         | GtEq -> if n1 >= n2 then ExtendNumber(1) else ExtendNumber(0)
         | LtEq -> if n1 <= n2 then ExtendNumber(1) else ExtendNumber(0)
-        | LogAnd -> if (n1 != 0 && n2 != 0) then ExtendNumber(1) else ExtendNumber(0)
-        | LogOr -> if (n1 != 0 || n2 != 0) then ExtendNumber(1) else ExtendNumber(0)
+        | LogAnd -> raise(TransformedAway("Logical And shouldn't be possible!"))
+        | LogOr -> raise(TransformedAway("Logical Or shouldn't be possible!"))
         )
     | (ExtendString(s1), ExtendString(s2)) -> (match op with
           Plus -> ExtendString(s1 ^ s2)
@@ -215,6 +215,9 @@ and evaluate scope cell e =
     | (LogNot, ExtendNumber(0)) -> ExtendNumber(1)
     | (LogNot, EmptyValue) -> EmptyValue
     | (LogNot, _) -> ExtendNumber(0)
+    | (Truthy, ExtendNumber(0)) -> ExtendNumber(0)
+    | (Truthy, EmptyValue) -> EmptyValue
+    | (Truthy, _) -> ExtendNumber(1)
     | (Row, EmptyValue) -> let Cell(r,c) = cell in ExtendNumber(r)
     | (Row, _) -> EmptyValue
     | (Column, EmptyValue) -> let Cell(r,c) = cell in ExtendNumber(c)
@@ -321,22 +324,14 @@ and evaluate scope cell e =
   | LitString(s) -> ExtendString(s)
   | BinOp(e1, op, e2) -> eval_binop op ((evaluate scope cell e1),(evaluate scope cell e2))
   | UnOp(op, e1) -> eval_unop op (evaluate scope cell e1)
-  | Ternary(cond, true_exp, false_exp) -> (match (evaluate scope cell cond) with
-        EmptyValue -> EmptyValue
-      | ExtendNumber(0) -> (evaluate scope cell false_exp)
-      | _ -> (evaluate scope cell true_exp))
-  | Switch(eo, cases) -> let match_val = (match eo with
-        Some e -> (evaluate scope cell e)
-      | None -> ExtendNumber(1)) in
-    let is_expr_match e = (ExtendNumber(1) = (eval_binop Eq (match_val, (evaluate scope cell e)))) in
-    let is_match = function
-        (Some exprs, _) -> List.exists is_expr_match exprs
-      | (None, _) -> true in
-    (try
-      let matching_case = List.find is_match cases in
-      (evaluate scope cell (snd matching_case))
-    with Not_found -> EmptyValue)
   | Id(s) -> find_variable s
+  | Precedence(a,b) -> ignore (evaluate scope cell a); evaluate scope cell b
+  | ReducedTernary(cond_id, true_id, false_id) ->
+    (match (evaluate scope cell (Selection(Id(cond_id),(Some(Some(Rel(LitInt(0))),None),Some(Some(Rel(LitInt(0))),None))))) with
+       EmptyValue -> EmptyValue
+     | ExtendNumber(0) -> (evaluate scope cell (Selection(Id(false_id),(Some(Some(Rel(LitInt(0))),None),Some(Some(Rel(LitInt(0))),None)))))
+     | ExtendNumber(1) -> (evaluate scope cell (Selection(Id(true_id),(Some(Some(Rel(LitInt(0))),None),Some(Some(Rel(LitInt(0))),None)))))
+     | v -> raise(TransformedAway("Illegal value " ^ (string_of_val scope v) ^ " in truthiness variable " ^ cond_id)))
   | Selection(expr, sel) ->
     let rng = range_of_val (evaluate scope cell expr) in
     let Cell(cell_row, cell_col) = cell in
@@ -379,8 +374,23 @@ and evaluate scope cell e =
       evaluate f_scope (Cell(0,0)) (snd f.func_ret_val)
 
 (*  LitRange of (expr list) list *)
-  | Precedence(a,b) -> ignore (evaluate scope cell a); evaluate scope cell b
-  | _ -> ExtendNumber(-1))
+  | Ternary(cond, true_exp, false_exp) -> raise(TransformedAway("Ternaries shouldn't be possible!"))
+      (* (match (evaluate scope cell cond) with
+        EmptyValue -> EmptyValue
+      | ExtendNumber(0) -> (evaluate scope cell false_exp)
+      | _ -> (evaluate scope cell true_exp)) *)
+  | Switch(eo, cases, dflt) -> raise(TransformedAway("Switches shouldn't be possible!"))
+    (* let match_val = (match eo with
+       Some e -> (evaluate scope cell e)
+       | None -> ExtendNumber(1)) in
+       let is_expr_match e = (ExtendNumber(1) = (eval_binop Eq (match_val, (evaluate scope cell e)))) in
+       let is_match (exprs, _) = List.exists is_expr_match exprs in
+       (try
+       let matching_case = List.find is_match cases in
+       (evaluate scope cell (snd matching_case))
+       with Not_found -> (evaluate scope cell dflt)) *)
+  | LitRange(_) -> raise(TransformedAway("Literal ranges shouldn't be possible!"))
+  | Wild -> raise(TransformedAway("Wild shouldn't be possible!")))
 
 and get_val rg cell =
   match rg with

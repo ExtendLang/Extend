@@ -146,7 +146,7 @@ let create_main entry_point ctx bt the_module =
       (Llvm.function_type bt.int_t (Array.of_list [bt.int_t; bt.char_p_p]))
       the_module in
   let main_bod = Llvm.builder_at_end ctx (Llvm.entry_block main_def) in
-  let inp = Llvm.build_alloca bt.subrange_t "input_arg" main_bod in
+  let inp = Llvm.build_alloca bt.value_t "input_arg" main_bod in
   (* Put input args in inp *)
   let _ = Llvm.build_call entry_point (Array.of_list [inp]) "" main_bod in
   let str_format_str = Llvm.build_global_stringptr "%s\n" "fmt" main_bod in
@@ -170,13 +170,13 @@ let translate (globals, functions, externs) =
    * It includes both functions from external libraries, such as the standard library,
    * and functions declared within Extend. *)
   let declare_library_function fname func accum_map =
-    let llvm_ftype = Llvm.function_type base_types.value_p (Array.of_list (List.map (fun a -> base_types.subrange_p) func.extern_fn_params)) in
+    let llvm_ftype = Llvm.function_type base_types.value_p (Array.of_list (List.map (fun a -> base_types.value_p) func.extern_fn_params)) in
     let llvm_fn = Llvm.declare_function fname llvm_ftype base_module in
     StringMap.add fname llvm_fn accum_map in
   let library_functions = StringMap.fold declare_library_function externs StringMap.empty in
   let define_user_function fname func =
     let llvm_fname = "extend_" ^ fname in
-    let llvm_ftype = Llvm.function_type base_types.value_p (Array.of_list (List.map (fun a -> base_types.subrange_p) func.func_params)) in
+    let llvm_ftype = Llvm.function_type base_types.value_p (Array.of_list (List.map (fun a -> base_types.value_p) func.func_params)) in
     let llvm_fn = Llvm.define_function llvm_fname llvm_ftype base_module in
     (func, llvm_fn) in
   let extend_functions = StringMap.mapi define_user_function functions in
@@ -191,7 +191,7 @@ let translate (globals, functions, externs) =
     let form_decl = Llvm.define_function "" base_types.formula_call_t base_module in
     let builder = Llvm.builder_at_end context (Llvm.entry_block form_decl) in
     let scope = Llvm.param form_decl 0 in
-    let rec build_expr = function
+    let rec build_expr exp = match exp with
         LitInt(i) -> let vvv = Llvm.const_float base_types.float_t (float_of_int i) in
         let ret_val = Llvm.build_malloc base_types.value_t "" builder in
         let sp = Llvm.build_struct_gep ret_val (value_field_index Number) "num_pointer" builder in
@@ -199,7 +199,7 @@ let translate (globals, functions, externs) =
         let _ = Llvm.build_store vvv sp builder in
         ret_val
       | Id(name) -> (try (Llvm.build_call getVal [|(Llvm.build_call getVar [|scope; Llvm.const_int base_types.int_t (StringMap.find name mapping)|] "" builder); Llvm.const_int base_types.int_t 0; Llvm.const_int base_types.int_t 0|] "" builder) with Not_found -> Llvm.build_malloc base_types.value_t "" builder) (*TODO*)
-      | Selection(expr, sel) -> build_expr expr
+      | Selection(expr, sel) -> print_endline (Ast.string_of_expr exp); build_expr expr
       | Precedence(a,b) -> ignore (build_expr a); build_expr b
       | LitString(str) ->
         let boxxx = Llvm.build_call
@@ -214,21 +214,15 @@ let translate (globals, functions, externs) =
       | Call(fn,exl) -> (*TODO: Call needs to be reviewed. Possibly switch call arguments to value_p*)
         let args = Array.of_list
             (List.rev (List.fold_left (
-                 fun a b -> (
-                     Llvm.build_call
-                       (Hashtbl.find helper_functions "box_single_value")
-                       (Array.of_list [(build_expr b)])
-                       ""
-                       builder
-                   ) :: a) [] exl)) in
+                 fun a b -> (build_expr b) :: a) [] exl)) in
         Llvm.build_call (
           StringMap.find fn function_llvalues
         ) args "" builder
-      | UnOp(op,expr) -> (match op with
+      | UnOp(op,expr) -> print_endline (Ast.string_of_expr exp); (match op with
             SizeOf -> print_endline (string_of_expr expr); raise NotImplemented
           | _ -> print_endline (string_of_expr expr);raise NotImplemented)
       | unknown_expr -> print_endline (string_of_expr unknown_expr);raise NotImplemented in
-    let _ = Llvm.build_ret (build_expr formula_expr) builder in
+    let _ = Llvm.build_ret ((*print_endline (Ast.string_of_expr formula_expr);*) build_expr formula_expr) builder in
     form_decl in
 
   (*build formula creates a formula declaration in a separate method from the function it belongs to*)

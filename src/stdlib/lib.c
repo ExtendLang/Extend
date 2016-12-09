@@ -218,116 +218,23 @@ value_p printd(value_p whatever, value_p text) {
 	return result;
 }
 
-value_p extend_sin(subrange_p range) {
-	if(!assertSingleNumber(range)) return new_val();
-	double initial = get_number(range);
-	double val = sin(initial);
-	return new_number(val);
-}
-
-value_p extend_cos(subrange_p range) {
-	if(!assertSingleNumber(range)) return new_val();
-	double initial = get_number(range);
-	double val = cos(initial);
-	return new_number(val);
-}
-
-value_p extend_tan(subrange_p range) {
-	if(!assertSingleNumber(range)) return new_val();
-	double initial = get_number(range);
-	double val = tan(initial);
-	return new_number(val);
-}
-
-value_p extend_asin(subrange_p range) {
-	if(!assertSingleNumber(range)) return new_val();
-	double initial = get_number(range);
-	double val = asin(initial);
-	return new_number(val);
-}
-
-value_p extend_acos(value_p range) {
-	if(!assertSingleNumber(range)) return new_val();
-	double val = acos(range->numericVal);
-	return new_number(val);
-}
-
-value_p extend_atan(subrange_p range) {
-	if(!assertSingleNumber(range)) return new_val();
-	double initial = get_number(range);
-	double val = atan(initial);
-	return new_number(val);
-}
-
-value_p extend_sinh(subrange_p range) {
-	if(!assertSingleNumber(range)) return new_val();
-	double initial = get_number(range);
-	double val = sinh(initial);
-	return new_number(val);
-}
-
-value_p extend_cosh(subrange_p range) {
-	if(!assertSingleNumber(range)) return new_val();
-	double initial = get_number(range);
-	double val = cosh(initial);
-	return new_number(val);
-}
-
-value_p extend_tanh(subrange_p range) {
-	if(!assertSingleNumber(range)) return new_val();
-	double initial = get_number(range);
-	double val = tanh(initial);
-	return new_number(val);
-}
-
-value_p extend_exp(subrange_p range) {
-	if(!assertSingleNumber(range)) return new_val();
-	double initial = get_number(range);
-	double val = exp(initial);
-	return new_number(val);
-}
-
-value_p extend_log(subrange_p range) {
-	if(!assertSingleNumber(range)) return new_val();
-	double initial = get_number(range);
-	double val = log(initial);
-	return new_number(val);
-}
-
-value_p extend_log10(subrange_p range) {
-	if(!assertSingleNumber(range)) return new_val();
-	double initial = get_number(range);
-	double val = log10(initial);
-	return new_number(val);
-}
-
-value_p extend_sqrt(subrange_p range) {
-	if(!assertSingleNumber(range)) return new_val();
-	double initial = get_number(range);
-	double val = sqrt(initial);
-	return new_number(val);
-}
-
-value_p extend_ceil(subrange_p range) {
-	if(!assertSingleNumber(range)) return new_val();
-	double initial = get_number(range);
-	double val = ceil(initial);
-	return new_number(val);
-}
-
-value_p extend_fabs(subrange_p range) {
-	if(!assertSingleNumber(range)) return new_val();
-	double initial = get_number(range);
-	double val = fabs(initial);
-	return new_number(val);
-}
-
-value_p extend_floor(subrange_p range) {
-	if(!assertSingleNumber(range)) return new_val();
-	double initial = get_number(range);
-	double val = floor(initial);
-	return new_number(val);
-}
+#define FUNC(name) value_p extend_##name(value_p a){if(!assertSingleNumber(a)) return new_val();double val = name(a->numericVal);return new_number(val);}
+FUNC(sin)
+FUNC(cos)
+FUNC(tan)
+FUNC(acos)
+FUNC(asin)
+FUNC(atan)
+FUNC(sinh)
+FUNC(cosh)
+FUNC(tanh)
+FUNC(exp)
+FUNC(log)
+FUNC(log10)
+FUNC(sqrt)
+FUNC(ceil)
+FUNC(fabs)
+FUNC(floor)
 
 value_p extend_open(subrange_p rng_filename, subrange_p rng_mode){
 	FILE *val;

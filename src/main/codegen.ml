@@ -1,116 +1,16 @@
 
 (* Extend code generator *)
 
+open Ast
+open CodeGenTypes
 exception NotImplemented
-
-type something = {
-  var_instance_t : Llvm.lltype;
-  subrange_t : Llvm.lltype;
-  resolved_formula_t : Llvm.lltype;
-  status_t : Llvm.lltype;
-  value_t : Llvm.lltype;
-  dimensions_t : Llvm.lltype;
-  var_defn_t : Llvm.lltype;
-  var_defn_p : Llvm.lltype;
-  string_t : Llvm.lltype;
-  number_t : Llvm.lltype;
-  extend_scope_t : Llvm.lltype;
-  formula_t : Llvm.lltype;
-  formula_call_t : Llvm.lltype;
-  formula_p : Llvm.lltype;
-  formula_call_p : Llvm.lltype;
-  var_instance_p : Llvm.lltype;
-  subrange_p : Llvm.lltype;
-  resolved_formula_p : Llvm.lltype;
-  status_p : Llvm.lltype;
-  value_p : Llvm.lltype;
-  extend_scope_p : Llvm.lltype;
-  string_p : Llvm.lltype;
-  string_p_p : Llvm.lltype;
-  var_instance_p_p : Llvm.lltype;
-  int_t : Llvm.lltype;
-  long_t : Llvm.lltype;
-  flags_t : Llvm.lltype;
-  char_t : Llvm.lltype;
-  bool_t : Llvm.lltype;
-  void_t : Llvm.lltype;
-  char_p : Llvm.lltype;
-  char_p_p : Llvm.lltype;
-  (*void_p : Llvm.lltype;*)
-  float_t : Llvm.lltype;
-};;
 
 let helper_functions = Hashtbl.create 10
 let extern_functions = Hashtbl.create 10
 
-type scope_field_type = VarDefn | VarInst | VarNum
-let scope_field_type_index = function
-    VarDefn -> 0
-  | VarInst -> 1
-  | VarNum -> 2
-
-type value_field_flags = Empty | Number | String | Range
-let value_field_flags_index = function
-    Empty -> 0
-  | Number -> 1
-  | String -> 2
-  | Range -> 3
-
-type value_field = Flags | Number | String | Subrange
-let value_field_index = function
-    Flags -> 0
-  | Number -> 1
-  | String -> 2
-  | Subrange -> 3
-
-type var_defn_field = Rows | Cols | NumFormulas | Formulas | OneByOne
-let var_defn_field_index = function
-    Rows -> 0
-  | Cols -> 1
-  | NumFormulas -> 2
-  | Formulas -> 3
-  | OneByOne -> 4
-
-type formula_field  = FromFirstRow | RowStartNum | ToLastRow | RowEndNum | FromFirstCols | ColStartNum | ToLastCol | ColEndNum | FormulaCall
-let formula_field_index = function
-    FromFirstRow -> 0
-  | RowStartNum -> 1
-  | ToLastRow -> 2
-  | RowEndNum -> 3
-  | FromFirstCols -> 4
-  | ColStartNum -> 5
-  | ToLastCol -> 6
-  | ColEndNum -> 7
-  | FormulaCall -> 8
-
-type var_instance_field = Rows | Cols | NumFormulas | Formulas | Closure | Values | Status
-let var_instance_field_index = function
-    Rows -> 0
-  | Cols -> 1
-  | NumFormulas -> 2
-  | Formulas -> 3
-  | Closure -> 4
-  | Values -> 5
-  | Status -> 6
-
-type subrange_field = BaseRangePtr | BaseOffsetRow | BaseOffsetCol | SubrangeRows | SubrangeCols
-let subrange_field_index = function
-    BaseRangePtr -> 0
-  | BaseOffsetRow -> 1
-  | BaseOffsetCol -> 2
-  | SubrangeRows -> 3
-  | SubrangeCols -> 4
-
-type dimensions_field = DimensionRows | DimensionCols
-let dimensions_field_index = function
-    DimensionRows -> 0
-  | DimensionCols -> 1
-
-type string_field = StringCharPtr | StringLen | StringRefCount
-let string_field_index = function
-    StringCharPtr -> 0
-  | StringLen -> 1
-  | StringRefCount -> 2
+let index_map m =
+  let add_item key _ (accum_map, accum_idx) = (StringMap.add key accum_idx accum_map, accum_idx + 1) in
+  StringMap.fold add_item m (StringMap.empty, 0)
 
 let (=>) struct_ptr elem = (fun val_name builder ->
     let the_pointer = Llvm.build_struct_gep struct_ptr elem "the_pointer" builder in
@@ -141,21 +41,6 @@ let create_helper_functions ctx bt the_module =
     let one_by_one = Llvm.build_and one_row one_col "one_by_one" fn_bod in
     let _ = Llvm.build_ret one_by_one fn_bod in
     Hashtbl.add helper_functions fname fn_def in
-
-  (*let create_get_val fname =
-    let (fn_def, fn_bod) = create_def_bod fname bt.int_t [bt.range_p; bt.int_t; bt.int_t] in
-    let _ = Llvm.build_ret (Llvm.const_int bt.int_t (-1)) fn_bod in
-    Hashtbl.add helper_functions fname fn_def in
-
-  let create_deref_subrange fname =
-    let (fn_def, fn_bod) = create_def_bod fname bt.int_t [bt.subrange_p] in
-    let the_base_range = ((Llvm.param fn_def 0) => (subrange_field_index BaseRangePtr))"the_base_range" fn_bod in
-    let the_val = Llvm.build_call
-        (Hashtbl.find helper_functions "get_val")
-        (Array.of_list [the_base_range; (Llvm.const_int bt.int_t 0); (Llvm.const_int bt.int_t 0)])
-        "the_contents" fn_bod in
-    let _ = Llvm.build_ret the_val fn_bod in
-    Hashtbl.add helper_functions fname fn_def in*)
 
   let create_new_string fname =
     let (fn_def, fn_bod) = create_def_bod fname bt.string_p [bt.char_p] in
@@ -253,23 +138,14 @@ let create_helper_functions ctx bt the_module =
     create_box_single_value "box_single_value";
     create_box_value_float "box_value_float";
     ()
-let create_main fnames ctx bt the_module =
+let create_main entry_point ctx bt the_module =
   let main_def = Llvm.define_function "main"
       (Llvm.function_type bt.int_t (Array.of_list [bt.int_t; bt.char_p_p]))
       the_module in
   let main_bod = Llvm.builder_at_end ctx (Llvm.entry_block main_def) in
   let inp = Llvm.build_alloca bt.subrange_t "input_arg" main_bod in
   (* Put input args in inp *)
-  let _ = Llvm.build_call
-         (
-           let (a,b) = Ast.StringMap.find
-               "main"
-               fnames
-           in
-           b
-         )
-         (Array.of_list [inp])
-         "" main_bod in
+  let _ = Llvm.build_call entry_point (Array.of_list [inp]) "" main_bod in
   let str_format_str = Llvm.build_global_stringptr "%s\n" "fmt" main_bod in
   let int_format_str = Llvm.build_global_stringptr "%d\n" "fmt" main_bod in
   let boxed_args = Llvm.build_call (Hashtbl.find helper_functions "box_native_string_list") [|(Llvm.param main_def 0);(Llvm.param main_def 1)|] "args" main_bod in
@@ -277,178 +153,30 @@ let create_main fnames ctx bt the_module =
   ()
 
 let translate (globals, functions, externs) =
-  (*let build_struct ctx (name, tl) =
-    let my_struct = Llvm.named_struct_type ctx name in
-    let _ = Llvm.struct_set_body my_struct (Array.of_list tl) false in
-    my_struct*)
   let context = Llvm.global_context () in
-  let setup_types ctx =
-    let var_instance_t = Llvm.named_struct_type ctx "var_instance" (*Range struct is a 2D Matrix of values*)
-    and subrange_t = Llvm.named_struct_type ctx "subrange" (*Subrange is a wrapper around a range to cut cells*)
-    and int_t = Llvm.i32_type ctx (*Integer*)
-    and long_t = Llvm.i64_type ctx
-    and float_t = Llvm.double_type ctx
-    and flags_t = Llvm.i8_type ctx (*Flags for statuses*)
-    and char_t = Llvm.i8_type ctx (*Simple ASCII character*)
-    and bool_t = Llvm.i1_type ctx (*boolean 0 = false, 1 = true*)
-    and void_t = Llvm.void_type ctx (**)
-    and value_t = Llvm.named_struct_type ctx "value" (*Value encapsulates the content of a cell*)
-    and dimensions_t = Llvm.named_struct_type ctx "dimensions" (**)
-    and status_t = Llvm.named_struct_type ctx "status" (*Status indicates how a cell must be treated*)
-    and resolved_formula_t = Llvm.named_struct_type ctx "resolved_formula"
-    and extend_scope_t = Llvm.named_struct_type ctx "extend_scope"
-    and var_defn_t = Llvm.named_struct_type ctx "var_def"
-    and formula_t = Llvm.named_struct_type ctx "formula"
-    and string_t = Llvm.named_struct_type ctx "string" in
-    let var_instance_p = (Llvm.pointer_type var_instance_t)
-    and var_defn_p = Llvm.pointer_type var_defn_t
-    and resolved_formula_p = (Llvm.pointer_type resolved_formula_t)
-    and subrange_p = (Llvm.pointer_type subrange_t)
-    and value_p = (Llvm.pointer_type value_t)
-    and status_p = (Llvm.pointer_type status_t)
-    and extend_scope_p = (Llvm.pointer_type extend_scope_t)
-    and char_p = (Llvm.pointer_type char_t)
-    and string_p = (Llvm.pointer_type string_t)
-    and char_p_p = (Llvm.pointer_type (Llvm.pointer_type char_t))
-    and string_p_p = (Llvm.pointer_type (Llvm.pointer_type string_t))
-    and number_t = float_t
-    and formula_p = (Llvm.pointer_type formula_t)
-    (*and void_p = (Llvm.pointer_type void_t)*) in
-    let var_instance_p_p = (Llvm.pointer_type var_instance_p)
-    and formula_call_t = (Llvm.function_type value_p [|extend_scope_p(*scope*); int_t(*row*); int_t(*col*)|]) in
-    let formula_call_p = Llvm.pointer_type formula_call_t in
-    let _ = Llvm.struct_set_body var_instance_t (Array.of_list [
-        int_t(*rows*);
-        int_t(*columns*);
-        int_t(*numFormulas*);
-        resolved_formula_p(*formula with resolved dimensions*);
-        extend_scope_p(*scope that contains all variables of a function*);
-        value_p(*2D array of cell values*);
-        status_p(*2D array of calculation status for each cell*);
-        char_p(*Name*);
-      ]) false
-    and _ = Llvm.struct_set_body var_defn_t (Array.of_list [
-        int_t(*Rows*);
-        int_t(*Cols*);
-        int_t(*Number of formulas*);
-        formula_p;
-        bool_t(*Is one by one range*);
-        char_p(*Name*);
-      ]) false
-    and _ = Llvm.struct_set_body formula_t (Array.of_list [
-        bool_t (*from First row*);
-        int_t (*row Start num*);
-        bool_t (*to last row*);
-        int_t (*row end num*);
-        bool_t (*from first col*);
-        int_t (*col start*);
-        bool_t (*to last col*);
-        int_t (*col end num*);
-        formula_call_p (*formula to call*);
-      ]) false
-    and _ = Llvm.struct_set_body extend_scope_t (Array.of_list [
-        var_defn_p(*variable definitions*);
-        var_instance_p_p(*variable instances*);
-        int_t(*number of variables*)
-      ]) false
-    and _ = Llvm.struct_set_body subrange_t (Array.of_list [
-        var_instance_p(*The target range*);
-        int_t(*row offset*);
-        int_t(*column offset*);
-        int_t(*row count*);
-        int_t(*column count*)
-      ]) false
-    and _ = Llvm.struct_set_body value_t (Array.of_list [
-        flags_t (*First bit indicates whether it is an int or a range*);
-        number_t (*Numeric value of the cell*);
-        string_p (*String value of the cell if applicable*);
-        subrange_p (*Range value of the cell if applicable*);
-        (*float_t (Double value of the cell*)
-      ]) false
-    and _ = Llvm.struct_set_body string_t (Array.of_list [
-        char_p (*Pointer to null-terminated string*);
-        long_t (*Length of string*);
-        int_t (*Reference count*)
-      ]) false
-    and _ = Llvm.struct_set_body dimensions_t (Array.of_list [int_t; int_t]) false in
-    {
-      var_instance_t = var_instance_t;
-      value_t = value_t;
-      status_t = status_t;
-      subrange_t = subrange_t;
-      resolved_formula_t = resolved_formula_t;
-      dimensions_t = dimensions_t;
-      number_t = number_t;
-      string_t = string_t;
-      extend_scope_t = extend_scope_t;
-      formula_t = formula_t;
-      formula_call_t = formula_call_t;
-
-      var_defn_t = var_defn_t;
-      var_defn_p = var_defn_p;
-      var_instance_p = var_instance_p;
-      subrange_p = subrange_p;
-      value_p = value_p;
-      status_p = status_p;
-      resolved_formula_p = resolved_formula_p;
-      string_p = string_p;
-      char_p = char_p;
-      extend_scope_p = extend_scope_p;
-      formula_p = formula_p;
-      formula_call_p = formula_call_p;
-
-      var_instance_p_p = var_instance_p_p;
-
-      int_t = int_t;
-      long_t = long_t;
-      float_t = float_t;
-      flags_t = flags_t;
-      bool_t = bool_t;
-      char_t = char_t;
-      void_t = void_t;
-      char_p_p = char_p_p;
-      string_p_p = string_p_p;
-      (*void_p = void_p;*)
-    }
-  and base_module = Llvm.create_module context "Extend" in
+  let base_module = Llvm.create_module context "Extend" in
   let base_types = setup_types context in
-  let build_externs =
-    Ast.StringMap.fold
-    (fun key (b: Ast.extern_func) a ->
-      Ast.StringMap.add
-      b.Ast.extern_fn_name
-      (
-        Llvm.declare_function
-        b.Ast.extern_fn_name
-        (
-          Llvm.function_type base_types.value_p
-          (
-            Array.of_list (List.map (fun a -> base_types.subrange_p) b.Ast.extern_fn_params)
-          )
-        )
-        base_module
-      )
-      a
-    )
-    externs
-    Ast.StringMap.empty
-     in
-  let build_function_names =
-    Ast.StringMap.mapi (fun key (func: Ast.func_decl) ->
-        (func, Llvm.define_function
-           (if (key = "main") then "_main" else key)
-           (Llvm.function_type base_types.value_p (Array.of_list (List.map (fun a -> base_types.subrange_p) func.Ast.func_params)))
-           base_module)
-      ) functions in
-  let build_public_functions =
-    Ast.StringMap.fold (fun k a b -> Ast.StringMap.add k a b) (Ast.StringMap.map (fun (b, c) -> c) build_function_names) build_externs in
+  let (global_var_indices, num_global_vars) = index_map globals in
+  let declare_extern_function fname func accum_map =
+    let llvm_ftype = Llvm.function_type base_types.value_p (Array.of_list (List.map (fun a -> base_types.subrange_p) func.extern_fn_params)) in
+    let llvm_fn = Llvm.declare_function fname llvm_ftype base_module in
+    StringMap.add fname llvm_fn accum_map in
+  let build_externs = StringMap.fold declare_extern_function externs StringMap.empty in
+  let define_user_function fname func =
+    let llvm_fname = "extend_" ^ fname in
+    let llvm_ftype = Llvm.function_type base_types.value_p (Array.of_list (List.map (fun a -> base_types.subrange_p) func.func_params)) in
+    let llvm_fn = Llvm.define_function llvm_fname llvm_ftype base_module in
+    (func, llvm_fn) in
+  let build_function_names = StringMap.mapi define_user_function functions in
+  let combined_functions = StringMap.fold (fun k a b -> StringMap.add k a b) (StringMap.map (fun (b, c) -> c) build_function_names) build_externs in
   (* Declare the external functions that we need to call *)
   create_extern_functions context base_types base_module ;
 
   create_helper_functions context base_types base_module ;
 
   (* Define the LLVM entry point for the program *)
-  create_main build_function_names context base_types base_module ;
+  let entry_point = StringMap.find "main" combined_functions in
+  create_main entry_point context base_types base_module ;
 
   let build_function =
     (*getVal retrieves the value of a variable instance for a specific x and y*)
@@ -459,16 +187,16 @@ let translate (globals, functions, externs) =
     and getVar = Llvm.declare_function "get_variable" (Llvm.function_type base_types.var_instance_p [|base_types.extend_scope_p; base_types.int_t|]) base_module in
     (*build_expr simply builds naive LLVM expressions.*)
     let rec build_expr expr builder mapping scope = match expr with
-        Ast.LitInt(i) -> let vvv = Llvm.const_float base_types.float_t (float_of_int i) in
+        LitInt(i) -> let vvv = Llvm.const_float base_types.float_t (float_of_int i) in
         let ret_val = Llvm.build_malloc base_types.value_t "" builder in
         let sp = Llvm.build_struct_gep ret_val (value_field_index Number) "num_pointer" builder in
         let _ = Llvm.build_store (Llvm.const_int base_types.char_t (value_field_flags_index Number)) (Llvm.build_struct_gep ret_val (value_field_index Flags) "" builder) builder in
         let _ = Llvm.build_store vvv sp builder in
         ret_val
-      | Ast.Id(name) -> (try (Llvm.build_call getVal [|(Llvm.build_call getVar [|scope; Llvm.const_int base_types.int_t (Ast.StringMap.find name mapping)|] "" builder); Llvm.const_int base_types.int_t 0; Llvm.const_int base_types.int_t 0|] "" builder) with Not_found -> Llvm.build_malloc base_types.value_t "" builder) (*TODO*)
-      | Ast.Selection(expr, sel) -> build_expr expr builder mapping scope
-      | Ast.Precedence(a,b) -> build_expr a builder mapping scope; build_expr b builder mapping scope
-      | Ast.LitString(str) ->
+      | Id(name) -> (try (Llvm.build_call getVal [|(Llvm.build_call getVar [|scope; Llvm.const_int base_types.int_t (StringMap.find name mapping)|] "" builder); Llvm.const_int base_types.int_t 0; Llvm.const_int base_types.int_t 0|] "" builder) with Not_found -> Llvm.build_malloc base_types.value_t "" builder) (*TODO*)
+      | Selection(expr, sel) -> build_expr expr builder mapping scope
+      | Precedence(a,b) -> build_expr a builder mapping scope; build_expr b builder mapping scope
+      | LitString(str) ->
           let boxxx = Llvm.build_call
           (Hashtbl.find helper_functions "new_string")
           (Array.of_list [
@@ -478,7 +206,7 @@ let translate (globals, functions, externs) =
           (Hashtbl.find helper_functions "box_value_string")
           (Array.of_list [boxxx]) "box_value_str" builder
           in boxx
-      | Ast.Call(fn,exl) -> (*TODO: Call needs to be reviewed. Possibly switch call arguments to value_p*)
+      | Call(fn,exl) -> (*TODO: Call needs to be reviewed. Possibly switch call arguments to value_p*)
           let args = Array.of_list
             (List.rev (List.fold_left (
               fun a b -> (
@@ -489,24 +217,24 @@ let translate (globals, functions, externs) =
                 builder
               ) :: a) [] exl)) in
           Llvm.build_call (
-            Ast.StringMap.find fn build_public_functions
+            StringMap.find fn combined_functions
           ) args "" builder
-      | Ast.UnOp(op,expr) -> (match op with
-            Ast.SizeOf -> print_endline (Ast.string_of_expr expr); raise NotImplemented
-          | _ -> print_endline (Ast.string_of_expr expr);raise NotImplemented)
-      | _ -> print_endline (Ast.string_of_expr expr);raise NotImplemented in
+      | UnOp(op,expr) -> (match op with
+            SizeOf -> print_endline (string_of_expr expr); raise NotImplemented
+          | _ -> print_endline (string_of_expr expr);raise NotImplemented)
+      | _ -> print_endline (string_of_expr expr);raise NotImplemented in
     (*Call to nullAll nulls the scope variable instances, since they are not null initialized*)
     let nullAll = Llvm.declare_function "null_init" (Llvm.function_type (Llvm.void_type context) [|base_types.extend_scope_p|]) base_module
     (*getDefn simply looks up the correct definition for a dimension declaration of a variable. Note that currently it is ambiguous whether it is a variable or a literal. TOOD: consider negative numbers*)
-    and getDefn x sm = match x with Ast.DimId(a) -> Ast.StringMap.find a sm | Ast.DimInt(a) -> a
+    and getDefn x sm = match x with DimId(a) -> StringMap.find a sm | DimInt(a) -> a
     (*buildDimSide builds one end (e.g. row start, row end, col start, ...) of a formula definition, TODO: remove literals for (not atstart)*)
-    and buildDimSide index boolAll intDim builder atstart ids = (*print_endline (Ast.string_of_index index);*) (match index with
+    and buildDimSide index boolAll intDim builder atstart ids = (*print_endline (string_of_index index);*) (match index with
         None -> Llvm.build_store (Llvm.const_int base_types.bool_t 1) boolAll builder
-      | Some(Ast.Abs(e)) -> (
+      | Some(Abs(e)) -> (
           Llvm.build_store (Llvm.const_int base_types.bool_t 0) boolAll builder;
           Llvm.build_store (match e with LitInt(i) -> Llvm.const_int base_types.int_t i) intDim builder
         )
-      | Some(Ast.Rel(e)) -> (
+      | Some(Rel(e)) -> (
           Llvm.build_store (Llvm.const_int base_types.bool_t 0) boolAll builder;
           Llvm.build_store (match e with LitInt(i) -> Llvm.const_int base_types.int_t i) intDim builder
         )
@@ -520,20 +248,20 @@ let translate (globals, functions, externs) =
     ) in
     (*build formula creates a formula declaration in a separate method from the function it belongs to*)
     let build_formula storage_addr element scopeMapping builder =
-      buildDimSide (Some element.Ast.formula_col_start) (Llvm.build_struct_gep storage_addr (formula_field_index FromFirstCols) "" builder) (Llvm.build_struct_gep storage_addr (formula_field_index ColStartNum) "" builder) builder true scopeMapping;
-      buildDimSide (Some element.Ast.formula_row_start) (Llvm.build_struct_gep storage_addr (formula_field_index FromFirstRow) "" builder) (Llvm.build_struct_gep storage_addr (formula_field_index RowStartNum) "" builder) builder true scopeMapping;
-      buildDimSide element.Ast.formula_col_end (Llvm.build_struct_gep storage_addr (formula_field_index ToLastCol) "" builder) (Llvm.build_struct_gep storage_addr (formula_field_index ColEndNum) "" builder) builder false scopeMapping;
-      buildDimSide element.Ast.formula_row_end (Llvm.build_struct_gep storage_addr (formula_field_index ToLastRow) "" builder) (Llvm.build_struct_gep storage_addr (formula_field_index RowEndNum) "" builder) builder false scopeMapping;
+      buildDimSide (Some element.formula_col_start) (Llvm.build_struct_gep storage_addr (formula_field_index FromFirstCols) "" builder) (Llvm.build_struct_gep storage_addr (formula_field_index ColStartNum) "" builder) builder true scopeMapping;
+      buildDimSide (Some element.formula_row_start) (Llvm.build_struct_gep storage_addr (formula_field_index FromFirstRow) "" builder) (Llvm.build_struct_gep storage_addr (formula_field_index RowStartNum) "" builder) builder true scopeMapping;
+      buildDimSide element.formula_col_end (Llvm.build_struct_gep storage_addr (formula_field_index ToLastCol) "" builder) (Llvm.build_struct_gep storage_addr (formula_field_index ColEndNum) "" builder) builder false scopeMapping;
+      buildDimSide element.formula_row_end (Llvm.build_struct_gep storage_addr (formula_field_index ToLastRow) "" builder) (Llvm.build_struct_gep storage_addr (formula_field_index RowEndNum) "" builder) builder false scopeMapping;
       let form_decl = Llvm.define_function "" base_types.formula_call_t base_module in
       let nbuilder = Llvm.builder_at_end context (Llvm.entry_block form_decl)
       and _ = Llvm.build_store form_decl (Llvm.build_struct_gep storage_addr (formula_field_index FormulaCall) "" builder) builder in
-        Llvm.build_ret (build_expr element.Ast.formula_expr nbuilder scopeMapping (Llvm.param form_decl 0)) nbuilder;
+        Llvm.build_ret (build_expr element.formula_expr nbuilder scopeMapping (Llvm.param form_decl 0)) nbuilder;
     () in
     (*iterates over function definitions*)
-    Ast.StringMap.mapi (fun key (desc, func) ->
+    StringMap.mapi (fun key (desc, func) ->
       (*Instanciate builder and allocate memory for scope*)
       let builder = Llvm.builder_at_end context (Llvm.entry_block func)
-      and cardinal = Ast.StringMap.cardinal desc.Ast.func_body in
+      and cardinal = StringMap.cardinal desc.func_body in
       let var_defns = Llvm.build_array_malloc base_types.var_defn_t (Llvm.const_int base_types.int_t cardinal) "" builder
       and var_insts = Llvm.build_array_malloc base_types.var_instance_p (Llvm.const_int base_types.int_t cardinal) "" builder
       and scope_obj = Llvm.build_malloc base_types.extend_scope_t "" builder in
@@ -543,116 +271,31 @@ let translate (globals, functions, externs) =
       and _ = Llvm.build_store (Llvm.const_int base_types.int_t cardinal) (Llvm.build_struct_gep scope_obj (scope_field_type_index VarNum) "" builder) builder in
       let _ = Llvm.build_call nullAll [|scope_obj|] "" builder in
       (*iterates over formulas defined*)
-      let (scope, i) = Ast.StringMap.fold (fun ke va (sm, count) ->
+      let (scope, i) = StringMap.fold (fun ke va (sm, count) ->
         let defn = (Llvm.build_in_bounds_gep var_defns [|Llvm.const_int base_types.int_t count|] "" builder)
-        and numForm = List.length va.Ast.var_formulas in
+        and numForm = List.length va.var_formulas in
         let formulas = Llvm.build_array_malloc base_types.formula_t (Llvm.const_int base_types.int_t numForm) "" builder in
-        let _ = (match va.Ast.var_rows with
-          Ast.DimInt(a) -> Llvm.build_store (Llvm.const_int base_types.bool_t 1) (Llvm.build_struct_gep defn (var_defn_field_index OneByOne) "" builder) builder
-        | Ast.DimId(a) -> (
+        let _ = (match va.var_rows with
+          DimInt(a) -> Llvm.build_store (Llvm.const_int base_types.bool_t 1) (Llvm.build_struct_gep defn (var_defn_field_index OneByOne) "" builder) builder
+        | DimId(a) -> (
             Llvm.build_store (Llvm.const_int base_types.bool_t 0) (Llvm.build_struct_gep defn (var_defn_field_index OneByOne) "" builder) builder;
-            Llvm.build_store (Llvm.const_int base_types.int_t (getDefn va.Ast.var_rows sm)) (Llvm.build_struct_gep defn (var_defn_field_index Rows) "" builder) builder;
-            Llvm.build_store (Llvm.const_int base_types.int_t (getDefn va.Ast.var_cols sm)) (Llvm.build_struct_gep defn (var_defn_field_index Cols) "" builder) builder
+            Llvm.build_store (Llvm.const_int base_types.int_t (getDefn va.var_rows sm)) (Llvm.build_struct_gep defn (var_defn_field_index Rows) "" builder) builder;
+            Llvm.build_store (Llvm.const_int base_types.int_t (getDefn va.var_cols sm)) (Llvm.build_struct_gep defn (var_defn_field_index Cols) "" builder) builder
           )
         ) in
         let _ = Llvm.build_store (Llvm.const_int base_types.int_t numForm) (Llvm.build_struct_gep defn (var_defn_field_index NumFormulas) "" builder) builder
         and _ = Llvm.build_store formulas (Llvm.build_struct_gep defn (var_defn_field_index Formulas) "" builder) builder
         and _ = Llvm.build_store (Llvm.build_global_stringptr ke "" builder) (Llvm.build_struct_gep defn 5 "" builder) builder in
-        let _  = List.fold_left (fun st elem -> build_formula st elem sm builder; Llvm.build_in_bounds_gep st [|Llvm.const_int base_types.int_t 1|] "" builder) formulas va.Ast.var_formulas
-        in (Ast.StringMap.add ke count sm, count + 1)
-        (*List.fold_left (fun s v -> v :: s) st va.Ast.var_formulas*)
-      ) desc.Ast.func_body (Ast.StringMap.empty, 0) in
-      let (dim, ret) = desc.Ast.func_ret_val in
+        let _  = List.fold_left (fun st elem -> build_formula st elem sm builder; Llvm.build_in_bounds_gep st [|Llvm.const_int base_types.int_t 1|] "" builder) formulas va.var_formulas
+        in (StringMap.add ke count sm, count + 1)
+        (*List.fold_left (fun s v -> v :: s) st va.var_formulas*)
+      ) desc.func_body (StringMap.empty, 0) in
+      let (dim, ret) = desc.func_ret_val in
       match ret with
-        Ast.Id(name) -> Llvm.build_ret (Llvm.build_call getVal [|(Llvm.build_call getVar [|scope_obj; Llvm.const_int base_types.int_t (Ast.StringMap.find name scope)|] "" builder); Llvm.const_int base_types.int_t 0; Llvm.const_int base_types.int_t 0|] "" builder) builder
-      | _ -> print_endline (Ast.string_of_expr ret);raise NotImplemented
+        Id(name) -> Llvm.build_ret (Llvm.build_call getVal [|(Llvm.build_call getVar [|scope_obj; Llvm.const_int base_types.int_t (StringMap.find name scope)|] "" builder); Llvm.const_int base_types.int_t 0; Llvm.const_int base_types.int_t 0|] "" builder) builder
+      | _ -> print_endline (string_of_expr ret);raise NotImplemented
     ) build_function_names
   in
-  (*
-  let build_function_body =
-    Ast.StringMap.iter (fun key (desc, func) ->
-        let rec expr_eval expr scope builder ctx extern helpers bt =
-          match expr with
-            Ast.Precedence(a,b) -> expr_eval a scope builder ctx extern helpers bt; expr_eval b scope builder ctx extern helpers bt;
-          | Ast.Call(fn,exl) ->
-              let args = Array.of_list
-                (List.rev (List.fold_left (
-                  fun a b -> (
-                    Llvm.build_call
-                    (Hashtbl.find helpers "box_single_value")
-                    (Array.of_list [(expr_eval b scope builder ctx extern helpers bt)])
-                    ""
-                    builder
-                  ) :: a) [] exl)) in
-              Llvm.build_call (
-                Ast.StringMap.find fn build_public_functions
-              ) args "" builder
-          | Ast.LitString(str) ->
-              let boxxx = Llvm.build_call
-              (Hashtbl.find helpers "new_string")
-              (Array.of_list [
-                Llvm.build_global_stringptr str "glob_str" builder
-              ]) "boxed_str" builder in
-              let boxx = Llvm.build_call
-              (Hashtbl.find helpers "box_value_string")
-              (Array.of_list [boxxx]) "box_value_str" builder
-              in boxx
-          | Ast.LitInt(i) -> let boxx = Llvm.build_call
-              (Hashtbl.find helpers "box_value_float")
-              (Array.of_list [Llvm.const_float bt.float_t (float_of_int i)]) "box_value_str" builder
-              in boxx
-          | Ast.LitFlt(f) -> let boxx = Llvm.build_call
-              (Hashtbl.find helpers "box_value_float")
-              (Array.of_list [Llvm.const_float bt.float_t f]) "box_value_str" builder
-              in boxx
-          | Ast.BinOp(ex1,op,ex2) ->
-              let val1 = (expr_eval ex1 scope builder ctx extern helpers bt)
-              and val2 = (expr_eval ex2 scope builder ctx extern helpers bt) in
-              (match op with
-                Ast.Plus -> Llvm.build_add val1 val2 "" builder
-              | Ast.Minus -> Llvm.build_sub val1 val2 "" builder
-              | _ -> raise NotImplemented)
-          | Ast.Id(name) -> Llvm.const_string ctx name
-          | Ast.UnOp(op,expr) -> (match op with
-                Ast.SizeOf -> let subrange = (expr_eval expr scope builder ctx extern helpers bt) in
-                    let rows = Llvm.const_float bt.float_t 1.0 and cols = Llvm.const_float bt.float_t 1.0 in
-                    let row_val = Llvm.build_array_malloc bt.value_t (Llvm.const_int bt.int_t 2) "" builder in
-                    let sp = Llvm.build_struct_gep row_val (value_field_index Number) "" builder in
-                    let _ = Llvm.build_store rows sp builder in
-                    let col_val = Llvm.build_in_bounds_gep row_val [|Llvm.const_int bt.int_t 1|] "" builder in
-                    let sp = Llvm.build_struct_gep col_val (value_field_index Number) "" builder in
-                    let _ = Llvm.build_store cols sp builder in
-                    let subrange = Llvm.build_malloc bt.subrange_t "" builder in
-                    let range = Llvm.build_malloc bt.var_instance_t "" builder in
-                    let rp = Llvm.build_struct_gep subrange (subrange_field_index BaseRangePtr) "range_p" builder in
-                    let vp = Llvm.build_struct_gep range (var_instance_field_index Values) "value_p" builder in
-                    let _ = Llvm.build_store row_val vp builder in
-                    let _ = Llvm.build_store range rp builder in
-                    let _ = Llvm.build_store (Llvm.const_int bt.int_t 0) (Llvm.build_struct_gep subrange (subrange_field_index BaseOffsetCol) "" builder) in
-                    let _ = Llvm.build_store (Llvm.const_int bt.int_t 0) (Llvm.build_struct_gep subrange (subrange_field_index BaseOffsetRow) "" builder) in
-                    let _ = Llvm.build_store (Llvm.const_int bt.int_t 1) (Llvm.build_struct_gep subrange (subrange_field_index SubrangeRows) "" builder) in
-                    let _ = Llvm.build_store (Llvm.const_int bt.int_t 2) (Llvm.build_struct_gep subrange (subrange_field_index SubrangeCols) "" builder) in
-                    subrange
-              | _ -> raise NotImplemented)
-          | Ast.Selection(expr, sel) -> expr_eval expr scope builder ctx extern helpers bt
-          | _ -> print_endline (Ast.string_of_expr expr);raise NotImplemented in
-        let builder = Llvm.builder_at_end context (Llvm.entry_block func) in
-        let scope = Ast.StringMap.fold (
-            fun a b c -> base_types.var_instance_p :: c
-          ) desc.Ast.func_body [] in
-        let struct_f = Llvm.struct_type context (Array.of_list scope) in
-        let struct_r = Llvm.build_malloc struct_f "_scope" builder in
-        let _ = Ast.StringMap.fold (
-            fun a b c ->
-              List.fold_left (fun a b ->
-                expr_eval b.Ast.formula_expr struct_r builder context extern_functions helper_functions base_types; a
-              ) () b.Ast.var_formulas
-            ; c + 1
-          ) desc.Ast.func_body 0 in
-        let (dims, expr) = desc.Ast.func_ret_val in
-        let ret_v = expr_eval expr struct_r builder context extern_functions helper_functions base_types in
-        Llvm.build_ret ret_v builder; ()
-      ) build_function_names in*)
     base_module
 
 let build_this ast_mapped =

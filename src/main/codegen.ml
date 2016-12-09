@@ -1,4 +1,3 @@
-
 (* Extend code generator *)
 
 open Ast
@@ -181,12 +180,13 @@ let translate (globals, functions, externs) =
     let llvm_fn = Llvm.define_function llvm_fname llvm_ftype base_module in
     (func, llvm_fn) in
   let extend_functions = StringMap.mapi define_user_function functions in
-  let function_llvalues = StringMap.fold (fun k a b -> StringMap.add k a b) (StringMap.map (fun (b, c) -> c) extend_functions) library_functions in
+  let function_llvalues = StringMap.fold StringMap.add (StringMap.map snd extend_functions) library_functions in
 
   (* Look these two up once and for all *)
   let getVal = Hashtbl.find runtime_functions "getVal" in (*getVal retrieves the value of a variable instance for a specific x and y*)
   let getVar = Hashtbl.find runtime_functions "get_variable" in (*getVar retrieves a variable instance based on the offset. It instanciates the variable if it does not exist yet*)
 
+  (* build_formula_function takes a symbol table and an expression, builds the LLVM function, and returns the llvalue of the function *)
   let build_formula_function mapping formula_expr =
     let form_decl = Llvm.define_function "" base_types.formula_call_t base_module in
     let builder = Llvm.builder_at_end context (Llvm.entry_block form_decl) in
@@ -260,8 +260,25 @@ let translate (globals, functions, externs) =
     let _ = Llvm.build_store form_decl (Llvm.build_struct_gep storage_addr (formula_field_index FormulaCall) "" builder) builder in
     () in
 
-  let build_variable = () in
-
+  (* I think there is a logic bug here in using sm as the place to look definitions up *)
+  let build_var_defn defn builder varname va sm =
+    let numForm = List.length va.var_formulas in
+    let formulas = Llvm.build_array_malloc base_types.formula_t (Llvm.const_int base_types.int_t numForm) "" builder in
+    (*getDefn simply looks up the correct definition for a dimension declaration of a variable. Note that currently it is ambiguous whether it is a variable or a literal. TOOD: consider negative numbers*)
+    let getDefn x sm = match x with DimId(a) -> StringMap.find a sm | DimInt(a) -> a in
+    let _ = (match va.var_rows with
+          DimInt(a) -> Llvm.build_store (Llvm.const_int base_types.bool_t 1) (Llvm.build_struct_gep defn (var_defn_field_index OneByOne) "" builder) builder
+        | DimId(a) -> (
+            Llvm.build_store (Llvm.const_int base_types.bool_t 0) (Llvm.build_struct_gep defn (var_defn_field_index OneByOne) "" builder) builder;
+            Llvm.build_store (Llvm.const_int base_types.int_t (getDefn va.var_rows sm)) (Llvm.build_struct_gep defn (var_defn_field_index Rows) "" builder) builder;
+            Llvm.build_store (Llvm.const_int base_types.int_t (getDefn va.var_cols sm)) (Llvm.build_struct_gep defn (var_defn_field_index Cols) "" builder) builder
+          )
+      ) in
+    let _ = Llvm.build_store (Llvm.const_int base_types.int_t numForm) (Llvm.build_struct_gep defn (var_defn_field_index NumFormulas) "" builder) builder
+    and _ = Llvm.build_store formulas (Llvm.build_struct_gep defn (var_defn_field_index Formulas) "" builder) builder
+    and _ = Llvm.build_store (Llvm.build_global_stringptr varname "" builder) (Llvm.build_struct_gep defn (var_defn_field_index VarName) "" builder) builder in
+    let _  = List.fold_left (fun st elem -> build_formula st elem sm builder; Llvm.build_in_bounds_gep st [|Llvm.const_int base_types.int_t 1|] "" builder) formulas va.var_formulas in
+    () in
 
   let build_function key (desc, func) =
     let builder = Llvm.builder_at_end context (Llvm.entry_block func)
@@ -275,26 +292,10 @@ let translate (globals, functions, externs) =
     and _ = Llvm.build_store (Llvm.const_int base_types.int_t cardinal) (Llvm.build_struct_gep scope_obj (scope_field_type_index VarNum) "" builder) builder in
     let _ = Llvm.build_call (Hashtbl.find runtime_functions "null_init") [|scope_obj|] "" builder in
     (*iterates over formulas defined*)
-    let add_variable ke va (sm, count) =
-      let defn = (Llvm.build_in_bounds_gep var_defns [|Llvm.const_int base_types.int_t count|] "" builder)
-      and numForm = List.length va.var_formulas in
-      let formulas = Llvm.build_array_malloc base_types.formula_t (Llvm.const_int base_types.int_t numForm) "" builder in
-      (*getDefn simply looks up the correct definition for a dimension declaration of a variable. Note that currently it is ambiguous whether it is a variable or a literal. TOOD: consider negative numbers*)
-      let getDefn x sm = match x with DimId(a) -> StringMap.find a sm | DimInt(a) -> a in
-      let _ = (match va.var_rows with
-            DimInt(a) -> Llvm.build_store (Llvm.const_int base_types.bool_t 1) (Llvm.build_struct_gep defn (var_defn_field_index OneByOne) "" builder) builder
-          | DimId(a) -> (
-              Llvm.build_store (Llvm.const_int base_types.bool_t 0) (Llvm.build_struct_gep defn (var_defn_field_index OneByOne) "" builder) builder;
-              Llvm.build_store (Llvm.const_int base_types.int_t (getDefn va.var_rows sm)) (Llvm.build_struct_gep defn (var_defn_field_index Rows) "" builder) builder;
-              Llvm.build_store (Llvm.const_int base_types.int_t (getDefn va.var_cols sm)) (Llvm.build_struct_gep defn (var_defn_field_index Cols) "" builder) builder
-            )
-        ) in
-      let _ = Llvm.build_store (Llvm.const_int base_types.int_t numForm) (Llvm.build_struct_gep defn (var_defn_field_index NumFormulas) "" builder) builder
-      and _ = Llvm.build_store formulas (Llvm.build_struct_gep defn (var_defn_field_index Formulas) "" builder) builder
-      and _ = Llvm.build_store (Llvm.build_global_stringptr ke "" builder) (Llvm.build_struct_gep defn (var_defn_field_index VarName) "" builder) builder in
-      let _  = List.fold_left (fun st elem -> build_formula st elem sm builder; Llvm.build_in_bounds_gep st [|Llvm.const_int base_types.int_t 1|] "" builder) formulas va.var_formulas
-      in (StringMap.add ke count sm, count + 1) in
-
+    let add_variable varname va (sm, count) =
+      let defn = (Llvm.build_in_bounds_gep var_defns [|Llvm.const_int base_types.int_t count|] "" builder) in
+      let _ = build_var_defn defn builder varname va sm in
+      (StringMap.add varname count sm, count + 1) in
     let (scope, i) = StringMap.fold add_variable desc.func_body (StringMap.empty, 0) in
     let (dim, ret) = desc.func_ret_val in
     match ret with

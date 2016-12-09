@@ -218,10 +218,9 @@ value_p printd(value_p whatever, value_p text) {
 	return result;
 }
 
-value_p extend_sin(subrange_p range) {
+value_p extend_sin(value_p range) {
 	if(!assertSingleNumber(range)) return new_val();
-	double initial = get_number(range);
-	double val = sin(initial);
+	double val = sin(range->numericVal);
 	return new_number(val);
 }
 

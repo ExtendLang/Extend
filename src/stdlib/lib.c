@@ -146,15 +146,15 @@ double setFlag(value_p result, double flag_num) {
 	return (result->flags = FLAG_NUMBER);
 }
 
-int assertSingle(subrange_p range) {
-	return (range->subrangeRow == 1 && range->subrangeCol == 1);
+int assertSingle(value_p value) {
+	/* TODO: dereference 1 by 1 subrange */
+	return !(value->flags == FLAG_SUBRANGE);
 }
 
-int assertSingleNumber(subrange_p range) {
-	if (!assertSingle(range)) {
+int assertSingleNumber(value_p p) {
+	if (!assertSingle(p)) {
 		return 0;
-	};
-	value_p p = get_val(range, 0, 0);
+	}
 	return (p->flags == FLAG_NUMBER);
 }
 
@@ -162,19 +162,17 @@ int assertText(value_p my_val) {
 	return (my_val->flags == FLAG_STRING);
 }
 
-int assertSingleString(subrange_p range) {
-	if (!assertSingle(range)) {
+int assertSingleString(value_p p) {
+	if (!assertSingle(p)) {
 		return 0;
 	}
-	value_p p = get_val(range, 0, 0);
 	return (p->flags == FLAG_STRING);
 }
 
-int assertEmpty(subrange_p range) {
-	if (!assertSingle(range)) {
+int assertEmpty(value_p p) {
+	if (!assertSingle(p)) {
 		return 0;
 	}
-	value_p p = get_val(range, 0, 0);
 	return (p->flags == FLAG_EMPTY);
 }
 
@@ -249,9 +247,8 @@ value_p extend_asin(subrange_p range) {
 }
 
 value_p extend_acos(value_p range) {
-	//if(!assertSingleNumber(range)) return new_val();
-	double initial = range->numericVal;//get_number(range);
-	double val = acos(initial);
+	if(!assertSingleNumber(range)) return new_val();
+	double val = acos(range->numericVal);
 	return new_number(val);
 }
 

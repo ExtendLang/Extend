@@ -198,6 +198,12 @@ let translate (globals, functions, externs) =
         let _ = Llvm.build_store (Llvm.const_int base_types.char_t (value_field_flags_index Number)) (Llvm.build_struct_gep ret_val (value_field_index Flags) "" builder) builder in
         let _ = Llvm.build_store vvv sp builder in
         ret_val
+      | LitFlt(i) -> let vvv = Llvm.const_float base_types.float_t i in
+        let ret_val = Llvm.build_malloc base_types.value_t "" builder in
+        let sp = Llvm.build_struct_gep ret_val (value_field_index Number) "num_pointer" builder in
+        let _ = Llvm.build_store (Llvm.const_int base_types.char_t (value_field_flags_index Number)) (Llvm.build_struct_gep ret_val (value_field_index Flags) "" builder) builder in
+        let _ = Llvm.build_store vvv sp builder in
+        ret_val
       | Id(name) -> (try (Llvm.build_call getVal [|(Llvm.build_call getVar [|scope; Llvm.const_int base_types.int_t (StringMap.find name mapping)|] "" builder); Llvm.const_int base_types.int_t 0; Llvm.const_int base_types.int_t 0|] "" builder) with Not_found -> Llvm.build_malloc base_types.value_t "" builder) (*TODO*)
       | Selection(expr, sel) -> print_endline (Ast.string_of_expr exp); build_expr expr
       | Precedence(a,b) -> ignore (build_expr a); build_expr b

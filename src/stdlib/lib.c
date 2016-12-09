@@ -214,8 +214,8 @@ value_p printv(value_p whatever, value_p text) {
 }
 
 
-value_p printd(subrange_p whatever, subrange_p text) {
-	printf("%f\n", (*text->range->values)->numericVal);
+value_p printd(value_p whatever, value_p text) {
+	printf("%f\n", text->numericVal);
 	value_p result = malloc(sizeof(struct value_t));
 	return result;
 }
@@ -248,9 +248,9 @@ value_p extend_asin(subrange_p range) {
 	return new_number(val);
 }
 
-value_p extend_acos(subrange_p range) {
-	if(!assertSingleNumber(range)) return new_val();
-	double initial = get_number(range);
+value_p extend_acos(value_p range) {
+	//if(!assertSingleNumber(range)) return new_val();
+	double initial = range->numericVal;//get_number(range);
 	double val = acos(initial);
 	return new_number(val);
 }

@@ -1,0 +1,4 @@
+maybeCircular(truth_value) {
+  x := x;
+  return truth_value ? x : 0;
+}

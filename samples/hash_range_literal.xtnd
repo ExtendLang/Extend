@@ -1,0 +1,6 @@
+main(args) {
+  foo := {1,2,3};
+  bar := {10;20;30};
+  baz := #foo + #bar;
+  return printf(1, toString(baz)+"\n") -> 0;
+}

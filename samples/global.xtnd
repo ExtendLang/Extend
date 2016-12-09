@@ -1,0 +1,5 @@
+global pi := 3.14159265359;
+global num_points := 24;
+global [num_points,1]
+  circle_x_vals := cos(2 * pi * row() / num_points),
+  circle_y_vals := sin(2 * pi * row() / num_points);

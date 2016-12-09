@@ -55,13 +55,14 @@ let value_field_index = function
   | String -> 2
   | Subrange -> 3
 
-type var_defn_field = Rows | Cols | NumFormulas | Formulas | OneByOne
+type var_defn_field = Rows | Cols | NumFormulas | Formulas | OneByOne | VarName
 let var_defn_field_index = function
     Rows -> 0
   | Cols -> 1
   | NumFormulas -> 2
   | Formulas -> 3
   | OneByOne -> 4
+  | VarName -> 5
 
 type formula_field  = FromFirstRow | RowStartNum | ToLastRow | RowEndNum | FromFirstCols | ColStartNum | ToLastCol | ColEndNum | FormulaCall
 let formula_field_index = function

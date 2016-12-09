@@ -223,7 +223,7 @@ let translate (globals, functions, externs) =
           | GlobalVariable(i) -> raise(NotImplemented)
           | FunctionParameter(i) -> raise(NotImplemented)
         )
-      | Selection(expr, sel) -> print_endline (Ast.string_of_expr exp); build_expr expr
+      | Selection(expr, sel) -> build_expr expr
       | Precedence(a,b) -> ignore (build_expr a); build_expr b
       | LitString(str) ->
         let boxxx = Llvm.build_call
@@ -242,9 +242,13 @@ let translate (globals, functions, externs) =
         Llvm.build_call (
           StringMap.find fn function_llvalues
         ) args "" builder
-      | UnOp(op,expr) -> print_endline (Ast.string_of_expr exp); (match op with
-            SizeOf -> print_endline (string_of_expr expr); raise NotImplemented
-          | _ -> print_endline (string_of_expr expr);raise NotImplemented)
+      | UnOp(SizeOf,expr) -> let vvv = Llvm.const_float base_types.float_t 0.0 in
+        let ret_val = Llvm.build_malloc base_types.value_t "" builder in
+        let sp = Llvm.build_struct_gep ret_val (value_field_index Number) "num_pointer" builder in
+        let _ = Llvm.build_store (Llvm.const_int base_types.char_t (value_field_flags_index Number)) (Llvm.build_struct_gep ret_val (value_field_index Flags) "" builder) builder in
+        let _ = Llvm.build_store vvv sp builder in
+        ret_val
+      | UnOp( _, expr) -> print_endline (Ast.string_of_expr exp); raise NotImplemented
       | unknown_expr -> print_endline (string_of_expr unknown_expr);raise NotImplemented in
     let _ = Llvm.build_ret ((*print_endline (Ast.string_of_expr formula_expr);*) build_expr formula_expr) builder in
     form_decl in

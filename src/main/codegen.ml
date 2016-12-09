@@ -197,8 +197,8 @@ let translate (globals, functions, externs) =
   let getVar = Hashtbl.find runtime_functions "get_variable" in (*getVar retrieves a variable instance based on the offset. It instanciates the variable if it does not exist yet*)
 
   (* build_formula_function takes a symbol table and an expression, builds the LLVM function, and returns the llvalue of the function *)
-  let build_formula_function symbols formula_expr =
-    let form_decl = Llvm.define_function "" base_types.formula_call_t base_module in
+  let build_formula_function (varname, formula_idx) symbols formula_expr =
+    let form_decl = Llvm.define_function ("formula_fn_" ^ varname ^ "_num_" ^ (string_of_int formula_idx)) base_types.formula_call_t base_module in
     let builder = Llvm.builder_at_end context (Llvm.entry_block form_decl) in
     let local_scope = Llvm.param form_decl 0 in
     let rec build_expr exp = match exp with
@@ -254,7 +254,7 @@ let translate (globals, functions, externs) =
     form_decl in
 
   (*build formula creates a formula declaration in a separate method from the function it belongs to*)
-  let build_formula storage_addr element symbols builder =
+  let build_formula name_and_number storage_addr element symbols builder =
     (*buildDimSide builds one end (e.g. row start, row end, col start, ...) of a formula definition, TODO: remove literals for (not atstart)*)
     let buildDimSide index boolAll intDim builder atstart = (*print_endline (string_of_index index);*) (match index with
           None -> Llvm.build_store (Llvm.const_int base_types.bool_t 1) boolAll builder
@@ -278,11 +278,11 @@ let translate (globals, functions, externs) =
     buildDimSide (Some element.formula_row_start) (Llvm.build_struct_gep storage_addr (formula_field_index FromFirstRow) "" builder) (Llvm.build_struct_gep storage_addr (formula_field_index RowStartNum) "" builder) builder true;
     buildDimSide element.formula_col_end (Llvm.build_struct_gep storage_addr (formula_field_index ToLastCol) "" builder) (Llvm.build_struct_gep storage_addr (formula_field_index ColEndNum) "" builder) builder false;
     buildDimSide element.formula_row_end (Llvm.build_struct_gep storage_addr (formula_field_index ToLastRow) "" builder) (Llvm.build_struct_gep storage_addr (formula_field_index RowEndNum) "" builder) builder false;
-    let form_decl = build_formula_function symbols element.formula_expr in
+    let form_decl = build_formula_function name_and_number symbols element.formula_expr in
     let _ = Llvm.build_store form_decl (Llvm.build_struct_gep storage_addr (formula_field_index FormulaCall) "" builder) builder in
     () in
 
-  (* I think there is a logic bug here in using sm as the place to look definitions up *)
+  (* Builds a var_defn struct for each variable *)
   let build_var_defn defn builder varname va symbols =
     let numForm = List.length va.var_formulas in
     let formulas = Llvm.build_array_malloc base_types.formula_t (Llvm.const_int base_types.int_t numForm) "" builder in
@@ -303,7 +303,10 @@ let translate (globals, functions, externs) =
     let _ = Llvm.build_store (Llvm.const_int base_types.int_t numForm) (Llvm.build_struct_gep defn (var_defn_field_index NumFormulas) "" builder) builder
     and _ = Llvm.build_store formulas (Llvm.build_struct_gep defn (var_defn_field_index Formulas) "" builder) builder
     and _ = Llvm.build_store (Llvm.build_global_stringptr varname "" builder) (Llvm.build_struct_gep defn (var_defn_field_index VarName) "" builder) builder in
-    let _  = List.fold_left (fun st elem -> build_formula st elem symbols builder; Llvm.build_in_bounds_gep st [|Llvm.const_int base_types.int_t 1|] "" builder) formulas va.var_formulas in
+    let anon_fn idx elem =
+      let st = Llvm.build_in_bounds_gep formulas [|Llvm.const_int base_types.int_t idx|] "" builder in
+      build_formula (varname, idx) st elem symbols builder in
+    let _  = List.iteri anon_fn va.var_formulas in
     () in
 
   let build_function fname (fn_def, fn_llvalue) =
@@ -336,7 +339,7 @@ let translate (globals, functions, externs) =
     (*iterates over formulas defined*)
     let add_variable varname va (sm, count) =
       let defn = (Llvm.build_in_bounds_gep var_defns [|Llvm.const_int base_types.int_t count|] "" builder) in
-      let _ = build_var_defn defn builder varname va symbols in
+      let _ = build_var_defn defn builder (fname ^ "_" ^ varname) va symbols in
       (StringMap.add varname count sm, count + 1) in
     let (scope, i) = StringMap.fold add_variable fn_def.func_body (StringMap.empty, 0) in
     let (dim, ret) = fn_def.func_ret_val in

@@ -9,15 +9,15 @@ exception UnknownFunction of string;;
 exception WrongNumberArgs of string;;
 exception LogicError of string;;
 
-let idgen =
-  (* from http://stackoverflow.com/questions/10459363/side-effects-and-top-level-expressions-in-ocaml*)
-  let count = ref (-1) in
-  fun prefix -> incr count; "_tmp_" ^ prefix ^ string_of_int !count;;
-
 module StringSet = Set.Make (String);;
 let importSet = StringSet.empty;;
 
 let builtin_signatures = [("row", 0); ("column", 0); (*("printf", 2);*) ("toString", 1)]
+
+let idgen =
+  (* from http://stackoverflow.com/questions/10459363/side-effects-and-top-level-expressions-in-ocaml*)
+  let count = ref (-1) in
+  fun prefix -> incr count; "_tmp_" ^ prefix ^ string_of_int !count;;
 
 let expand_file filename =
   let print_error_location filename msg lexbuf =

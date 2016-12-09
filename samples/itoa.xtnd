@@ -1,0 +1,8 @@
+digits(n) {
+  [6,1] powers_of_10 := 10 ** (5 - row()), digits := (n / #powers_of_10) % 10;
+  return digits;
+}
+
+main([1,n] args) {
+  return printf(1, toString(digits(523482)) + "\n") -> 0;
+}

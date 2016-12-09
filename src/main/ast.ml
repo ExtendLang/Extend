@@ -1,7 +1,7 @@
 type op       = Plus | Minus | Times | Divide | Mod | Pow |
                 LShift | RShift | BitOr | BitAnd | BitXor |
                 Eq | NotEq | Gt | Lt | GtEq | LtEq | LogAnd | LogOr
-type unop     = Neg | LogNot | BitNot | SizeOf | TypeOf | Row | Column
+type unop     = Neg | LogNot | BitNot | SizeOf | TypeOf | Row | Column | Truthy
 
 type expr     = LitInt of int |
                 LitFlt of float |
@@ -13,9 +13,10 @@ type expr     = LitInt of int |
                 BinOp of expr * op * expr |
                 UnOp of unop * expr |
                 Ternary of expr * expr * expr |
-                Switch of expr option * case list |
+                Switch of expr option * case list * expr |
                 Call of string * expr list |
                 Selection of expr * sel |
+                ReducedTernary of string * string * string |
                 Precedence of expr * expr
 and  index    = Abs of expr |
                 Rel of expr |
@@ -23,7 +24,7 @@ and  index    = Abs of expr |
                 DimensionEnd
 and  slice    = index option * index option
 and  sel      = slice option * slice option
-and  case     = (expr list) option * expr
+and  case     = expr list * expr
 
 type dim      = expr option * expr option
 type var      = dim * string
@@ -91,6 +92,7 @@ type listable = Inits of init list |
                 Formulas of formula list
 
 exception IllegalRangeLiteral of string
+exception TransformedAway of string
 
 let quote_string str =
   let escape_characters = Str.regexp "[\n \t \r \\ \"]" in
@@ -110,7 +112,7 @@ let string_of_op o = "\"" ^ (match o with
     LogAnd -> "&& " | LogOr -> "||" ) ^ "\""
 
 let string_of_unop = function
-    Neg -> "\"-\"" | LogNot -> "\"!\"" | BitNot -> "\"~\"" |
+    Neg -> "\"-\"" | LogNot -> "\"!\"" | BitNot -> "\"~\"" | Truthy -> "\"truthy\"" |
     SizeOf -> "\"size\"" | TypeOf -> "\"type\"" | Row -> "\"row\"" | Column -> "\"column\""
 
 let rec string_of_expr = function
@@ -131,11 +133,16 @@ let rec string_of_expr = function
   | Ternary(c, e1, e2) -> "{\"Ternary\": {" ^
                             "\"condition\": " ^ string_of_expr c ^ ", " ^
                             "\"ifExpr\": " ^ string_of_expr e1 ^ ", " ^
-                            "\"elseExpr\": " ^ string_of_expr e2 ^ "}}"
-  | Switch(eo, cases) ->  "{\"Switch\": {" ^
-                            "\"condition\": " ^
-                              (match eo with None -> "null" | Some e -> string_of_expr e) ^ ", " ^
-                            "\"cases\": " ^ string_of_list (Cases cases) ^ "}}"
+                          "\"elseExpr\": " ^ string_of_expr e2 ^ "}}"
+  | ReducedTernary(s1, s2, s3) -> "{\"ReducedTernary\": {" ^
+                            "\"truthiness\": " ^ quote_string s1 ^ ", " ^
+                            "\"true_values\": " ^ quote_string s2 ^ ", " ^
+                            "\"false_values\": " ^ quote_string s3 ^ "}}"
+  | Switch(eo, cases, dflt) ->  "{\"Switch\": {" ^
+                                "\"condition\": " ^
+                                  (match eo with None -> "null" | Some e -> string_of_expr e) ^ ", " ^
+                                "\"cases\": " ^ string_of_list (Cases cases) ^ ", " ^
+                                "\"defaultExpr\": " ^ string_of_expr dflt ^ "}}"
   | Call(f, arguments) -> "{\"Call\": {" ^
                             "\"function\": " ^ quote_string f ^ ", " ^
                             "\"arguments\": " ^ string_of_list (Exprs arguments) ^ "}}"
@@ -147,7 +154,7 @@ let rec string_of_expr = function
                             "\"dependent_expr\": " ^ string_of_expr e2 ^ "}}"
 
 and string_of_case (el, e) =
-    "{\"Cases\": " ^ (match el with None -> "null" | Some es -> string_of_list (Exprs es)) ^ ", " ^
+    "{\"Cases\": " ^ string_of_list (Exprs el) ^ ", " ^
      "\"expr\": " ^ string_of_expr e ^ "}"
 
 and string_of_sel (s1, s2) =

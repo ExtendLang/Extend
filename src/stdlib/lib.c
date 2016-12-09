@@ -197,11 +197,10 @@ double get_number(subrange_p p) {
 	return v->numericVal;
 }
 
-value_p print(subrange_p whatever, subrange_p text) {
+value_p print(value_p whatever, value_p text) {
 	if(!assertSingleString(text)) return new_val();
-	value_p my_val = get_val(text,0,0);
-	if(!assertText(my_val)) return new_val();
-	printf("%s", my_val->str->text);
+	if(!assertText(text)) return new_val();
+	printf("%s", text->str->text);
 	return new_val();
 }
 
@@ -236,15 +235,13 @@ FUNC(ceil)
 FUNC(fabs)
 FUNC(floor)
 
-value_p extend_open(subrange_p rng_filename, subrange_p rng_mode){
+value_p extend_open(value_p filename, value_p mode){
 	FILE *val;
-	if (   !assertSingleString(rng_filename)
-			|| !assertSingleString(rng_mode)
+	if (   !assertSingleString(filename)
+			|| !assertSingleString(mode)
 			|| open_num_files + 1 > MAX_FILES) {
 				return new_val();
 	}
-	value_p filename = get_val(rng_filename, 0, 0);
-	value_p mode = get_val(rng_mode, 0,0);
 	val = fopen(filename->str->text, mode->str->text);
 	if(val == NULL) return new_val();
 	open_num_files++;
@@ -252,37 +249,36 @@ value_p extend_open(subrange_p rng_filename, subrange_p rng_mode){
 	return new_number((double) open_num_files);
 }
 
-value_p extend_close(subrange_p rng_file_handle){
-	if(!assertSingleNumber(rng_file_handle)) {
+value_p extend_close(value_p fileNum){
+	if(!assertSingleNumber(fileNum)) {
 		// Per the LRM this is actually supposed to crash the program.
 		fprintf(stderr, "EXITING - Attempted to close something that was not a valid file pointer\n");
 		exit(-1);
 	}
 
-	int fileNum = (int) get_number(rng_file_handle);
-	if (fileNum > open_num_files || open_files[fileNum] == NULL) {
+	if (fileNum->numericVal > open_num_files || open_files[(int)fileNum->numericVal] == NULL) {
 		// Per the LRM this is actually supposed to crash the program.
 		fprintf(stderr, "EXITING - Attempted to close something that was not a valid file pointer\n");
 		exit(-1);
 	}
-	fclose(open_files[fileNum]);
-	open_files[fileNum] = NULL; // Empty the container for the pointer.
+	fclose(open_files[(int)fileNum->numericVal]);
+	open_files[(int)fileNum->numericVal] = NULL; // Empty the container for the pointer.
 	return new_val(); // asssuming it was an open valid handle, close() is just supposed to return empty
 }
-/*
-value_p extend_read(subrange_p rng_file_handle, subrange_p rng_num_bytes){
+
+value_p extend_read(value_p file_handle, value_p num_bytes){
 	/* TODO: Make it accept empty */
-/*<<<<<<< HEAD
-	if(!assertSingleNumber(rng_file_handle) || !assertSingleNumber(rng_num_bytes)) return new_val();
-	int max_bytes = (int) get_number(rng_num_bytes);
-	int fileNum = (int) get_number(rng_file_handle);
-=======
-	if(!assertSingleNumber(rng_file_handle) || !assertSingleNumber(rng_num_bytes)) return new_val();
-	int fileNum = (int) get_number(rng_file_handle), max_bytes;
->>>>>>> finish-transformations
+//<<<<<<< HEAD
+	if(!assertSingleNumber(file_handle) || !assertSingleNumber(num_bytes)) return new_val();
+	int max_bytes = (int)num_bytes->numericVal;
+	int fileNum = (int)file_handle->numericVal;
+//=======
+//	if(!assertSingleNumber(rng_file_handle) || !assertSingleNumber(rng_num_bytes)) return new_val();
+//	int fileNum = (int) get_number(rng_file_handle), max_bytes;
+//>>>>>>> finish-transformations
 	if (fileNum > open_num_files || open_files[fileNum] == NULL)  return new_val();
 	FILE *f = open_files[fileNum];
-	max_bytes = (int) get_number(rng_num_bytes);
+	max_bytes = (int) num_bytes->numericVal;
 	if (max_bytes == 0) {
 		long cur_pos = ftell(f);
 		fseek(f, 0, SEEK_END);
@@ -297,13 +293,11 @@ value_p extend_read(subrange_p rng_file_handle, subrange_p rng_num_bytes){
 	free(buf);
 	return result;
 	//edge case: how to return the entire contents of the file if n == empty?
-}*/
+}
 
-value_p extend_write(subrange_p rng_file_handle, subrange_p buf){
-	int val;
-	if(!assertSingleNumber(rng_file_handle) || !assertSingleString(buf)) return new_val();
-	value_p buffer = get_val(buf, 0, 0);
-	int fileNum = (int) get_number(rng_file_handle);
+value_p extend_write(value_p file_handle, value_p buffer){
+	if(!assertSingleNumber(file_handle) || !assertSingleString(buffer)) return new_val();
+	int fileNum = (int) file_handle->numericVal;
 	if (fileNum > open_num_files || open_files[fileNum] == NULL) {
 		// Per the LRM this is actually supposed to crash the program.
 		fprintf(stderr, "EXITING - Attempted to write to something that was not a valid file pointer\n");

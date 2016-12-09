@@ -4,11 +4,17 @@ open Ast
 open CodeGenTypes
 exception NotImplemented
 
+type symbol = LocalVariable of int | GlobalVariable of int | FunctionParameter of int
+and  symbolTable = symbol StringMap.t
+and  symbolTableType = Locals | Globals
+
 let helper_functions = Hashtbl.create 10
 let runtime_functions = Hashtbl.create 10
 
-let index_map m =
-  let add_item key _ (accum_map, accum_idx) = (StringMap.add key accum_idx accum_map, accum_idx + 1) in
+let index_map table_type m =
+  let add_item key _ (accum_map, accum_idx) =
+    let index_val = match table_type with Locals -> LocalVariable(accum_idx) | Globals -> GlobalVariable(accum_idx) in
+    (StringMap.add key index_val accum_map, accum_idx + 1) in
   StringMap.fold add_item m (StringMap.empty, 0)
 
 let (=>) struct_ptr elem = (fun val_name builder ->
@@ -182,6 +188,9 @@ let translate (globals, functions, externs) =
   let extend_functions = StringMap.mapi define_user_function functions in
   let function_llvalues = StringMap.fold StringMap.add (StringMap.map snd extend_functions) library_functions in
 
+  (* Build the global symbol table *)
+  let (global_symbols, num_globals) = index_map Globals globals in
+
   (* Look these two up once and for all *)
   let getVal = Hashtbl.find runtime_functions "getVal" in (*getVal retrieves the value of a variable instance for a specific x and y*)
   let getVar = Hashtbl.find runtime_functions "get_variable" in (*getVar retrieves a variable instance based on the offset. It instanciates the variable if it does not exist yet*)
@@ -274,9 +283,9 @@ let translate (globals, functions, externs) =
     let _  = List.fold_left (fun st elem -> build_formula st elem sm builder; Llvm.build_in_bounds_gep st [|Llvm.const_int base_types.int_t 1|] "" builder) formulas va.var_formulas in
     () in
 
-  let build_function key (desc, func) =
-    let builder = Llvm.builder_at_end context (Llvm.entry_block func)
-    and cardinal = StringMap.cardinal desc.func_body in
+  let build_function fname (fn_def, fn_llvalue) =
+    let builder = Llvm.builder_at_end context (Llvm.entry_block fn_llvalue)
+    and cardinal = StringMap.cardinal fn_def.func_body in
     let var_defns = Llvm.build_array_malloc base_types.var_defn_t (Llvm.const_int base_types.int_t cardinal) "" builder
     and var_insts = Llvm.build_array_malloc base_types.var_instance_p (Llvm.const_int base_types.int_t cardinal) "" builder
     and scope_obj = Llvm.build_malloc base_types.extend_scope_t "" builder in
@@ -285,13 +294,29 @@ let translate (globals, functions, externs) =
     and _ = Llvm.build_store var_insts (Llvm.build_struct_gep scope_obj (scope_field_type_index VarInst) "" builder) builder
     and _ = Llvm.build_store (Llvm.const_int base_types.int_t cardinal) (Llvm.build_struct_gep scope_obj (scope_field_type_index VarNum) "" builder) builder in
     let _ = Llvm.build_call (Hashtbl.find runtime_functions "null_init") [|scope_obj|] "" builder in
+
+    (* Build the symbol table for this function *)
+    let (local_indices, num_locals) = index_map Locals fn_def.func_body in
+    let add_param (st, idx) param_name =
+      let new_st = StringMap.add param_name (FunctionParameter(idx)) st in
+      (new_st, idx + 1) in
+    let (params_and_globals, _) = List.fold_left add_param (global_symbols, 0) (List.map snd fn_def.func_params) in
+    let symbols = StringMap.fold StringMap.add local_indices params_and_globals in
+
+    (* For debugging purposes only: *)
+    let print_it k = function
+        FunctionParameter(i) -> print_endline ("; Function: " ^ fname ^ "     Id: " ^ k ^ "     FunctionParameter #" ^ string_of_int i)
+      | GlobalVariable(i) -> print_endline ("; Function: " ^ fname ^ "     Id: " ^ k ^ "     Global #" ^ string_of_int i)
+      | LocalVariable(i) -> print_endline ("; Function: " ^ fname ^ "     Id: " ^ k ^ "     Local #" ^ string_of_int i) in
+    StringMap.iter print_it symbols ;
+
     (*iterates over formulas defined*)
     let add_variable varname va (sm, count) =
       let defn = (Llvm.build_in_bounds_gep var_defns [|Llvm.const_int base_types.int_t count|] "" builder) in
       let _ = build_var_defn defn builder varname va sm in
       (StringMap.add varname count sm, count + 1) in
-    let (scope, i) = StringMap.fold add_variable desc.func_body (StringMap.empty, 0) in
-    let (dim, ret) = desc.func_ret_val in
+    let (scope, i) = StringMap.fold add_variable fn_def.func_body (StringMap.empty, 0) in
+    let (dim, ret) = fn_def.func_ret_val in
     match ret with
       Id(name) -> ignore (Llvm.build_ret (Llvm.build_call getVal [|(Llvm.build_call getVar [|scope_obj; Llvm.const_int base_types.int_t (StringMap.find name scope)|] "" builder); Llvm.const_int base_types.int_t 0; Llvm.const_int base_types.int_t 0|] "" builder) builder)
     | _ -> print_endline (string_of_expr ret);raise NotImplemented in

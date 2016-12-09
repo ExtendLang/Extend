@@ -146,15 +146,15 @@ double setFlag(value_p result, double flag_num) {
 	return (result->flags = FLAG_NUMBER);
 }
 
-int assertSingle(subrange_p range) {
-	return (range->subrangeRow == 1 && range->subrangeCol == 1);
+int assertSingle(value_p value) {
+	/* TODO: dereference 1 by 1 subrange */
+	return !(value->flags == FLAG_SUBRANGE);
 }
 
-int assertSingleNumber(subrange_p range) {
-	if (!assertSingle(range)) {
+int assertSingleNumber(value_p p) {
+	if (!assertSingle(p)) {
 		return 0;
-	};
-	value_p p = get_val(range, 0, 0);
+	}
 	return (p->flags == FLAG_NUMBER);
 }
 
@@ -162,19 +162,17 @@ int assertText(value_p my_val) {
 	return (my_val->flags == FLAG_STRING);
 }
 
-int assertSingleString(subrange_p range) {
-	if (!assertSingle(range)) {
+int assertSingleString(value_p p) {
+	if (!assertSingle(p)) {
 		return 0;
 	}
-	value_p p = get_val(range, 0, 0);
 	return (p->flags == FLAG_STRING);
 }
 
-int assertEmpty(subrange_p range) {
-	if (!assertSingle(range)) {
+int assertEmpty(value_p p) {
+	if (!assertSingle(p)) {
 		return 0;
 	}
-	value_p p = get_val(range, 0, 0);
 	return (p->flags == FLAG_EMPTY);
 }
 
@@ -214,8 +212,8 @@ value_p printv(value_p whatever, value_p text) {
 }
 
 
-value_p printd(subrange_p whatever, subrange_p text) {
-	printf("%f\n", (*text->range->values)->numericVal);
+value_p printd(value_p whatever, value_p text) {
+	printf("%f\n", text->numericVal);
 	value_p result = malloc(sizeof(struct value_t));
 	return result;
 }
@@ -248,10 +246,9 @@ value_p extend_asin(subrange_p range) {
 	return new_number(val);
 }
 
-value_p extend_acos(subrange_p range) {
+value_p extend_acos(value_p range) {
 	if(!assertSingleNumber(range)) return new_val();
-	double initial = get_number(range);
-	double val = acos(initial);
+	double val = acos(range->numericVal);
 	return new_number(val);
 }
 

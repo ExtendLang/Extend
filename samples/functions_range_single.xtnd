@@ -1,4 +1,4 @@
-[m,n] foo([m,n] arg1, [m,n] arg2) {
+foo([m,n] arg1, [m,n] arg2) {
   [m,n] bar := #arg1 + #arg2;
   return bar;
 }

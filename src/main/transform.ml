@@ -12,7 +12,7 @@ exception LogicError of string;;
 module StringSet = Set.Make (String);;
 let importSet = StringSet.empty;;
 
-let builtin_signatures = [("row", 0); ("column", 0); (*("printf", 2);*) ("toString", 1)]
+let builtin_signatures = [("cos", 1); ("column", 0); (*("printf", 2);*) ("toString", 1)]
 
 let idgen =
   (* from http://stackoverflow.com/questions/10459363/side-effects-and-top-level-expressions-in-ocaml*)

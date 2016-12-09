@@ -1,3 +1,4 @@
-[m,1] foo([m,1] arg) {
-  return arg[0:m, 0] + 1;
+foo([m,1] arg) {
+  [m,1] plus_one := #arg + 1;
+  return plus_one;
 }

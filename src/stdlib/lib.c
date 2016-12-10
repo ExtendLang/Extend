@@ -130,15 +130,20 @@ value_p __get_val(struct var_instance *range, int row, int col) {
 
 value_p get_val(subrange_p range, int row, int col) {
 	//TODO: assertions
-	value_p val =  __get_val(range->range, row + range->offsetRow, col + range->offsetCol);
+	value_p val = __get_val(range->range, row + range->offsetRow, col + range->offsetCol);
+	while(val->flags == FLAG_SUBRANGE && val->subrange->subrangeRow == 1 && val->subrange->subrangeCol == 1) {
+		val = get_val(val->subrange, val->subrange->subrangeRow, val->subrange->subrangeCol);
+	}
 	return val;
 }
 
 double setNumeric(value_p result, double val) {
+	result->flags = FLAG_NUMBER;
 	return (result->numericVal = val);
 }
 
 char* setString(value_p result, char *str) {
+	result->flags = FLAG_STRING;
 	return (result->str->text = str);
 }
 
@@ -424,15 +429,20 @@ value_p getVal(struct var_instance *inst, int x, int y) {
 	if(!assertInBounds(inst, x, y)) return new_val();
 	int offset = inst->rows * y + x;
 	char *status = inst->status + offset;
+	value_p return_val;
 	if(*status & IN_PROGRESS) {
 		/* TODO: Circular dependency. Possibly throw? */
-		return new_val();
+		return_val = new_val();
 	} else if ((~(*status)) & CALCULATED) { /* value not calculated */
 		value_p val = calcVal(inst, x, y);
 		inst->values[offset] = val;
 		*status = (*status && !IN_PROGRESS) | CALCULATED;
-		return val;
+		return_val = val;
 	} else {
-		return inst->values[offset];
+		return_val = inst->values[offset];
 	}
+	while(return_val->flags == FLAG_SUBRANGE && return_val->subrange->subrangeRow == 1 && return_val->subrange->subrangeCol == 1) {
+		return_val = getVal(return_val->subrange->range, return_val->subrange->offsetRow, return_val->subrange->offsetCol);
+	}
+	return return_val;
 }

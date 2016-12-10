@@ -250,7 +250,7 @@ let translate (globals, functions, externs) =
         ret_val
       | UnOp( _, expr) -> print_endline (Ast.string_of_expr exp); raise NotImplemented
       | unknown_expr -> print_endline (string_of_expr unknown_expr);raise NotImplemented in
-    let _ = Llvm.build_ret ((*print_endline (Ast.string_of_expr formula_expr);*) build_expr formula_expr) builder in
+    let _ = Llvm.build_ret (build_expr formula_expr) builder in
     form_decl in
 
   (*build formula creates a formula declaration in a separate method from the function it belongs to*)

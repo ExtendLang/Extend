@@ -15,8 +15,6 @@ let speclist = [
                 ("-i", Arg.Set interpret_ast, "Interpret the program");
                 ("-c", Arg.Set compile_ast, "Compile the program");
                 ("-l", Arg.Set link, "Link the program");
-                ("-o", Arg.Set link, "Specify output file");
-                ("-cc", Arg.Set link, "Specify compiler");
 ]
 
 let usage_message = "Welcome to Extend!\n\nUsage: extend <options> <source-file>\n\nOptions are:"

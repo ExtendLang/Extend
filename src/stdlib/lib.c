@@ -119,24 +119,6 @@ value_p box_value_string(string_p);
 
 value_p getVal(struct var_instance *inst, int x, int y);
 
-value_p __get_val(struct var_instance *range, int row, int col) {
-	//TODO: assertions
-	printf("Getting %p %d %d\n", range, row, col);
-	return getVal(range, row, col);
-	/*
-	value_p val = range->values[row * range->cols + col];
-	return val;*/
-}
-
-value_p get_val(subrange_p range, int row, int col) {
-	//TODO: assertions
-	value_p val = __get_val(range->range, row + range->offsetRow, col + range->offsetCol);
-	while(val->flags == FLAG_SUBRANGE && val->subrange->subrangeRow == 1 && val->subrange->subrangeCol == 1) {
-		val = get_val(val->subrange, val->subrange->subrangeRow, val->subrange->subrangeCol);
-	}
-	return val;
-}
-
 double setNumeric(value_p result, double val) {
 	result->flags = FLAG_NUMBER;
 	return (result->numericVal = val);
@@ -192,14 +174,6 @@ value_p new_number(double val) {
 	setFlag(new_v, FLAG_NUMBER);
 	setNumeric(new_v, val);
 	return new_v;
-}
-
-double get_number(subrange_p p) {
-	/* Assumes the calling function has
-	 * already verified that subrange_p
-	 * points to a single Number */
-	value_p v = get_val(p, 0, 0);
-	return v->numericVal;
 }
 
 value_p print(value_p whatever, value_p text) {

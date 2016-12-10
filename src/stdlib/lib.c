@@ -393,10 +393,57 @@ value_p calcVal(struct var_instance *inst, int x, int y) {
 	return new_val();
 }
 
+void setRange(value_p val, struct var_instance *inst) {
+	subrange_p sr = malloc(sizeof(struct subrange_t));
+	sr->offsetCol = 0;
+	sr->offsetRow = 0;
+	sr->subrangeCol = inst->cols;
+	sr->subrangeRow = inst->rows;
+	sr->range = inst;
+	val->subrange = sr;
+	val->flags = FLAG_SUBRANGE;
+}
+
 value_p getSize(struct var_instance *inst) {
 	value_p res = malloc(sizeof(struct value_t));
 	setNumeric(res, 1); /*TODO*/
 	return res;
+}
+
+value_p deepCopy(value_p value) {
+	value_p _new = new_val();
+	if(value->flags == FLAG_EMPTY) {}
+	else if(value->flags == FLAG_STRING) {
+		_new->flags = FLAG_STRING;
+		_new->str = malloc(sizeof(struct string_t));
+		memcpy(_new->str->text, value->str->text, value->str->length);
+		_new->str->length = value->str->length;
+	}
+	else if(value->flags == FLAG_NUMBER) {
+		_new->flags = FLAG_NUMBER;
+		_new->numericVal = value->numericVal;
+	}
+	else if(value->flags == FLAG_SUBRANGE) {
+		struct var_instance *v = malloc(sizeof(struct subrange_t));
+		int cols = value->subrange->subrangeCol;
+		int rows = value->subrange->subrangeRow;
+		v->name = "COPYCAT";
+		v->formulas = NULL;
+		v->status = malloc(sizeof(char *) * rows * cols);
+		v->values = malloc(sizeof(value_p) * rows * cols);
+		v->closure = NULL;
+		int i,j;
+		for(i = 0; i < rows; i++) {
+			for(j = 0; j < cols; j++) {
+				int offset = i * rows + j;
+				*(v->status + offset) = CALCULATED;
+				/*TODO: eval lazzzy*/
+				*(v->values + offset) = getVal(value->subrange->range, i + value->subrange->offsetRow, j + value->subrange->offsetCol);
+			}
+		}
+		setRange(_new, v);
+	}
+	return _new;
 }
 
 value_p getVal(struct var_instance *inst, int x, int y) {

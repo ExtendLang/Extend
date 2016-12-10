@@ -29,6 +29,8 @@ let create_runtime_functions ctx bt the_module =
   add_runtime_func "strlen" bt.long_t [|bt.char_p|];
   add_runtime_func "llvm.memcpy.p0i8.p0i8.i64" bt.void_t [|bt.char_p; bt.char_p; bt.long_t; bt.int_t; bt.bool_t|] ;
   add_runtime_func "getVal" bt.value_p [|bt.var_instance_p; bt.int_t; bt.int_t|] ;
+  add_runtime_func "deepCopy" bt.value_p [|bt.value_p;|] ;
+  add_runtime_func "freeMe" (Llvm.void_type ctx) [|bt.extend_scope_p;|] ;
   add_runtime_func "getSize" bt.value_p [|bt.var_instance_p;|] ;
   add_runtime_func "get_variable" bt.var_instance_p [|bt.extend_scope_p; bt.int_t|] ;
   add_runtime_func "null_init" (Llvm.void_type ctx) [|bt.extend_scope_p|] ;
@@ -194,6 +196,8 @@ let translate (globals, functions, externs) =
   let (global_symbols, num_globals) = index_map Globals globals in
 
   (* Look these two up once and for all *)
+  let deepCopy = Hashtbl.find runtime_functions "deepCopy" in
+  let freeMe = Hashtbl.find runtime_functions "freeMe" in
   let getVal = Hashtbl.find runtime_functions "getVal" in (*getVal retrieves the value of a variable instance for a specific x and y*)
   let getVar = Hashtbl.find runtime_functions "get_variable" in (*getVar retrieves a variable instance based on the offset. It instanciates the variable if it does not exist yet*)
 
@@ -204,13 +208,13 @@ let translate (globals, functions, externs) =
     let local_scope = Llvm.param form_decl 0 in
     let rec build_expr exp = match exp with
         LitInt(i) -> let vvv = Llvm.const_float base_types.float_t (float_of_int i) in
-        let ret_val = Llvm.build_malloc base_types.value_t "" builder in
+        let ret_val = Llvm.build_alloca base_types.value_t "" builder in
         let sp = Llvm.build_struct_gep ret_val (value_field_index Number) "num_pointer" builder in
         let _ = Llvm.build_store (Llvm.const_int base_types.char_t (value_field_flags_index Number)) (Llvm.build_struct_gep ret_val (value_field_index Flags) "" builder) builder in
         let _ = Llvm.build_store vvv sp builder in
         ret_val
       | LitFlt(i) -> let vvv = Llvm.const_float base_types.float_t i in
-        let ret_val = Llvm.build_malloc base_types.value_t "" builder in
+        let ret_val = Llvm.build_alloca base_types.value_t "" builder in
         let sp = Llvm.build_struct_gep ret_val (value_field_index Number) "num_pointer" builder in
         let _ = Llvm.build_store (Llvm.const_int base_types.char_t (value_field_flags_index Number)) (Llvm.build_struct_gep ret_val (value_field_index Flags) "" builder) builder in
         let _ = Llvm.build_store vvv sp builder in
@@ -240,9 +244,10 @@ let translate (globals, functions, externs) =
         let args = Array.of_list
             (List.rev (List.fold_left (
                  fun a b -> (build_expr b) :: a) [] exl)) in
-        Llvm.build_call (
+        let result = Llvm.build_call (
           StringMap.find fn function_llvalues
-        ) args "" builder
+        ) args "" builder in
+        result
       | UnOp(SizeOf,expr) -> let vvv = Llvm.const_float base_types.float_t 0.0 in
         let ret_val = Llvm.build_malloc base_types.value_t "" builder in
         let sp = Llvm.build_struct_gep ret_val (value_field_index Number) "num_pointer" builder in
@@ -251,7 +256,9 @@ let translate (globals, functions, externs) =
         ret_val
       | UnOp( _, expr) -> print_endline (Ast.string_of_expr exp); raise NotImplemented
       | unknown_expr -> print_endline (string_of_expr unknown_expr);raise NotImplemented in
-    let _ = Llvm.build_ret (build_expr formula_expr) builder in
+    let cpy = Llvm.build_call deepCopy [|(build_expr formula_expr)|] "" builder in
+    let _ = Llvm.build_call freeMe [||] in
+    let _ = Llvm.build_ret (cpy) builder in
     form_decl in
 
   (*build formula creates a formula declaration in a separate method from the function it belongs to*)

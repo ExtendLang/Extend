@@ -119,26 +119,13 @@ value_p box_value_string(string_p);
 
 value_p getVal(struct var_instance *inst, int x, int y);
 
-value_p __get_val(struct var_instance *range, int row, int col) {
-	//TODO: assertions
-	printf("Getting %p %d %d\n", range, row, col);
-	return getVal(range, row, col);
-	/*
-	value_p val = range->values[row * range->cols + col];
-	return val;*/
-}
-
-value_p get_val(subrange_p range, int row, int col) {
-	//TODO: assertions
-	value_p val =  __get_val(range->range, row + range->offsetRow, col + range->offsetCol);
-	return val;
-}
-
 double setNumeric(value_p result, double val) {
+	result->flags = FLAG_NUMBER;
 	return (result->numericVal = val);
 }
 
 char* setString(value_p result, char *str) {
+	result->flags = FLAG_STRING;
 	return (result->str->text = str);
 }
 
@@ -187,14 +174,6 @@ value_p new_number(double val) {
 	setFlag(new_v, FLAG_NUMBER);
 	setNumeric(new_v, val);
 	return new_v;
-}
-
-double get_number(subrange_p p) {
-	/* Assumes the calling function has
-	 * already verified that subrange_p
-	 * points to a single Number */
-	value_p v = get_val(p, 0, 0);
-	return v->numericVal;
 }
 
 value_p print(value_p whatever, value_p text) {
@@ -424,15 +403,20 @@ value_p getVal(struct var_instance *inst, int x, int y) {
 	if(!assertInBounds(inst, x, y)) return new_val();
 	int offset = inst->rows * y + x;
 	char *status = inst->status + offset;
+	value_p return_val;
 	if(*status & IN_PROGRESS) {
 		/* TODO: Circular dependency. Possibly throw? */
-		return new_val();
+		return_val = new_val();
 	} else if ((~(*status)) & CALCULATED) { /* value not calculated */
 		value_p val = calcVal(inst, x, y);
 		inst->values[offset] = val;
 		*status = (*status && !IN_PROGRESS) | CALCULATED;
-		return val;
+		return_val = val;
 	} else {
-		return inst->values[offset];
+		return_val = inst->values[offset];
 	}
+	while(return_val->flags == FLAG_SUBRANGE && return_val->subrange->subrangeRow == 1 && return_val->subrange->subrangeCol == 1) {
+		return_val = getVal(return_val->subrange->range, return_val->subrange->offsetRow, return_val->subrange->offsetCol);
+	}
+	return return_val;
 }

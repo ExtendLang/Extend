@@ -16,6 +16,7 @@ EXP_OUT=.exp
 RES_OUT=.r.out
 LLVM_F=.ll
 mkdir -p $TMP_DIR
+rm ./$TMP_DIR/*
 counter=0
 counterc=0
 counteri=0

@@ -25,7 +25,7 @@ let expand_file filename =
     prerr_endline ("Syntax error in \"" ^ filename ^ "\": " ^ msg) ;
     prerr_endline ("Line " ^ (string_of_int pos.pos_lnum) ^ " at character " ^ (string_of_int (pos.pos_cnum - pos.pos_bol))) in
 
-  let rec expand_imports processed_imports globals fns exts = function
+  let rec expand_imports processed_imports globals fns exts dir = function
       [] -> ([], globals, fns, exts)
     | import :: imports ->
       (* print_endline "--------";
@@ -40,6 +40,7 @@ let expand_file filename =
           Parsing.Parse_error -> print_error_location import "" lexbuf ; exit(-1)
         | Scanner.SyntaxError(s) -> print_error_location import s lexbuf ; exit(-1)
       in
+      let file_imports = List.map (fun file -> dir ^ "/" ^ file) file_imports in
       let new_proc = StringSet.add import processed_imports and _ = close_in in_chan in
       (* print_endline ("Now I'm done with: ") ; *)
       (* StringSet.iter (fun a -> print_endline a) new_proc; *)
@@ -47,8 +48,8 @@ let expand_file filename =
       let new_imports = StringSet.elements (StringSet.of_list (List.filter first_im_hearing_about file_imports)) in
       (* print_endline ("First I'm hearing about:") ; *)
       (* List.iter print_endline new_imports; *)
-      expand_imports new_proc (globals @ file_globals) (fns @ file_functions) (exts @ file_externs) (imports @ new_imports) in
-  expand_imports StringSet.empty [] [] [] [filename]
+      expand_imports new_proc (globals @ file_globals) (fns @ file_functions) (exts @ file_externs) (Filename.dirname import) (imports @ new_imports) in
+  expand_imports StringSet.empty [] [] [] (Filename.dirname filename) [filename]
 
 let expand_expressions (imports, globals, functions, externs) =
   let lit_zero = LitInt(0) in let abs_zero = Abs(lit_zero) in

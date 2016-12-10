@@ -1,12 +1,14 @@
+module StringSet = Set.Make(String)
 let link xtndOut ast compiler outputFile =
   let tmpFilename = Filename.temp_file "" ".ll"
   and getExterns (_,_,extern) =
-    Ast.StringMap.fold
-      (fun key value store -> value.Ast.extern_fn_libname :: store)
-      extern
-      [] in
+    StringSet.elements
+      (Ast.StringMap.fold
+        (fun key value store -> StringSet.add value.Ast.extern_fn_libname store)
+        extern
+        StringSet.empty) in
   let tmpChan = open_out tmpFilename in
-  output_string tmpChan xtndOut;
+  output_string tmpChan xtndOut; close_out tmpChan;
   let call = (String.concat " " (compiler :: "-o" :: outputFile :: tmpFilename :: (getExterns ast))) in
   let res = print_endline call; Sys.command call in
-  close_out tmpChan; Sys.remove tmpFilename; if res == 0 then () else raise Not_found
+  Sys.remove tmpFilename; if res == 0 then () else raise Not_found

@@ -58,9 +58,9 @@ for f in $(ls $TESTDIR/$REGRESSION); do
   else
     echo "Compiler: FAILED REGRESSION TEST ($f)"
     result=$((result+1))
-    if [ $PRINT = "-p" ]; then
+#    if [ $PRINT = "-p" ]; then
       cat $RESULT_OUTPUT
-    fi
+#    fi
   fi
 done
 

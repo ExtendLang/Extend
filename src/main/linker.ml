@@ -10,5 +10,5 @@ let link xtndOut ast compiler outputFile =
   let tmpChan = open_out tmpFilename in
   output_string tmpChan xtndOut; close_out tmpChan;
   let call = (String.concat " " (compiler :: "-o" :: outputFile :: tmpFilename :: (getExterns ast))) in
-  let res = print_endline call; Sys.command call in
+  let res = Sys.command call in
   Sys.remove tmpFilename; if res == 0 then () else raise Not_found

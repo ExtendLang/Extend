@@ -23,7 +23,7 @@ counteri=0
 countern=0
 result=0
 
-gcc -c -o tmp/std.o src/stdlib/lib.c -lm
+gcc -c -o stdlib.o src/stdlib/lib.c -lm
 
 for f in $(ls $TESTDIR/$REGRESSION); do
   counter=$((counter+1))
@@ -35,12 +35,9 @@ for f in $(ls $TESTDIR/$REGRESSION); do
   EXPECTED_OUTPUT=$TESTDIR/$EXPECTED/$f$EXP_OUT
   RESULT_OUTPUT=$TMP_DIR/$f$RES_OUT
   ./main.byte -i $EXTEND_FILE > $INTERPRETER_TARGET 2>&1
-  ./main.byte -c $EXTEND_FILE > $EXTEND_TARGET 2>&1
+  ./main.byte -c $EXTEND_FILE -l > $EXTEND_TARGET 2>&1
   if [ $? -eq 0 ]; then
-    llc-3.8 -filetype=obj $EXTEND_TARGET -o $COMPILED_OUTPUT
-    gcc -o tmp/tmp $COMPILED_OUTPUT tmp/std.o -lm
-    rm $COMPILED_OUTPUT
-    ./tmp/tmp > $TEXT_OUTPUT
+    ./out > $TEXT_OUTPUT
   else
     mv $EXTEND_TARGET $TEXT_OUTPUT
   fi
@@ -62,9 +59,9 @@ for f in $(ls $TESTDIR/$REGRESSION); do
   else
     echo "Compiler: FAILED REGRESSION TEST ($f)"
     result=$((result+1))
-    if [ $PRINT = "-p" ]; then
+#    if [ $PRINT = "-p" ]; then
       cat $RESULT_OUTPUT
-    fi
+#    fi
   fi
 done
 
@@ -79,16 +76,9 @@ for f in $(ls $TESTDIR/$INPUTS); do
   RESULT_OUTPUT=$TMP_DIR/$f$RES_OUT
   p=0
   ./main.byte -i $EXTEND_FILE > $INTERPRETER_TARGET 2>&1
-  ./main.byte -c $EXTEND_FILE > $EXTEND_TARGET 2>&1
+  ./main.byte -c $EXTEND_FILE -l > $EXTEND_TARGET 2>&1
   if [ $? -eq 0 ]; then
-    llc-3.8 -filetype=obj $EXTEND_TARGET -o $COMPILED_OUTPUT > /dev/null 2>&1
-    if [ $? -eq 0 ]; then
-      gcc -o tmp/tmp $COMPILED_OUTPUT tmp/std.o -lm
-      rm $COMPILED_OUTPUT
-      ./tmp/tmp > $TEXT_OUTPUT
-    else
-      touch $TEXT_OUTPUT
-    fi
+    ./out > $TEXT_OUTPUT
   else
     mv $EXTEND_TARGET $TEXT_OUTPUT
   fi
@@ -120,7 +110,7 @@ for f in $(ls $TESTDIR/$INPUTS); do
   fi
 done
 
-rm tmp/std.o
+rm stdlib.o
 
 echo "Passed $counteri of $counter interpreter testcases"
 echo "Passed $counterc of $counter compiler testcases"

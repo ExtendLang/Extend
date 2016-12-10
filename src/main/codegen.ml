@@ -327,11 +327,11 @@ let translate (globals, functions, externs) =
     let symbols = StringMap.fold StringMap.add local_indices params_and_globals in
 
     (* For debugging purposes only: *)
-    let print_it k = function
+    (*let print_it k = function
         FunctionParameter(i) -> print_endline ("; Function: " ^ fname ^ "     Id: " ^ k ^ "     FunctionParameter #" ^ string_of_int i)
       | GlobalVariable(i) -> print_endline ("; Function: " ^ fname ^ "     Id: " ^ k ^ "     Global #" ^ string_of_int i)
       | LocalVariable(i) -> print_endline ("; Function: " ^ fname ^ "     Id: " ^ k ^ "     Local #" ^ string_of_int i) in
-    StringMap.iter print_it symbols ;
+    StringMap.iter print_it symbols ;*)
 
     (*iterates over formulas defined*)
     let add_variable varname va (sm, count) =

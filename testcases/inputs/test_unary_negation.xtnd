@@ -1,4 +1,9 @@
+extern "stdlib.o" {
+  print(a,b);
+  to_string(a);
+}
+
 main([1,n] args){
 	/* Should return -33 */
-	return printf(1,toString( -33)+"\n") -> 0;
+	return print(1,to_string( -33)+"\n") -> 0;
 }

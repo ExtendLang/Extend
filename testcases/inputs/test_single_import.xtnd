@@ -1,5 +1,10 @@
+extern "stdlib.o" {
+  print(a,b);
+  to_string(a);
+}
+
 import "samples/gcd_func.xtnd";
 
 main([1,n] args) {
-  return printf(1, toString(gcd(70, 55)) + "\n") -> 0;
+  return print(1, to_string(gcd(70, 55)) + "\n") -> 0;
 }

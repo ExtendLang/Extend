@@ -196,6 +196,21 @@ value_p printd(value_p whatever, value_p text) {
 	return result;
 }
 
+value_p to_string(value_p val) {
+		if(assertSingleNumber(val)) {
+			double possible_num = val->numericVal;
+			int size = snprintf(NULL, 0, "%f", possible_num);
+			char *converted_str = malloc(size + 1);
+			sprintf(converted_str, "%f", possible_num);
+			value_p result = box_value_string(new_string(converted_str));
+			return result;
+		}
+		else if(assertSingleString(val)) return val;
+
+		// If the struct does not hold a string or number, return empty?
+		return new_val();
+}
+
 #define FUNC(name) value_p extend_##name(value_p a){if(!assertSingleNumber(a)) return new_val();double val = name(a->numericVal);return new_number(val);}
 FUNC(sin)
 FUNC(cos)

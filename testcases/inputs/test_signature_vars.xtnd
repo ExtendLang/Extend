@@ -1,8 +1,13 @@
+extern "stdlib.o" {
+  print(a,b);
+  to_string(a);
+}
+
 foo([m,n] arg) {
-	return "I was called with an argument with " + toString(m) + " rows and " + toString(n) + " columns.";
+	return "I was called with an argument with " + to_string(m) + " rows and " + to_string(n) + " columns.";
 }
 
 main([1,1] args) {
 	[42,17] x;
-	return printf(1,foo(x)+"\n") -> 0;
+	return print(1,foo(x)+"\n") -> 0;
 }

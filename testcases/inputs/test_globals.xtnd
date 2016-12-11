@@ -1,4 +1,9 @@
+extern "stdlib.o" {
+  print(a,b);
+  to_string(a);
+}
+
 global [2,2] foo := 1;
 main([1,n] args) {
-  return printf(1,toString( foo)+"\n") -> 0;
+  return print(1,to_string( foo)+"\n") -> 0;
 }

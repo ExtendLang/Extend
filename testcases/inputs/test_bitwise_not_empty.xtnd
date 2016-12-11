@@ -1,4 +1,9 @@
+extern "stdlib.o" {
+  print(a,b);
+  to_string(a);
+}
+
 main([1,1] args){
 	/* Should return empty */
-	return printf(1,toString( ~empty)+"\n") -> 0;
+	return print(1,to_string( ~empty)+"\n") -> 0;
 }

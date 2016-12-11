@@ -1,5 +1,9 @@
+extern "stdlib.o" {
+  print(a,b);
+  to_string(a);
+}
 
 main([1,1] args){
 	/* Should return -89 */
-	return printf(1,toString( ~88)+"\n") -> 0;
+	return print(1,to_string( ~88)+"\n") -> 0;
 }

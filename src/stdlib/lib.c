@@ -202,9 +202,17 @@ value_p printd(value_p whatever, value_p text) {
 value_p to_string(value_p val) {
 		if(assertSingleNumber(val)) {
 			double possible_num = val->numericVal;
-			int size = snprintf(NULL, 0, "%f", possible_num);
-			char *converted_str = malloc(size + 1);
-			sprintf(converted_str, "%f", possible_num);
+			int rounded_int = (int) lrint(possible_num);
+			char *converted_str;
+			if (fabs(possible_num - rounded_int) < 1e-7) {
+				int size = snprintf(NULL, 0, "%d", rounded_int);
+				converted_str = malloc(size + 1);
+				sprintf(converted_str, "%d", rounded_int);
+			} else {
+				int size = snprintf(NULL, 0, "%f", possible_num);
+				converted_str = malloc(size + 1);
+				sprintf(converted_str, "%f", possible_num);
+			}
 			value_p result = box_value_string(new_string(converted_str));
 			return result;
 		}
@@ -348,13 +356,13 @@ struct var_instance *instantiate_variable(struct ExtendScope *scope_ptr, struct 
 		if(rows->flags == FLAG_NUMBER || cols->flags == FLAG_NUMBER) {
 			/* TODO: throw error */
 		}
-		rowVal = (int)(rows->numericVal + 0.5);
-		colVal = (int)(cols->numericVal + 0.5);
+		rowVal = (int)lrint(rows->numericVal);
+		colVal = (int)lrint(cols->numericVal);
 	}
 	// TODO: do the same thing for each FormulaFP to turn an ExtendFormula into a ResolvedFormula
 	struct var_instance *inst = malloc(sizeof(struct var_instance));
-	inst->rows = (int)(rowVal + 0.5);
-	inst->cols = (int)(colVal + 0.5);
+	inst->rows = (int)lrint(rowVal);
+	inst->cols = (int)lrint(colVal);
 	inst->numFormulas = def.numFormulas;
 	inst->closure = scope_ptr;
 	inst->name = def.name;
@@ -424,10 +432,57 @@ value_p calcVal(struct var_instance *inst, int x, int y) {
 	return new_val();
 }
 
+void setRange(value_p val, struct var_instance *inst) {
+	subrange_p sr = malloc(sizeof(struct subrange_t));
+	sr->offsetCol = 0;
+	sr->offsetRow = 0;
+	sr->subrangeCol = inst->cols;
+	sr->subrangeRow = inst->rows;
+	sr->range = inst;
+	val->subrange = sr;
+	val->flags = FLAG_SUBRANGE;
+}
+
 value_p getSize(struct var_instance *inst) {
 	value_p res = malloc(sizeof(struct value_t));
 	setNumeric(res, 1); /*TODO*/
 	return res;
+}
+
+value_p deepCopy(value_p value) {
+	value_p _new = new_val();
+	if(value->flags == FLAG_EMPTY) {}
+	else if(value->flags == FLAG_STRING) {
+		_new->flags = FLAG_STRING;
+		_new->str = malloc(sizeof(struct string_t));
+		memcpy(_new->str->text, value->str->text, value->str->length);
+		_new->str->length = value->str->length;
+	}
+	else if(value->flags == FLAG_NUMBER) {
+		_new->flags = FLAG_NUMBER;
+		_new->numericVal = value->numericVal;
+	}
+	else if(value->flags == FLAG_SUBRANGE) {
+		struct var_instance *v = malloc(sizeof(struct subrange_t));
+		int cols = value->subrange->subrangeCol;
+		int rows = value->subrange->subrangeRow;
+		v->name = "COPYCAT";
+		v->formulas = NULL;
+		v->status = malloc(sizeof(char *) * rows * cols);
+		v->values = malloc(sizeof(value_p) * rows * cols);
+		v->closure = NULL;
+		int i,j;
+		for(i = 0; i < rows; i++) {
+			for(j = 0; j < cols; j++) {
+				int offset = i * rows + j;
+				*(v->status + offset) = CALCULATED;
+				/*TODO: eval lazzzy*/
+				*(v->values + offset) = getVal(value->subrange->range, i + value->subrange->offsetRow, j + value->subrange->offsetCol);
+			}
+		}
+		setRange(_new, v);
+	}
+	return _new;
 }
 
 value_p getVal(struct var_instance *inst, int x, int y) {

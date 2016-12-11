@@ -1,4 +1,4 @@
-import "testcases/assets/string.xtnd";
+import "../../testcases/assets/string.xtnd";
 global foo;
 global [2, 5] bar;
-import "testcases/assets/string.xtnd";
+import "../../testcases/assets/string.xtnd";

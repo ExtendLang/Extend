@@ -254,6 +254,31 @@ let translate (globals, functions, externs) =
           StringMap.find fn function_llvalues
         ) args "" builder in
         result
+      | BinOp(expr1,op,expr2) -> (
+          let val1 = build_expr expr1
+          and val2 = build_expr expr2 in
+          match op with
+            Plus ->
+              let stradd = (Llvm.append_block context "" form_decl)
+              and numadd = (Llvm.append_block context "" form_decl)
+              and bailout = (Llvm.append_block context "" form_decl)
+              and numorstr = (Llvm.append_block context "" form_decl)
+              in
+              let beginstradd = Llvm.builder_at_end context stradd
+              and bnumadd = Llvm.builder_at_end context numadd
+              and bbailout = Llvm.builder_at_end context bailout
+              and bnumorstr = Llvm.builder_at_end context numorstr
+              and result = Llvm.build_malloc base_types.value_p "" builder
+              in
+              (*let _ = Llvm.build_cond_br pred_bool body_bb merge_bb pred_builder in*)
+              let _ = numorstr
+              and isnumorstring = Llvm.build_icmp Llvm.Icmp.Eq (Llvm.build_struct_gep val1 (value_field_index Flags) "" builder) (Llvm.build_struct_gep val2 (value_field_index Flags) "" builder) "" builder
+              in
+              let _ = Llvm.build_cond_br isnumorstring numorstr bailout builder
+              in
+              val1
+          | _ -> raise NotImplemented
+        )
       | UnOp(SizeOf,expr) -> let vvv = Llvm.const_float base_types.float_t 0.0 in
         let ret_val = Llvm.build_malloc base_types.value_t "" builder in
         let sp = Llvm.build_struct_gep ret_val (value_field_index Number) "num_pointer" builder in

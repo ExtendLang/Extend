@@ -8,7 +8,7 @@ bar() {
 	return 2;
 }
 
-global foo := printv(1,"Hello World\n") -> 0;
+global foo := printv(1,"Hello Globals!\n") -> 0;
 
 [1,1] main(args) {
   return foo;

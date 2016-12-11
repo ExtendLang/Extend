@@ -305,7 +305,7 @@ let translate (globals, functions, externs) =
     let formulas = Llvm.build_array_malloc base_types.formula_t (Llvm.const_int base_types.int_t numForm) "" main_bod in
     (*getDefn simply looks up the correct definition for a dimension declaration of a variable. Note that currently it is ambiguous whether it is a variable or a literal. TOOD: consider negative numbers*)
     let getDefn = function
-        DimId(a) -> (match StringMap.find a symbols with LocalVariable(i) -> i | _ -> print_endline "NonLocal" ; raise(NotImplemented))
+        DimId(a) -> (match StringMap.find a symbols with LocalVariable(i) -> i | GlobalVariable(i) -> i | _ ->  print_endline "fnparam" ; raise(NotImplemented))
       | DimInt(1) -> 1
       | DimInt(_) -> print_endline "Non1Dim" ; raise(NotImplemented) in
     let _ = (match va.var_rows with

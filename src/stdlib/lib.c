@@ -132,7 +132,7 @@ char* setString(value_p result, char *str, int length) {
 }
 
 double setFlag(value_p result, double flag_num) {
-	return (result->flags = FLAG_NUMBER);
+	return (result->flags = flag_num);
 }
 
 int assertSingle(value_p value) {
@@ -208,6 +208,11 @@ value_p to_string(value_p val) {
 			return result;
 		}
 		else if(assertSingleString(val)) return val;
+		else if(val->flags == FLAG_EMPTY) {
+			value_p _new = new_val();
+			setString(_new, "empty", 5);
+			return _new;
+		}
 
 		// If the struct does not hold a string or number, return empty?
 		return new_val();

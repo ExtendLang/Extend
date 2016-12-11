@@ -216,6 +216,10 @@ let translate (globals, functions, externs) =
         let _ = Llvm.build_store (Llvm.const_int base_types.char_t (value_field_flags_index Number)) (Llvm.build_struct_gep ret_val (value_field_index Flags) "" builder) builder in
         let _ = Llvm.build_store vvv sp builder in
         ret_val
+      | Empty ->
+          let ret_val = Llvm.build_alloca base_types.value_t "" builder in
+          let _ = Llvm.build_store (Llvm.const_int base_types.char_t (value_field_flags_index Empty)) (Llvm.build_struct_gep ret_val (value_field_index Flags) "" builder) builder in
+          ret_val
       | Id(name) ->
         (
           match (try StringMap.find name symbols with Not_found -> raise(LogicError("Something went wrong with your semantic analysis - " ^ name ^ " not found"))) with

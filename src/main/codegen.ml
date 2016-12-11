@@ -30,6 +30,7 @@ let create_runtime_functions ctx bt the_module =
   add_runtime_func "llvm.memcpy.p0i8.p0i8.i64" bt.void_t [|bt.char_p; bt.char_p; bt.long_t; bt.int_t; bt.bool_t|] ;
   add_runtime_func "getVal" bt.value_p [|bt.var_instance_p; bt.int_t; bt.int_t|] ;
   add_runtime_func "deepCopy" bt.value_p [|bt.value_p;|] ;
+  add_runtime_func "doAddition" bt.value_p [|bt.value_p;bt.value_p;|] ;
   add_runtime_func "freeMe" (Llvm.void_type ctx) [|bt.extend_scope_p;|] ;
   add_runtime_func "getSize" bt.value_p [|bt.var_instance_p;|] ;
   add_runtime_func "get_variable" bt.var_instance_p [|bt.extend_scope_p; bt.int_t|] ;
@@ -192,6 +193,7 @@ let translate (globals, functions, externs) =
 
   (* Look these two up once and for all *)
   let deepCopy = Hashtbl.find runtime_functions "deepCopy" in
+  let doAddition = Hashtbl.find runtime_functions "doAddition" in
   let freeMe = Hashtbl.find runtime_functions "freeMe" in
   let getVal = Hashtbl.find runtime_functions "getVal" in (*getVal retrieves the value of a variable instance for a specific x and y*)
   let getVar = Hashtbl.find runtime_functions "get_variable" in (*getVar retrieves a variable instance based on the offset. It instanciates the variable if it does not exist yet*)
@@ -250,6 +252,10 @@ let translate (globals, functions, externs) =
         let _ = Llvm.build_store (Llvm.const_int base_types.char_t (value_field_flags_index Number)) (Llvm.build_struct_gep ret_val (value_field_index Flags) "" builder) builder in
         let _ = Llvm.build_store vvv sp builder in
         ret_val
+      | BinOp(expr1,op,expr2) ->
+          let v1 = build_expr expr1
+          and v2 = build_expr expr2 in
+          Llvm.build_call doAddition [|v1;v2|] "" builder
       | UnOp( _, expr) -> print_endline (Ast.string_of_expr exp); raise NotImplemented
       | unknown_expr -> print_endline (string_of_expr unknown_expr);raise NotImplemented in
     let cpy = Llvm.build_call deepCopy [|(build_expr formula_expr)|] "" builder in

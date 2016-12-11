@@ -167,7 +167,10 @@ let expand_expressions (imports, globals, functions, externs) =
 
   let expand_function f =
     let (new_sizevars, assertions, size_inits) = expand_params f.name f.params in
-    let (new_retval, retval_inits) = expand_expr (f.name ^ "_retval") (snd f.ret_val) in
+    let new_retval_id = idgen (f.name ^ "_retval") in
+    let new_retval = Id(new_retval_id) in
+    let retval_inits = [Varinit (one_by_one, [(new_retval_id, None)]);
+                        Assign (new_retval_id, zero_comma_zero, Some (snd f.ret_val))] in
     {
       name = f.name;
       params = f.params;

@@ -1,0 +1,16 @@
+extern "stdlib.o" {
+	print(a,b);
+		printv(a,b);
+}
+
+bar() {
+	foo := 5;
+	return 2;
+}
+
+global foo := printv(1,"Hello Globals!\n") -> 0;
+
+[1,1] main(args) {
+	foo := printv(1,"Hello Locals!\n") -> 0;
+  return foo;
+}

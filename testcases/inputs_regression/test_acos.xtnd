@@ -1,8 +1,9 @@
 extern "stdlib.o" {
   extend_acos(a);
-  printd(a,b);
+  print(a,b);
+  to_string(a);
 }
 
 [1,1] main(args) {
-  return printd(1, extend_acos(0.0)) -> 0;
+  return print(1, to_string(extend_acos(0.0)) + "\n") -> 0;
 }

@@ -124,13 +124,15 @@ double setNumeric(value_p result, double val) {
 	return (result->numericVal = val);
 }
 
-char* setString(value_p result, char *str) {
+char* setString(value_p result, char *str, int length) {
 	result->flags = FLAG_STRING;
+	result->str = malloc(sizeof(struct string_t));
+	result->str->length = length;
 	return (result->str->text = str);
 }
 
 double setFlag(value_p result, double flag_num) {
-	return (result->flags = FLAG_NUMBER);
+	return (result->flags = flag_num);
 }
 
 int assertSingle(value_p value) {
@@ -214,6 +216,11 @@ value_p to_string(value_p val) {
 			return result;
 		}
 		else if(assertSingleString(val)) return val;
+		else if(val->flags == FLAG_EMPTY) {
+			value_p _new = new_val();
+			setString(_new, "empty", 5);
+			return _new;
+		}
 
 		// If the struct does not hold a string or number, return empty?
 		return new_val();
@@ -431,6 +438,22 @@ value_p getSize(struct var_instance *inst) {
 	value_p res = malloc(sizeof(struct value_t));
 	setNumeric(res, 1); /*TODO*/
 	return res;
+}
+
+value_p doAddition(value_p value1, value_p value2) {
+	value_p _new = new_val();
+	if(value1->flags != value2->flags || value1->flags == FLAG_EMPTY) {}
+	else if(value1->flags == FLAG_NUMBER) {
+		setNumeric(_new, value1->numericVal + value2->numericVal);
+	}
+	else if(value1->flags == FLAG_STRING) {
+		int length = value1->str->length + value2->str->length;
+		char *my_str = malloc(sizeof(char) * length);
+		memcpy(my_str, value1->str->text, value1->str->length);
+		memcpy(my_str + value1->str->length, value2->str->text, value2->str->length);
+		setString(_new, my_str, value1->str->length + value2->str->length);
+	}
+	return _new;
 }
 
 value_p deepCopy(value_p value) {

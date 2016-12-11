@@ -316,19 +316,28 @@ let translate (globals, functions, externs) =
     and _ = Llvm.build_store (Llvm.build_global_stringptr varname "" main_bod) (Llvm.build_struct_gep defn (var_defn_field_index VarName) "" main_bod) main_bod in
     List.iteri (fun idx elem -> build_formula (varname, idx) formulas elem symbols) va.var_formulas in
 
-  let build_var_defns fname symbols vars static_location_ptr =
-    (* Takes a function name (or "globals"), a symbol table, a StringMap of variables, and a memory address,
-     * and puts the array of var_defns in that memory address. *)
-    let static_var_defns = Llvm.build_array_malloc base_types.var_defn_t (Llvm.const_int base_types.int_t (StringMap.cardinal vars)) (fname ^ "static_var_defns") main_bod in
-    let _ = Llvm.build_store static_var_defns static_location_ptr main_bod in
+  let build_scope_obj fname symbols vars static_location_ptr var_defns_loc builder =
+    let cardinal = Llvm.const_int base_types.int_t (StringMap.cardinal vars) in
+    let build_var_defns =
+      let static_var_defns = Llvm.build_array_malloc base_types.var_defn_t cardinal (fname ^ "static_var_defns") main_bod in
+      let _ = Llvm.build_store static_var_defns static_location_ptr main_bod in
+      let add_variable varname va (sm, count) =
+        let fullname = fname ^ "_" ^ varname in
+        let defn = (Llvm.build_in_bounds_gep static_var_defns [|Llvm.const_int base_types.int_t count|] (fullname ^ "_defn") main_bod) in
+        let _ = build_var_defn defn fullname va symbols in
+        (StringMap.add varname count sm, count + 1) in
+      ignore (StringMap.fold add_variable vars (StringMap.empty, 0)) in
 
-    (*iterates over formulas defined*)
-    let add_variable varname va (sm, count) =
-      let fullname = fname ^ "_" ^ varname in
-      let defn = (Llvm.build_in_bounds_gep static_var_defns [|Llvm.const_int base_types.int_t count|] (fullname ^ "_defn") main_bod) in
-      let _ = build_var_defn defn fullname va symbols in
-      (StringMap.add varname count sm, count + 1) in
-    ignore (StringMap.fold add_variable vars (StringMap.empty, 0)) in
+    let var_defns = Llvm.build_load var_defns_loc (fname ^ "_global_defn_ptr_loc") builder in
+    let var_insts = Llvm.build_array_malloc base_types.var_instance_p cardinal "var_insts" builder in
+    let scope_obj = Llvm.build_malloc base_types.extend_scope_t "scope_obj" builder in
+
+    (*Store variable definition and instance*)
+    let _ = Llvm.build_store var_defns (Llvm.build_struct_gep scope_obj (scope_field_type_index VarDefn) "" builder) builder in
+    let _ = Llvm.build_store var_insts (Llvm.build_struct_gep scope_obj (scope_field_type_index VarInst) "" builder) builder in
+    let _ = Llvm.build_store cardinal (Llvm.build_struct_gep scope_obj (scope_field_type_index VarNum) "" builder) builder in
+    let _ = Llvm.build_call (Hashtbl.find runtime_functions "null_init") [|scope_obj|] "" builder in
+    build_var_defns ; scope_obj in
 
   let build_function fname (fn_def, fn_llvalue) =
     (* Build the symbol table for this function *)
@@ -339,22 +348,11 @@ let translate (globals, functions, externs) =
     let (params_and_globals, _) = List.fold_left add_param (global_symbols, 0) (List.map snd fn_def.func_params) in
     let symbols = StringMap.fold StringMap.add local_indices params_and_globals in
     let fn_idx = match StringMap.find fname extend_fn_numbers with ExtendFunction(i) -> i | _ -> raise(LogicError(fname ^ " not in function table")) in
-    let static_location_ptr = Llvm.build_in_bounds_gep array_of_vardefn_ptrs [|Llvm.const_int base_types.int_t 0; Llvm.const_int base_types.int_t fn_idx|] (fname ^ "_global_defn_ptr") main_bod in
-
-    build_var_defns fname symbols fn_def.func_body static_location_ptr;
-
-    let cardinal = Llvm.const_int base_types.int_t (StringMap.cardinal fn_def.func_body) in
     let builder = Llvm.builder_at_end context (Llvm.entry_block fn_llvalue) in
+    let static_location_ptr = Llvm.build_in_bounds_gep array_of_vardefn_ptrs [|Llvm.const_int base_types.int_t 0; Llvm.const_int base_types.int_t fn_idx|] (fname ^ "_global_defn_ptr") main_bod in
     let var_defns_loc = Llvm.build_in_bounds_gep array_of_vardefn_ptrs [|Llvm.const_int base_types.int_t 0; Llvm.const_int base_types.int_t fn_idx|] (fname ^ "_local_defn_ptr") builder in
-    let var_defns = Llvm.build_load var_defns_loc (fname ^ "_global_defn_ptr_loc") builder in
-    let var_insts = Llvm.build_array_malloc base_types.var_instance_p cardinal "var_insts" builder in
-    let scope_obj = Llvm.build_malloc base_types.extend_scope_t "scope_obj" builder in
 
-    (*Store variable definition and instance*)
-    let _ = Llvm.build_store var_defns (Llvm.build_struct_gep scope_obj (scope_field_type_index VarDefn) "" builder) builder in
-    let _ = Llvm.build_store var_insts (Llvm.build_struct_gep scope_obj (scope_field_type_index VarInst) "" builder) builder in
-    let _ = Llvm.build_store cardinal (Llvm.build_struct_gep scope_obj (scope_field_type_index VarNum) "" builder) builder in
-    let _ = Llvm.build_call (Hashtbl.find runtime_functions "null_init") [|scope_obj|] "" builder in
+    let scope_obj = build_scope_obj fname symbols fn_def.func_body static_location_ptr var_defns_loc builder in
 
     let ret = snd fn_def.func_ret_val in
     match ret with

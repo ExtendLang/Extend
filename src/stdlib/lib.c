@@ -4,8 +4,8 @@
 #include<string.h>
 #include<stdbool.h>
 #include <values.h>
-#include "../../gdchart0.94b/gdc.h"
-#include "../../gdchart0.94b/gdchart.h"
+#include "../../lib/gdchart0.94b/gdc.h"
+#include "../../lib/gdchart0.94b/gdchart.h"
 
 /* Value type */
 #define FLAG_EMPTY 0
@@ -421,6 +421,8 @@ value_p calcVal(struct var_instance *inst, int x, int y) {
 		}
 		form++;
 	}
+	return new_val();
+}
 
 value_p getSize(struct var_instance *inst) {
 	value_p res = malloc(sizeof(struct value_t));

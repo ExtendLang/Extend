@@ -1,0 +1,4 @@
+foo() {
+  // Fix this - don't forget
+  return "hi";
+}

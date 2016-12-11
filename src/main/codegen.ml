@@ -204,6 +204,7 @@ let translate (globals, functions, externs) =
     let form_decl = Llvm.define_function ("formula_fn_" ^ varname ^ "_num_" ^ (string_of_int formula_idx)) base_types.formula_call_t base_module in
     let builder = Llvm.builder_at_end context (Llvm.entry_block form_decl) in
     let local_scope = Llvm.param form_decl 0 in
+    let global_scope = Llvm.build_load global_scope_loc "global_scope" builder in
     let rec build_expr exp = match exp with
         LitInt(i) -> let vvv = Llvm.const_float base_types.float_t (float_of_int i) in
         let ret_val = Llvm.build_alloca base_types.value_t "" builder in
@@ -223,8 +224,10 @@ let translate (globals, functions, externs) =
             LocalVariable(i) ->
             let llvm_var = Llvm.build_call getVar [|local_scope; Llvm.const_int base_types.int_t i|] "" builder in
             Llvm.build_call getVal [|llvm_var; Llvm.const_int base_types.int_t 0; Llvm.const_int base_types.int_t 0|] "" builder
-          | GlobalVariable(i) -> raise(NotImplemented)
-          | FunctionParameter(i) -> raise(NotImplemented)
+          | GlobalVariable(i) ->
+            let llvm_var = Llvm.build_call getVar [|global_scope; Llvm.const_int base_types.int_t i|] "" builder in
+            Llvm.build_call getVal [|llvm_var; Llvm.const_int base_types.int_t 0; Llvm.const_int base_types.int_t 0|] "" builder
+          | FunctionParameter(i) -> print_endline "Function Parameter" ; raise(NotImplemented)
           | ExtendFunction(i) -> raise(LogicError("Something went wrong with your semantic analyis - function " ^ name ^ " used as variable in RHS for " ^ varname))
         )
       | Selection(expr, sel) -> build_expr expr
@@ -270,14 +273,14 @@ let translate (globals, functions, externs) =
             ignore (Llvm.build_store (Llvm.const_int base_types.bool_t 0) boolAll builder);
             Llvm.build_store (
               match e with LitInt(i) -> Llvm.const_int base_types.int_t i
-              | _ -> raise NotImplemented
+                         | _ -> print_endline "Absdim"; raise NotImplemented
             ) intDim builder
           )
         | Some(Rel(e)) -> (
             ignore (Llvm.build_store (Llvm.const_int base_types.bool_t 0) boolAll builder);
             Llvm.build_store (
               match e with LitInt(i) -> Llvm.const_int base_types.int_t i
-              | _ -> raise NotImplemented
+              | _ -> print_endline "Reldim"; raise NotImplemented
             ) intDim builder
           )
         | _ -> if (atstart) then (
@@ -302,12 +305,12 @@ let translate (globals, functions, externs) =
     let formulas = Llvm.build_array_malloc base_types.formula_t (Llvm.const_int base_types.int_t numForm) "" main_bod in
     (*getDefn simply looks up the correct definition for a dimension declaration of a variable. Note that currently it is ambiguous whether it is a variable or a literal. TOOD: consider negative numbers*)
     let getDefn = function
-        DimId(a) -> (match StringMap.find a symbols with LocalVariable(i) -> i | _ -> raise(NotImplemented))
+        DimId(a) -> (match StringMap.find a symbols with LocalVariable(i) -> i | _ -> print_endline "NonLocal" ; raise(NotImplemented))
       | DimInt(1) -> 1
-      | DimInt(_) -> raise(NotImplemented) in
+      | DimInt(_) -> print_endline "Non1Dim" ; raise(NotImplemented) in
     let _ = (match va.var_rows with
           DimInt(1) -> Llvm.build_store (Llvm.const_int base_types.bool_t 1) (Llvm.build_struct_gep defn (var_defn_field_index OneByOne) "" main_bod) main_bod
-        | DimInt(_) -> raise(NotImplemented)
+        | DimInt(_) -> print_endline "Non1Dim" ; raise(NotImplemented)
         | DimId(a) -> (
             let _ = Llvm.build_store (Llvm.const_int base_types.bool_t 0) (Llvm.build_struct_gep defn (var_defn_field_index OneByOne) "" main_bod) main_bod in ();
             let _ = Llvm.build_store (Llvm.const_int base_types.int_t (getDefn va.var_rows)) (Llvm.build_struct_gep defn (var_defn_field_index Rows) "" main_bod) main_bod in ();

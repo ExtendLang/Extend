@@ -66,12 +66,12 @@ There are four additional operators available to determine the size and type of 
 \textbf{Operator} & \textbf{Description} & \textbf{Definition} \\ \hline
 \texttt{size(expr)} & \texttt{Dimensions} & {Evaluates to a Range consisting of one row and two columns; the first cell contains the number of rows of \texttt{expr} and the second contains the number of columns. If \texttt{expr} is a Number, a String, or Empty, both cells will contain 1.} \\ \hline
 \texttt{type(expr)} & \texttt{Value Type} & {Evaluates to "Number", "String", "Range", or "Empty".} \\ \hline
-\texttt{row()} & \texttt{Row Location} & {No arguments; returns the row of the cell containing the formula} \\ \hline
-\texttt{column()} & \texttt{Column Location} & {No arguments; returns the column of the cell containing the formula} \\ \hline
+\texttt{row()} & \texttt{Row Location} & {No arguments; returns the row of the cell that is being calculated} \\ \hline
+\texttt{column()} & \texttt{Column Location} & {No arguments; returns the column of the cell that is being calculated} \\ \hline
 \texttt{+} & \texttt{String concatenation} & {"Hello, " + "World!\textbackslash n" == "Hello, World!\textbackslash n"}\\ \hline
 \end{tabular}
 \end{table}
-
+Given \texttt{foo[5,5]}, then \texttt{foo[2,5] = row() * 2 + col()} will evaluate to 9.
 \subsection {Function Calls}
 A function expression consists of an identifier and an optional list of expressions enclosed in parentheses and separated by commas. The value of the expression is the result of applying the function to the arguments passed in as expressions. For more detail, see section~\ref{sec:Functions}.
 \subsection{Range Expressions}

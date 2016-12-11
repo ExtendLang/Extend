@@ -316,6 +316,20 @@ let translate (globals, functions, externs) =
     and _ = Llvm.build_store (Llvm.build_global_stringptr varname "" main_bod) (Llvm.build_struct_gep defn (var_defn_field_index VarName) "" main_bod) main_bod in
     List.iteri (fun idx elem -> build_formula (varname, idx) formulas elem symbols) va.var_formulas in
 
+  let build_var_defns fname symbols vars static_location_ptr =
+    (* Takes a function name (or "globals"), a symbol table, a StringMap of variables, and a memory address,
+     * and puts the array of var_defns in that memory address. *)
+    let static_var_defns = Llvm.build_array_malloc base_types.var_defn_t (Llvm.const_int base_types.int_t (StringMap.cardinal vars)) (fname ^ "static_var_defns") main_bod in
+    let _ = Llvm.build_store static_var_defns static_location_ptr main_bod in
+
+    (*iterates over formulas defined*)
+    let add_variable varname va (sm, count) =
+      let fullname = fname ^ "_" ^ varname in
+      let defn = (Llvm.build_in_bounds_gep static_var_defns [|Llvm.const_int base_types.int_t count|] (fullname ^ "_defn") main_bod) in
+      let _ = build_var_defn defn fullname va symbols in
+      (StringMap.add varname count sm, count + 1) in
+    ignore (StringMap.fold add_variable vars (StringMap.empty, 0)) in
+
   let build_function fname (fn_def, fn_llvalue) =
     (* Build the symbol table for this function *)
     let (local_indices, num_locals) = index_map Locals fn_def.func_body in
@@ -324,21 +338,13 @@ let translate (globals, functions, externs) =
       (new_st, idx + 1) in
     let (params_and_globals, _) = List.fold_left add_param (global_symbols, 0) (List.map snd fn_def.func_params) in
     let symbols = StringMap.fold StringMap.add local_indices params_and_globals in
-
-    (* For debugging purposes only: *)
-    (*let print_it k = function
-        FunctionParameter(i) -> print_endline ("; Function: " ^ fname ^ "     Id: " ^ k ^ "     FunctionParameter #" ^ string_of_int i)
-      | GlobalVariable(i) -> print_endline ("; Function: " ^ fname ^ "     Id: " ^ k ^ "     Global #" ^ string_of_int i)
-      | LocalVariable(i) -> print_endline ("; Function: " ^ fname ^ "     Id: " ^ k ^ "     Local #" ^ string_of_int i) in
-      StringMap.iter print_it symbols ;*)
-
-    let builder = Llvm.builder_at_end context (Llvm.entry_block fn_llvalue) in
-    let cardinal = Llvm.const_int base_types.int_t (StringMap.cardinal fn_def.func_body) in
-    let static_var_defns = Llvm.build_array_malloc base_types.var_defn_t cardinal (fname ^ "static_var_defns") main_bod in
     let fn_idx = match StringMap.find fname extend_fn_numbers with ExtendFunction(i) -> i | _ -> raise(LogicError(fname ^ " not in function table")) in
     let static_location_ptr = Llvm.build_in_bounds_gep array_of_vardefn_ptrs [|Llvm.const_int base_types.int_t 0; Llvm.const_int base_types.int_t fn_idx|] (fname ^ "_global_defn_ptr") main_bod in
-    let _ = Llvm.build_store static_var_defns static_location_ptr main_bod in
 
+    build_var_defns fname symbols fn_def.func_body static_location_ptr;
+
+    let cardinal = Llvm.const_int base_types.int_t (StringMap.cardinal fn_def.func_body) in
+    let builder = Llvm.builder_at_end context (Llvm.entry_block fn_llvalue) in
     let var_defns_loc = Llvm.build_in_bounds_gep array_of_vardefn_ptrs [|Llvm.const_int base_types.int_t 0; Llvm.const_int base_types.int_t fn_idx|] (fname ^ "_local_defn_ptr") builder in
     let var_defns = Llvm.build_load var_defns_loc (fname ^ "_global_defn_ptr_loc") builder in
     let var_insts = Llvm.build_array_malloc base_types.var_instance_p cardinal "var_insts" builder in
@@ -349,14 +355,6 @@ let translate (globals, functions, externs) =
     let _ = Llvm.build_store var_insts (Llvm.build_struct_gep scope_obj (scope_field_type_index VarInst) "" builder) builder in
     let _ = Llvm.build_store cardinal (Llvm.build_struct_gep scope_obj (scope_field_type_index VarNum) "" builder) builder in
     let _ = Llvm.build_call (Hashtbl.find runtime_functions "null_init") [|scope_obj|] "" builder in
-
-    (*iterates over formulas defined*)
-    let add_variable varname va (sm, count) =
-      let fullname = fname ^ "_" ^ varname in
-      let defn = (Llvm.build_in_bounds_gep static_var_defns [|Llvm.const_int base_types.int_t count|] (fullname ^ "_defn") main_bod) in
-      let _ = build_var_defn defn fullname va symbols in
-      (StringMap.add varname count sm, count + 1) in
-    let _ = StringMap.fold add_variable fn_def.func_body (StringMap.empty, 0) in
 
     let ret = snd fn_def.func_ret_val in
     match ret with
@@ -370,6 +368,7 @@ let translate (globals, functions, externs) =
         | _ -> print_endline (string_of_expr ret); raise(TransformedAway("The return value should always have been transformed into a local variable"))
       )
     | _ -> print_endline (string_of_expr ret); raise(TransformedAway("The return value should always have been transformed into a local variable")) in
+  (* End of build_function *)
 
   (*iterates over function definitions*)
   StringMap.iter build_function extend_functions ;

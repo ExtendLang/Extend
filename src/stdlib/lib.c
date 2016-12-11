@@ -201,9 +201,17 @@ value_p printd(value_p whatever, value_p text) {
 value_p to_string(value_p val) {
 		if(assertSingleNumber(val)) {
 			double possible_num = val->numericVal;
-			int size = snprintf(NULL, 0, "%f", possible_num);
-			char *converted_str = malloc(size + 1);
-			sprintf(converted_str, "%f", possible_num);
+			int rounded_int = (int) lrint(possible_num);
+			char *converted_str;
+			if (fabs(possible_num - rounded_int) < 1e-7) {
+				int size = snprintf(NULL, 0, "%d", rounded_int);
+				converted_str = malloc(size + 1);
+				sprintf(converted_str, "%d", rounded_int);
+			} else {
+				int size = snprintf(NULL, 0, "%f", possible_num);
+				converted_str = malloc(size + 1);
+				sprintf(converted_str, "%f", possible_num);
+			}
 			value_p result = box_value_string(new_string(converted_str));
 			return result;
 		}
@@ -338,13 +346,13 @@ struct var_instance *instantiate_variable(struct ExtendScope *scope_ptr, struct 
 		if(rows->flags == FLAG_NUMBER || cols->flags == FLAG_NUMBER) {
 			/* TODO: throw error */
 		}
-		rowVal = (int)(rows->numericVal + 0.5);
-		colVal = (int)(cols->numericVal + 0.5);
+		rowVal = (int)lrint(rows->numericVal);
+		colVal = (int)lrint(cols->numericVal);
 	}
 	// TODO: do the same thing for each FormulaFP to turn an ExtendFormula into a ResolvedFormula
 	struct var_instance *inst = malloc(sizeof(struct var_instance));
-	inst->rows = (int)(rowVal + 0.5);
-	inst->cols = (int)(colVal + 0.5);
+	inst->rows = (int)lrint(rowVal);
+	inst->cols = (int)lrint(colVal);
 	inst->numFormulas = def.numFormulas;
 	inst->closure = scope_ptr;
 	inst->name = def.name;

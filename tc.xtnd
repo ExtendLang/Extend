@@ -1,0 +1,14 @@
+extern "stdlib.o" {
+	print(a,b);
+		printv(a,b);
+}
+
+bar() {
+	foo := 5;
+	return 2;
+}
+
+[1,1] main(args) {
+  foo := printv(1,"Hello World\n") -> 0;
+  return foo;
+}

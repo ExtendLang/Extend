@@ -156,9 +156,10 @@ let create_main entry_point ctx bt the_module =
   let inp = Llvm.build_alloca bt.value_t "input_arg" main_bod in
   (* Put input args in inp *)
   let _ = Llvm.build_call entry_point (Array.of_list [inp]) "" main_bod in
-  let str_format_str = Llvm.build_global_stringptr "%s\n" "fmt" main_bod in
+  (*TODO: Enable if needed - disabled to suppress compiler warnings*)
+  (*let str_format_str = Llvm.build_global_stringptr "%s\n" "fmt" main_bod in
   let int_format_str = Llvm.build_global_stringptr "%d\n" "fmt" main_bod in
-  let boxed_args = Llvm.build_call (Hashtbl.find helper_functions "box_native_string_list") [|(Llvm.param main_def 0);(Llvm.param main_def 1)|] "args" main_bod in
+  let _ = Llvm.build_call (Hashtbl.find helper_functions "box_native_string_list") [|(Llvm.param main_def 0);(Llvm.param main_def 1)|] "args" main_bod in*)
   let _ = Llvm.build_ret (Llvm.const_int bt.int_t 0) main_bod in
   ()
 
@@ -250,7 +251,7 @@ let translate (globals, functions, externs) =
         ret_val
       | UnOp( _, expr) -> print_endline (Ast.string_of_expr exp); raise NotImplemented
       | unknown_expr -> print_endline (string_of_expr unknown_expr);raise NotImplemented in
-    let _ = Llvm.build_ret ((*print_endline (Ast.string_of_expr formula_expr);*) build_expr formula_expr) builder in
+    let _ = Llvm.build_ret (build_expr formula_expr) builder in
     form_decl in
 
   (*build formula creates a formula declaration in a separate method from the function it belongs to*)
@@ -261,11 +262,17 @@ let translate (globals, functions, externs) =
           None -> Llvm.build_store (Llvm.const_int base_types.bool_t 1) boolAll builder
         | Some(Abs(e)) -> (
             ignore (Llvm.build_store (Llvm.const_int base_types.bool_t 0) boolAll builder);
-            Llvm.build_store (match e with LitInt(i) -> Llvm.const_int base_types.int_t i) intDim builder
+            Llvm.build_store (
+              match e with LitInt(i) -> Llvm.const_int base_types.int_t i
+              | _ -> raise NotImplemented
+            ) intDim builder
           )
         | Some(Rel(e)) -> (
             ignore (Llvm.build_store (Llvm.const_int base_types.bool_t 0) boolAll builder);
-            Llvm.build_store (match e with LitInt(i) -> Llvm.const_int base_types.int_t i) intDim builder
+            Llvm.build_store (
+              match e with LitInt(i) -> Llvm.const_int base_types.int_t i
+              | _ -> raise NotImplemented
+            ) intDim builder
           )
         | _ -> if (atstart) then (
             ignore (Llvm.build_store (Llvm.const_int base_types.bool_t 0) boolAll builder);
@@ -275,10 +282,10 @@ let translate (globals, functions, externs) =
             Llvm.build_store (Llvm.const_int base_types.int_t 1) intDim builder
           )
       ) in
-    buildDimSide (Some element.formula_col_start) (Llvm.build_struct_gep storage_addr (formula_field_index FromFirstCols) "" builder) (Llvm.build_struct_gep storage_addr (formula_field_index ColStartNum) "" builder) builder true;
-    buildDimSide (Some element.formula_row_start) (Llvm.build_struct_gep storage_addr (formula_field_index FromFirstRow) "" builder) (Llvm.build_struct_gep storage_addr (formula_field_index RowStartNum) "" builder) builder true;
-    buildDimSide element.formula_col_end (Llvm.build_struct_gep storage_addr (formula_field_index ToLastCol) "" builder) (Llvm.build_struct_gep storage_addr (formula_field_index ColEndNum) "" builder) builder false;
-    buildDimSide element.formula_row_end (Llvm.build_struct_gep storage_addr (formula_field_index ToLastRow) "" builder) (Llvm.build_struct_gep storage_addr (formula_field_index RowEndNum) "" builder) builder false;
+    let _ = buildDimSide (Some element.formula_col_start) (Llvm.build_struct_gep storage_addr (formula_field_index FromFirstCols) "" builder) (Llvm.build_struct_gep storage_addr (formula_field_index ColStartNum) "" builder) builder true in ();
+    let _ = buildDimSide (Some element.formula_row_start) (Llvm.build_struct_gep storage_addr (formula_field_index FromFirstRow) "" builder) (Llvm.build_struct_gep storage_addr (formula_field_index RowStartNum) "" builder) builder true in ();
+    let _ = buildDimSide element.formula_col_end (Llvm.build_struct_gep storage_addr (formula_field_index ToLastCol) "" builder) (Llvm.build_struct_gep storage_addr (formula_field_index ColEndNum) "" builder) builder false in ();
+    let _ = buildDimSide element.formula_row_end (Llvm.build_struct_gep storage_addr (formula_field_index ToLastRow) "" builder) (Llvm.build_struct_gep storage_addr (formula_field_index RowEndNum) "" builder) builder false in ();
     let form_decl = build_formula_function (varname, idx) symbols element.formula_expr in
     let _ = Llvm.build_store form_decl (Llvm.build_struct_gep storage_addr (formula_field_index FormulaCall) "" builder) builder in
     () in
@@ -296,8 +303,8 @@ let translate (globals, functions, externs) =
           DimInt(1) -> Llvm.build_store (Llvm.const_int base_types.bool_t 1) (Llvm.build_struct_gep defn (var_defn_field_index OneByOne) "" builder) builder
         | DimInt(_) -> raise(NotImplemented)
         | DimId(a) -> (
-            Llvm.build_store (Llvm.const_int base_types.bool_t 0) (Llvm.build_struct_gep defn (var_defn_field_index OneByOne) "" builder) builder;
-            Llvm.build_store (Llvm.const_int base_types.int_t (getDefn va.var_rows)) (Llvm.build_struct_gep defn (var_defn_field_index Rows) "" builder) builder;
+            let _ = Llvm.build_store (Llvm.const_int base_types.bool_t 0) (Llvm.build_struct_gep defn (var_defn_field_index OneByOne) "" builder) builder in ();
+            let _ = Llvm.build_store (Llvm.const_int base_types.int_t (getDefn va.var_rows)) (Llvm.build_struct_gep defn (var_defn_field_index Rows) "" builder) builder in ();
             Llvm.build_store (Llvm.const_int base_types.int_t (getDefn va.var_cols)) (Llvm.build_struct_gep defn (var_defn_field_index Cols) "" builder) builder
           )
       ) in
@@ -327,11 +334,11 @@ let translate (globals, functions, externs) =
     let symbols = StringMap.fold StringMap.add local_indices params_and_globals in
 
     (* For debugging purposes only: *)
-    let print_it k = function
+    (*let print_it k = function
         FunctionParameter(i) -> print_endline ("; Function: " ^ fname ^ "     Id: " ^ k ^ "     FunctionParameter #" ^ string_of_int i)
       | GlobalVariable(i) -> print_endline ("; Function: " ^ fname ^ "     Id: " ^ k ^ "     Global #" ^ string_of_int i)
       | LocalVariable(i) -> print_endline ("; Function: " ^ fname ^ "     Id: " ^ k ^ "     Local #" ^ string_of_int i) in
-    StringMap.iter print_it symbols ;
+    StringMap.iter print_it symbols ;*)
 
     (*iterates over formulas defined*)
     let add_variable varname va (sm, count) =
@@ -355,5 +362,5 @@ let translate (globals, functions, externs) =
 
 let build_this ast_mapped =
   let modu = (translate ast_mapped) in
-  let res = Llvm_analysis.assert_valid_module modu in
+  let _ = Llvm_analysis.assert_valid_module modu in
   modu

@@ -3,7 +3,7 @@
 	\subsection{Primitive Data Types}
 		A \textbf{Number} is an immutable primitive value corresponding to a double-precision 64-bit binary format IEEE 754 value. Numbers can be written in an Extend source file as either integer or floating point constants; both are represented internally as floating-point values. There is no separate type representing an integer.
 
-		A \textbf{String} is a immutable primitive value that is internally represented a C-style null-terminated byte array corresponding to ASCII values. A string can be written in an Extend source file as a sequence of characters enclosed in double quotes, with the usual escaping conventions. Extend does not allow for slicing of strings to access specific characters; access to the contents of a string will only be available through standard library functions.
+		A \textbf{String} is a immutable primitive value that is internally represented a C-style null-terminated byte array corresponding to ASCII values. A String can be written in an Extend source file as a sequence of characters enclosed in double quotes, with the usual escaping conventions. Extend does not allow for slicing of strings to access specific characters; access to the contents of a string will only be available through standard library functions.
 
 		The \textbf{Empty} type can be written as the keyword \texttt{empty}, and serves a similar function to \texttt{NULL} in SQL; it represents the absence of a value.
 		\newline
@@ -18,7 +18,7 @@
 		\end{tabular}
 		\end{table}
 	\subsection{Ranges}
-		Extend has one composite type, \textbf{Range}. A range borrows conceptually from spreadsheets; it is a group of cells with two dimensions, described as rows and columns. Each cell contains a formula that either evaluates to a Number, a String, \texttt{empty}, or another Range. Cell formulas are described in detail in section~\ref{sec:formula}. A range can either be declared as described in section~\ref{sec:vardecl} or with a range literal expression. Ranges can be nested arbitrarily deeply and can be used to represent (immutable) lists, matrices, or more complicated data structures.
+		Extend has one composite type, \textbf{Range}. A range borrows conceptually from spreadsheets; it is a group of cells with two dimensions, described as rows and columns. Each cell is assigned a formula that either evaluates to a Number, a String, \texttt{empty}, or another Range. Cell formulas are described in detail in section~\ref{sec:formula}. A range can either be declared as described in section~\ref{sec:vardecl} or with a range literal expression. Ranges can be nested arbitrarily deeply and can be used to represent (immutable) lists, matrices, or more complicated data structures.
 \subsubsection{Range Literals}
 		A range literal is a semicolon-delimited list of rows, enclosed in curly brackets. Each row is a comma-delimited list of numbers, strings, or range literals. A few examples follow:
 		\lstinputlisting{./samples/legal_range_literals.xtnd}

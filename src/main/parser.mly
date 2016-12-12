@@ -5,7 +5,7 @@ open Ast
 %}
 
 %token LSQBRACK RSQBRACK LPAREN RPAREN LBRACE RBRACE HASH
-%token COLON COMMA QUESTION GETS ASN SEMI PRECEDES UNDERSCORE
+%token COLON COMMA QUESTION IF GETS ASN SEMI PRECEDES UNDERSCORE
 %token SWITCH CASE DEFAULT SIZE TYPE ROW COLUMN
 %token PLUS MINUS TIMES DIVIDE MOD POWER LSHIFT RSHIFT
 %token EQ NOTEQ GT LT GTEQ LTEQ
@@ -169,8 +169,8 @@ op_expr:
   | BITNOT expr             { UnOp(BitNot, $2) }
 
 ternary_expr:
-  /* commented out optional part for now */
-    expr QUESTION expr COLON expr %prec QUESTION { Ternary($1, $3, $5) }
+    IF LPAREN expr COMMA expr COMMA expr RPAREN { Ternary($3, $5, $7) }
+  | expr QUESTION expr COLON expr %prec QUESTION { Ternary($1, $3, $5) }
 
 switch_expr:
     SWITCH LPAREN switch_cond RPAREN LBRACE default_case_list RBRACE { Switch($3, fst $6, snd $6) }

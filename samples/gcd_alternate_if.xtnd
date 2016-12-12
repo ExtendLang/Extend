@@ -1,5 +1,5 @@
 gcd(m, n) {
-  return (n == 0) ? m : gcd(n, m % n);
+  return if((n == 0),m,gcd(n, m % n));
 }
 
 main(args) {

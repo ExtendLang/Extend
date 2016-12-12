@@ -1,0 +1,18 @@
+switch_example(foo) {
+  return switch (foo) {
+  	case 2: "foo is 2";
+  	case 3,4: "foo is 3 or 4";
+  	default: "none of the above";
+  };
+}
+
+alternate_format(foo) {
+  return switch {
+  	case foo == 2:
+  		"foo is 2";
+  	case foo == 3, foo == 4:
+  		"foo is 3 or 4";
+  	default:
+  		"none of the above";
+  };
+}

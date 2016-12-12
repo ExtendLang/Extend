@@ -1,5 +1,10 @@
+extern "stdlib.o" {
+  print(a,b);
+  to_string(a);
+}
+
 main([1,n] args) {
-  return printf(1,toString( foo("string"))+"\n") -> 0;
+  return print(1,to_string( foo("string"))+"\n") -> 0;
 }
 foo([1,1] arg) {
   return arg;

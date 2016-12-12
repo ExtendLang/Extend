@@ -16,43 +16,28 @@ EXP_OUT=.exp
 RES_OUT=.r.out
 LLVM_F=.ll
 mkdir -p $TMP_DIR
+rm ./$TMP_DIR/*
 counter=0
 counterc=0
 counteri=0
 countern=0
 result=0
 
-gcc -c -o tmp/std.o src/stdlib/lib.c -lm
+gcc -c -o stdlib.o src/stdlib/lib.c -lm
 
 for f in $(ls $TESTDIR/$REGRESSION); do
   counter=$((counter+1))
-  INTERPRETER_TARGET=$TMP_DIR/$f$INT_OUT
   EXTEND_TARGET=$TMP_DIR/$f$LLVM_F
   EXTEND_FILE=$TESTDIR/$REGRESSION/$f
   COMPILED_OUTPUT=$TMP_DIR/$f$COMP_OUT
   TEXT_OUTPUT=$TMP_DIR/$f$COMP_OUTPUT
   EXPECTED_OUTPUT=$TESTDIR/$EXPECTED/$f$EXP_OUT
   RESULT_OUTPUT=$TMP_DIR/$f$RES_OUT
-  ./main.byte -i $EXTEND_FILE > $INTERPRETER_TARGET 2>&1
-  ./main.byte -c $EXTEND_FILE > $EXTEND_TARGET 2>&1
+  ./main.byte -c $EXTEND_FILE -l > $EXTEND_TARGET 2>&1
   if [ $? -eq 0 ]; then
-    llc-3.8 -filetype=obj $EXTEND_TARGET -o $COMPILED_OUTPUT
-    gcc -o tmp/tmp $COMPILED_OUTPUT tmp/std.o -lm
-    rm $COMPILED_OUTPUT
-    ./tmp/tmp > $TEXT_OUTPUT
+    ./out > $TEXT_OUTPUT
   else
     mv $EXTEND_TARGET $TEXT_OUTPUT
-  fi
-  diff $INTERPRETER_TARGET $EXPECTED_OUTPUT > $RESULT_OUTPUT 2>&1
-  if [ $? -eq 0 ]; then
-    counteri=$((counteri+1))
-    echo "Interpreter: PASSED ($f)"
-  else
-    echo "Interpreter: FAILED ($f)"
-#    result=$((result+1))
-    if [ $PRINT = "-p" ]; then
-      cat $RESULT_OUTPUT
-    fi
   fi
   diff $TEXT_OUTPUT $EXPECTED_OUTPUT > $RESULT_OUTPUT 2>&1
   if [ $? -eq 0 ]; then
@@ -61,15 +46,14 @@ for f in $(ls $TESTDIR/$REGRESSION); do
   else
     echo "Compiler: FAILED REGRESSION TEST ($f)"
     result=$((result+1))
-    if [ $PRINT = "-p" ]; then
+#    if [ $PRINT = "-p" ]; then
       cat $RESULT_OUTPUT
-    fi
+#    fi
   fi
 done
 
 for f in $(ls $TESTDIR/$INPUTS); do
   counter=$((counter+1))
-  INTERPRETER_TARGET=$TMP_DIR/$f$INT_OUT
   EXTEND_TARGET=$TMP_DIR/$f$LLVM_F
   EXTEND_FILE=$TESTDIR/$INPUTS/$f
   COMPILED_OUTPUT=$TMP_DIR/$f$COMP_OUT
@@ -77,30 +61,11 @@ for f in $(ls $TESTDIR/$INPUTS); do
   TEXT_OUTPUT=$TMP_DIR/$f$COMP_OUTPUT
   RESULT_OUTPUT=$TMP_DIR/$f$RES_OUT
   p=0
-  ./main.byte -i $EXTEND_FILE > $INTERPRETER_TARGET 2>&1
-  ./main.byte -c $EXTEND_FILE > $EXTEND_TARGET 2>&1
+  ./main.byte -c $EXTEND_FILE -l > $EXTEND_TARGET 2>&1
   if [ $? -eq 0 ]; then
-    llc-3.8 -filetype=obj $EXTEND_TARGET -o $COMPILED_OUTPUT > /dev/null 2>&1
-    if [ $? -eq 0 ]; then
-      gcc -o tmp/tmp $COMPILED_OUTPUT tmp/std.o -lm
-      rm $COMPILED_OUTPUT
-      ./tmp/tmp > $TEXT_OUTPUT
-    else
-      touch $TEXT_OUTPUT
-    fi
+    ./out > $TEXT_OUTPUT
   else
     mv $EXTEND_TARGET $TEXT_OUTPUT
-  fi
-  diff $INTERPRETER_TARGET $EXPECTED_OUTPUT > $RESULT_OUTPUT 2>&1
-  if [ $? -eq 0 ]; then
-    counteri=$((counteri+1))
-#    p=$((p+1))
-    echo "Interpreter: PASSED ($f)"
-  else
-    echo "Interpreter: FAILED ($f)"
-    if [ $PRINT = "-p" ]; then
-      cat $RESULT_OUTPUT
-    fi
   fi
   diff $TEXT_OUTPUT $EXPECTED_OUTPUT > $RESULT_OUTPUT 2>&1
   if [ $? -eq 0 ]; then
@@ -119,9 +84,8 @@ for f in $(ls $TESTDIR/$INPUTS); do
   fi
 done
 
-rm tmp/std.o
+rm stdlib.o
 
-echo "Passed $counteri of $counter interpreter testcases"
 echo "Passed $counterc of $counter compiler testcases"
 echo "$countern new testcases passed, $result regression tests failed"
 exit $result

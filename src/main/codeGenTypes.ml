@@ -35,11 +35,13 @@ type something = {
   float_t : Llvm.lltype;
 };;
 
-type scope_field_type = VarDefn | VarInst | VarNum
+type scope_field_type = VarDefn | VarInst | VarNum | ScopeRefCount | FunctionParams
 let scope_field_type_index = function
     VarDefn -> 0
   | VarInst -> 1
   | VarNum -> 2
+  | ScopeRefCount -> 3
+  | FunctionParams -> 4
 
 type value_field_flags = Empty | Number | String | Range
 let value_field_flags_index = function
@@ -172,7 +174,9 @@ let setup_types ctx =
   and _ = Llvm.struct_set_body extend_scope_t (Array.of_list [
       var_defn_p(*variable definitions*);
       var_instance_p_p(*variable instances*);
-      int_t(*number of variables*)
+      int_t(*number of variables*);
+      int_t(*reference count*);
+      Llvm.pointer_type value_p;
     ]) false
   and _ = Llvm.struct_set_body subrange_t (Array.of_list [
       var_instance_p(*The target range*);

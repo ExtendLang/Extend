@@ -18,6 +18,8 @@
 FILE *open_files[1 + MAX_FILES] = {NULL};
 int open_num_files = 0;
 
+#define FLOAT_CUTOFF 1e-7
+
 struct subrange_t;
 struct value_t;
 
@@ -101,6 +103,8 @@ struct ExtendScope {
   struct var_defn *defns;
   struct var_instance **vars;
 	int numVars;
+	int refcount;
+	value_p *functionParams;
 };
 
 struct subrange_t {
@@ -119,31 +123,20 @@ value_p box_value_string(string_p);
 
 value_p getVal(struct var_instance *inst, int x, int y);
 
-value_p __get_val(struct var_instance *range, int row, int col) {
-	//TODO: assertions
-	printf("Getting %p %d %d\n", range, row, col);
-	return getVal(range, row, col);
-	/*
-	value_p val = range->values[row * range->cols + col];
-	return val;*/
-}
-
-value_p get_val(subrange_p range, int row, int col) {
-	//TODO: assertions
-	value_p val =  __get_val(range->range, row + range->offsetRow, col + range->offsetCol);
-	return val;
-}
-
 double setNumeric(value_p result, double val) {
+	result->flags = FLAG_NUMBER;
 	return (result->numericVal = val);
 }
 
-char* setString(value_p result, char *str) {
+char* setString(value_p result, char *str, int length) {
+	result->flags = FLAG_STRING;
+	result->str = malloc(sizeof(struct string_t));
+  result->str->length = length;
 	return (result->str->text = str);
 }
 
 double setFlag(value_p result, double flag_num) {
-	return (result->flags = FLAG_NUMBER);
+	return (result->flags = flag_num);
 }
 
 int assertSingle(value_p value) {
@@ -189,14 +182,6 @@ value_p new_number(double val) {
 	return new_v;
 }
 
-double get_number(subrange_p p) {
-	/* Assumes the calling function has
-	 * already verified that subrange_p
-	 * points to a single Number */
-	value_p v = get_val(p, 0, 0);
-	return v->numericVal;
-}
-
 value_p print(value_p whatever, value_p text) {
 	if(!assertSingleString(text)) return new_val();
 	if(!assertText(text)) return new_val();
@@ -215,6 +200,33 @@ value_p printd(value_p whatever, value_p text) {
 	printf("%f\n", text->numericVal);
 	value_p result = malloc(sizeof(struct value_t));
 	return result;
+}
+
+value_p to_string(value_p val) {
+		if(assertSingleNumber(val)) {
+			double possible_num = val->numericVal;
+			int rounded_int = (int) lrint(possible_num);
+			char *converted_str;
+			if (fabs(possible_num - rounded_int) < FLOAT_CUTOFF) {
+				int size = snprintf(NULL, 0, "%d", rounded_int);
+				converted_str = malloc(size + 1);
+				sprintf(converted_str, "%d", rounded_int);
+			} else {
+				int size = snprintf(NULL, 0, "%f", possible_num);
+				converted_str = malloc(size + 1);
+				sprintf(converted_str, "%f", possible_num);
+			}
+			value_p result = box_value_string(new_string(converted_str));
+			return result;
+		}
+		else if(assertSingleString(val)) return val;
+		else if(val->flags == FLAG_EMPTY) {
+ 			value_p _new = new_val();
+ 			setString(_new, "empty", 5);
+ 			return _new;
+ 		}
+		// If the struct does not hold a string or number, return empty?
+		return new_val();
 }
 
 #define FUNC(name) value_p extend_##name(value_p a){if(!assertSingleNumber(a)) return new_val();double val = name(a->numericVal);return new_number(val);}
@@ -338,13 +350,13 @@ struct var_instance *instantiate_variable(struct ExtendScope *scope_ptr, struct 
 		if(rows->flags == FLAG_NUMBER || cols->flags == FLAG_NUMBER) {
 			/* TODO: throw error */
 		}
-		rowVal = (int)(rows->numericVal + 0.5);
-		colVal = (int)(cols->numericVal + 0.5);
+		rowVal = (int)lrint(rows->numericVal);
+		colVal = (int)lrint(cols->numericVal);
 	}
 	// TODO: do the same thing for each FormulaFP to turn an ExtendFormula into a ResolvedFormula
 	struct var_instance *inst = malloc(sizeof(struct var_instance));
-	inst->rows = (int)(rowVal + 0.5);
-	inst->cols = (int)(colVal + 0.5);
+	inst->rows = (int)lrint(rowVal);
+	inst->cols = (int)lrint(colVal);
 	inst->numFormulas = def.numFormulas;
 	inst->closure = scope_ptr;
 	inst->name = def.name;
@@ -374,6 +386,8 @@ struct var_instance *instantiate_variable(struct ExtendScope *scope_ptr, struct 
 	}
 	for(i = 0; i < inst->rows * inst->cols; i++)
 		(*inst->status) = 0;
+
+	scope_ptr->refcount++;
 	return inst;
 }
 
@@ -414,25 +428,134 @@ value_p calcVal(struct var_instance *inst, int x, int y) {
 	return new_val();
 }
 
+void setRange(value_p val, struct var_instance *inst) {
+	subrange_p sr = malloc(sizeof(struct subrange_t));
+	sr->offsetCol = 0;
+	sr->offsetRow = 0;
+	sr->subrangeCol = inst->cols;
+	sr->subrangeRow = inst->rows;
+	sr->range = inst;
+	val->subrange = sr;
+	val->flags = FLAG_SUBRANGE;
+}
+
 value_p getSize(struct var_instance *inst) {
 	value_p res = malloc(sizeof(struct value_t));
 	setNumeric(res, 1); /*TODO*/
 	return res;
 }
 
+value_p deepCopy(value_p value) {
+	value_p _new = new_val();
+	if(value->flags == FLAG_EMPTY) {}
+	else if(value->flags == FLAG_STRING) {
+		_new->flags = FLAG_STRING;
+		_new->str = malloc(sizeof(struct string_t));
+		memcpy(_new->str->text, value->str->text, value->str->length);
+		_new->str->length = value->str->length;
+	}
+	else if(value->flags == FLAG_NUMBER) {
+		_new->flags = FLAG_NUMBER;
+		_new->numericVal = value->numericVal;
+	}
+	else if(value->flags == FLAG_SUBRANGE) {
+		struct var_instance *v = malloc(sizeof(struct subrange_t));
+		int cols = value->subrange->subrangeCol;
+		int rows = value->subrange->subrangeRow;
+		v->name = "COPYCAT";
+		v->formulas = NULL;
+		v->status = malloc(sizeof(char *) * rows * cols);
+		v->values = malloc(sizeof(value_p) * rows * cols);
+		v->closure = NULL;
+		int i,j;
+		for(i = 0; i < rows; i++) {
+			for(j = 0; j < cols; j++) {
+				int offset = i * rows + j;
+				*(v->status + offset) = CALCULATED;
+				/*TODO: eval lazzzy*/
+				*(v->values + offset) = getVal(value->subrange->range, i + value->subrange->offsetRow, j + value->subrange->offsetCol);
+			}
+		}
+		setRange(_new, v);
+	}
+	return _new;
+}
+
+value_p clone_value(value_p old_value) {
+	value_p new_value = (value_p) malloc(sizeof(struct value_t));
+	new_value->flags = old_value->flags;
+	switch (new_value->flags) {
+		case FLAG_EMPTY:
+			break;
+		case FLAG_NUMBER:
+			new_value->numericVal = old_value->numericVal;
+			break;
+		case FLAG_STRING:
+			new_value->str = old_value->str;
+			new_value->str->refs++;
+			break;
+		case FLAG_SUBRANGE:
+			new_value->subrange = (subrange_p) malloc(sizeof(struct subrange_t));
+			memcpy(new_value->subrange, old_value->subrange, sizeof(struct subrange_t));
+			new_value->subrange->range->closure->refcount++; /* Not sure about this one */
+			break;
+		default:
+			fprintf(stderr, "clone_value(%p): Illegal value of flags: %c\n", old_value, new_value->flags);
+			exit(-1);
+			break;
+	}
+	return new_value;
+}
+
+void delete_string_p(string_p old_string) {
+	old_string->refs--;
+	if (old_string->refs == 0) {
+		/* free(old_string); */
+	}
+}
+
+void delete_subrange_p(subrange_p old_subrange) {
+	old_subrange->range->closure->refcount--;
+	free(old_subrange);
+}
+
+void delete_value(value_p old_value) {
+	switch (old_value->flags) {
+		case FLAG_EMPTY:
+			break;
+		case FLAG_NUMBER:
+			break;
+		case FLAG_STRING:
+			delete_string_p(old_value->str); /* doesn't do anything besides decrement the ref count now */
+			break;
+		case FLAG_SUBRANGE:
+			delete_subrange_p(old_value->subrange);
+			break;
+		default:
+			fprintf(stderr, "delete_value(%p): Illegal value of flags: %c\n", old_value, old_value->flags);
+			exit(-1);
+			break;
+	}
+}
+
 value_p getVal(struct var_instance *inst, int x, int y) {
 	if(!assertInBounds(inst, x, y)) return new_val();
 	int offset = inst->rows * y + x;
 	char *status = inst->status + offset;
+	value_p return_val;
 	if(*status & IN_PROGRESS) {
 		/* TODO: Circular dependency. Possibly throw? */
-		return new_val();
+		return_val = new_val();
 	} else if ((~(*status)) & CALCULATED) { /* value not calculated */
 		value_p val = calcVal(inst, x, y);
 		inst->values[offset] = val;
 		*status = (*status && !IN_PROGRESS) | CALCULATED;
-		return val;
+		return_val = val;
 	} else {
-		return inst->values[offset];
+		return_val = inst->values[offset];
 	}
+	while(return_val->flags == FLAG_SUBRANGE && return_val->subrange->subrangeRow == 1 && return_val->subrange->subrangeCol == 1) {
+		return_val = getVal(return_val->subrange->range, return_val->subrange->offsetRow, return_val->subrange->offsetCol);
+	}
+	return return_val;
 }

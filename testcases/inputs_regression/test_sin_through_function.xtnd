@@ -1,0 +1,12 @@
+extern "stdlib.o" {
+  extend_sin(a);
+  printd(a,b);
+}
+
+internal_sin(x,y,z) {
+  return extend_sin(z);
+}
+
+[1,1] main([1,n] args) {
+  return printd(1, internal_sin(1,2,45.0)) -> 0;
+}

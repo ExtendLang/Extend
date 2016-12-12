@@ -1,0 +1,7 @@
+extern "stdlib.o" {
+  print(a,b);
+}
+
+main([1,1] args){
+	return 1 && print(1,"PASS1\n") -> print(1,"PASS2\n") -> 0;
+}

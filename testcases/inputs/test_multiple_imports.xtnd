@@ -1,2 +1,2 @@
-import "testcases/assets/string.xtnd";
-import "testcases/assets/string.xtnd";
+import "../../testcases/assets/string.xtnd";
+import "../../testcases/assets/string.xtnd";

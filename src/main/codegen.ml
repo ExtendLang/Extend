@@ -208,72 +208,74 @@ let translate (globals, functions, externs) =
   (* build_formula_function takes a symbol table and an expression, builds the LLVM function, and returns the llvalue of the function *)
   let build_formula_function (varname, formula_idx) symbols formula_expr =
     let form_decl = Llvm.define_function ("formula_fn_" ^ varname ^ "_num_" ^ (string_of_int formula_idx)) base_types.formula_call_t base_module in
-    let builder = Llvm.builder_at_end context (Llvm.entry_block form_decl) in
+    let builder_at_top = Llvm.builder_at_end context (Llvm.entry_block form_decl) in
     let local_scope = Llvm.param form_decl 0 in
-    let global_scope = Llvm.build_load global_scope_loc "global_scope" builder in
-    let rec build_expr exp = match exp with
+    let global_scope = Llvm.build_load global_scope_loc "global_scope" builder_at_top in
+    let rec build_expr old_builder exp = match exp with
         LitInt(i) -> let vvv = Llvm.const_float base_types.float_t (float_of_int i) in
-        let ret_val = Llvm.build_malloc base_types.value_t "" builder in
-        let sp = Llvm.build_struct_gep ret_val (value_field_index Number) "num_pointer" builder in
-        let _ = Llvm.build_store (Llvm.const_int base_types.char_t (value_field_flags_index Number)) (Llvm.build_struct_gep ret_val (value_field_index Flags) "" builder) builder in
-        let _ = Llvm.build_store vvv sp builder in
-        ret_val
+        let ret_val = Llvm.build_malloc base_types.value_t "" old_builder in
+        let sp = Llvm.build_struct_gep ret_val (value_field_index Number) "num_pointer" old_builder in
+        let _ = Llvm.build_store (Llvm.const_int base_types.char_t (value_field_flags_index Number)) (Llvm.build_struct_gep ret_val (value_field_index Flags) "" old_builder) old_builder in
+        let _ = Llvm.build_store vvv sp old_builder in
+        (ret_val, old_builder)
       | LitFlt(i) -> let vvv = Llvm.const_float base_types.float_t i in
-        let ret_val = Llvm.build_malloc base_types.value_t "" builder in
-        let sp = Llvm.build_struct_gep ret_val (value_field_index Number) "num_pointer" builder in
-        let _ = Llvm.build_store (Llvm.const_int base_types.char_t (value_field_flags_index Number)) (Llvm.build_struct_gep ret_val (value_field_index Flags) "" builder) builder in
-        let _ = Llvm.build_store vvv sp builder in
-        ret_val
+        let ret_val = Llvm.build_malloc base_types.value_t "" old_builder in
+        let sp = Llvm.build_struct_gep ret_val (value_field_index Number) "num_pointer" old_builder in
+        let _ = Llvm.build_store (Llvm.const_int base_types.char_t (value_field_flags_index Number)) (Llvm.build_struct_gep ret_val (value_field_index Flags) "" old_builder) old_builder in
+        let _ = Llvm.build_store vvv sp old_builder in
+        (ret_val, old_builder)
       | Empty ->
-        let ret_val = Llvm.build_alloca base_types.value_t "" builder in
-        let _ = Llvm.build_store (Llvm.const_int base_types.char_t (value_field_flags_index Empty)) (Llvm.build_struct_gep ret_val (value_field_index Flags) "" builder) builder in
-        ret_val
+        let ret_val = Llvm.build_alloca base_types.value_t "" old_builder in
+        let _ = Llvm.build_store (Llvm.const_int base_types.char_t (value_field_flags_index Empty)) (Llvm.build_struct_gep ret_val (value_field_index Flags) "" old_builder) old_builder in
+        (ret_val, old_builder)
       | Id(name) ->
         (
           match (try StringMap.find name symbols with Not_found -> raise(LogicError("Something went wrong with your semantic analysis - " ^ name ^ " not found"))) with
             LocalVariable(i) ->
-            let llvm_var = Llvm.build_call getVar [|local_scope; Llvm.const_int base_types.int_t i|] "" builder in
-            Llvm.build_call getVal [|llvm_var; Llvm.const_int base_types.int_t 0; Llvm.const_int base_types.int_t 0|] "" builder
+            let llvm_var = Llvm.build_call getVar [|local_scope; Llvm.const_int base_types.int_t i|] "" old_builder in
+            (Llvm.build_call getVal [|llvm_var; Llvm.const_int base_types.int_t 0; Llvm.const_int base_types.int_t 0|] "" old_builder, old_builder)
           | GlobalVariable(i) ->
-            let llvm_var = Llvm.build_call getVar [|global_scope; Llvm.const_int base_types.int_t i|] "" builder in
-            Llvm.build_call getVal [|llvm_var; Llvm.const_int base_types.int_t 0; Llvm.const_int base_types.int_t 0|] "" builder
+            let llvm_var = Llvm.build_call getVar [|global_scope; Llvm.const_int base_types.int_t i|] "" old_builder in
+            (Llvm.build_call getVal [|llvm_var; Llvm.const_int base_types.int_t 0; Llvm.const_int base_types.int_t 0|] "" old_builder, old_builder)
           | FunctionParameter(i) ->
-            let paramarray = (local_scope => (scope_field_type_index FunctionParams)) "paramarray" builder in
-            let param_addr = Llvm.build_in_bounds_gep paramarray [|Llvm.const_int base_types.int_t i|] "param_addr" builder in
-            let param = Llvm.build_load param_addr "param" builder in
-            Llvm.build_call (Hashtbl.find runtime_functions "clone_value") [|param|] "" builder
+            let paramarray = (local_scope => (scope_field_type_index FunctionParams)) "paramarray" old_builder in
+            let param_addr = Llvm.build_in_bounds_gep paramarray [|Llvm.const_int base_types.int_t i|] "param_addr" old_builder in
+            let param = Llvm.build_load param_addr "param" old_builder in
+            (Llvm.build_call (Hashtbl.find runtime_functions "clone_value") [|param|] "" old_builder, old_builder)
           | ExtendFunction(i) -> raise(LogicError("Something went wrong with your semantic analyis - function " ^ name ^ " used as variable in RHS for " ^ varname))
         )
-      | Selection(expr, sel) -> build_expr expr
-      | Precedence(a,b) -> ignore (build_expr a); build_expr b
+      | Selection(expr, sel) -> build_expr old_builder expr
+      | Precedence(a,b) -> let (_, new_builder) = build_expr old_builder a in build_expr new_builder b
       | LitString(str) ->
         let boxxx = Llvm.build_call
             (Hashtbl.find helper_functions "new_string")
             (Array.of_list [
-                Llvm.build_global_stringptr str "glob_str" builder
-              ]) "boxed_str" builder in
+                Llvm.build_global_stringptr str "glob_str" old_builder
+              ]) "boxed_str" old_builder in
         let boxx = Llvm.build_call
             (Hashtbl.find helper_functions "box_value_string")
-            (Array.of_list [boxxx]) "box_value_str" builder
-        in boxx
+            (Array.of_list [boxxx]) "box_value_str" old_builder
+        in (boxx, old_builder)
       | Call(fn,exl) -> (*TODO: Call needs to be reviewed. Possibly switch call arguments to value_p*)
-        let args = Array.of_list
-            (List.rev (List.fold_left (
-                 fun a b -> (build_expr b) :: a) [] exl)) in
+        let build_one_expr (arg_list, intermediate_builder) e =
+          let (arg_val, next_builder) = build_expr intermediate_builder e in
+          (arg_val :: arg_list, next_builder) in
+        let (reversed_arglist, call_builder) = List.fold_left build_one_expr ([], old_builder) exl in
+        let args = Array.of_list (List.rev reversed_arglist) in
         let result = Llvm.build_call (
           StringMap.find fn function_llvalues
-        ) args "" builder in
-        result
+        ) args "" call_builder in
+        (result, call_builder)
       | UnOp(SizeOf,expr) -> let vvv = Llvm.const_float base_types.float_t 0.0 in
-        let ret_val = Llvm.build_malloc base_types.value_t "" builder in
-        let sp = Llvm.build_struct_gep ret_val (value_field_index Number) "num_pointer" builder in
-        let _ = Llvm.build_store (Llvm.const_int base_types.char_t (value_field_flags_index Number)) (Llvm.build_struct_gep ret_val (value_field_index Flags) "" builder) builder in
-        let _ = Llvm.build_store vvv sp builder in
-        ret_val
+        let ret_val = Llvm.build_malloc base_types.value_t "" old_builder in
+        let sp = Llvm.build_struct_gep ret_val (value_field_index Number) "num_pointer" old_builder in
+        let _ = Llvm.build_store (Llvm.const_int base_types.char_t (value_field_flags_index Number)) (Llvm.build_struct_gep ret_val (value_field_index Flags) "" old_builder) old_builder in
+        let _ = Llvm.build_store vvv sp old_builder in
+        (ret_val, old_builder)
       | UnOp( _, expr) -> print_endline (Ast.string_of_expr exp); raise NotImplemented
       | unknown_expr -> print_endline (string_of_expr unknown_expr);raise NotImplemented in
-    let ret_value_p = (build_expr formula_expr) in
-    let _ = Llvm.build_ret ret_value_p builder in
+    let (ret_value_p, final_builder) = (build_expr builder_at_top formula_expr) in
+    let _ = Llvm.build_ret ret_value_p final_builder in
     form_decl in
 
   (*build formula creates a formula declaration in a separate method from the function it belongs to*)

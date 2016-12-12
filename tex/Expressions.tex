@@ -3,8 +3,7 @@
 	\pagebreak
 		\subsection{Arithmetic Operators}
 			The arithmetic operators listed below take one or two expressions and return a number, if both expressions are Numbers, or \texttt{empty} otherwise. Operators grouped within the same inner box have the same level of precedence, and are listed from highest precedence to lowest precedence. All of the binary operators are infix operators, and, with the exception of exponentiation, are left-associative. Exponentiation, bitwise negation, and unary negation are right-associative. All of the unary operators are prefix operators. The bitwise operators round their operands to the nearest signed 32-bit integer (rounding half to even) before performing the operation and evaluate to a Number.
-			\begin{table}[H]
-			\begin{tabular}{ |p{2cm}|p{3cm}|p{8cm}|  }
+			\begin{longtable}[H]{ |p{2cm}|p{3cm}|p{8cm}|  }
 			\hline
 			\textbf{Operator} & \textbf{Description} & \textbf{Definition} \\ \hline
 			\rule{0pt}{3ex}\texttt{\~} & \texttt{Bitwise NOT } & {Performs a bitwise negation on the binary representation of an expression.} \\
@@ -20,17 +19,15 @@
 			\rule{0pt}{3ex}\texttt{-} & \texttt{Subtraction} & {Subtracts second expression from first.} \\
 			\rule{0pt}{3ex}\texttt{|} & \texttt{Bitwise OR} & {Performs a bitwise OR between two expressions.} \\
 			\rule{0pt}{3ex}\texttt{\^} & \texttt{Bitwise XOR} & {Performs a bitwise exclusive OR between two expressions.} \\ \hline
-			\end{tabular}
-			\end{table}
-			\pagebreak
+			\end{longtable}
+			\lstinputlisting{./samples/arithmetic1.xtnd}
 		\subsection{Boolean Operators}
-			These operators take one or two expressions and evaluate to \texttt{empty}, 0 or 1. Operators grouped within the same inner box have the same level of precedence and are listed from highest precedence to lowest precedence. All of these operators besides logical negation are infix, left-associative operators. The logical AND and OR operators feature short-circuit evaluation. Logical NOT is a prefix, right-associative operator. For Strings, the boolean operators <, <=, >, and >= implement case-sensitive lexicographic comparison.
-			\begin{table}[H]
-			\begin{tabular}{ |p{2cm}|p{5cm}|p{7cm}|  }
+			These operators take one or two expressions and evaluate to \texttt{empty}, 0 or 1. Operators grouped within the same inner box have the same level of precedence and are listed from highest precedence to lowest precedence. All of these operators besides logical negation are infix, left-associative operators. The logical AND and OR operators feature short-circuit evaluation. Logical NOT is a prefix, right-associative operator. Besides logical NOT, all boolean operators have lower precedence than all arithmetic operators. For Strings, the boolean operators <, <=, >, and >= implement case-sensitive lexicographic comparison.
+			\begin{longtable}[H]{ |p{2cm}|p{5cm}|p{7cm}|  }
 			\hline
 			\textbf{Operator} & \textbf{Description} & \textbf{Definition} \\ \hline
-			\rule{0pt}{3ex}\texttt{!} & \texttt{Logical NOT} & {Evaluates to 0 or 1 given a truthy or falsey value respectively. \texttt{!empty} evaluates to \texttt{empty}.} \\ \hline
-			\rule{0pt}{3ex}\texttt{==} & \texttt{Equals} & {Always evaluates to 0 if the two expressions have different types. If both expressions are primitive values, evaluates to 1 if they have the same type and the same value, or 0 otherwise. If both expressions are ranges, evaluates to 1 if the two ranges have the same dimensions and each cell of the first expression == the corresponding cell of the second expression. \texttt{empty} == \texttt{empty} evaluates to 1.} \\
+			\rule{0pt}{3ex}\texttt{!} & \texttt{Logical NOT} & {Evaluates to 0 or 1 given a truthy or falsey value respectively. \texttt{!empty} evaluates to \texttt{empty}. It has equal precedence with ~ and unary minus.} \\ \hline
+			\rule{0pt}{3ex}\texttt{==} & \texttt{Equals} & {Always evaluates to 0 if the two expressions have different types. If both expressions are primitive values, evaluates to 1 if they have the same type and the same value, or 0 otherwise. If both expressions are ranges, evaluates to 1 if the two ranges have the same dimensions and each cell of the first expression == the corresponding cell of the second expression. \texttt{empty} == \texttt{empty} evaluates to 1. Strings are compared by value.} \\
 			\rule{0pt}{3ex}\texttt{!=} & \texttt{Not equals} & {\texttt{x != y} is equivalent to \texttt{!(x == y)}.} \\
 			\rule{0pt}{3ex}\texttt{<} & \texttt{Less than} & {If the expressions are both Numbers or both Strings and the first expression is less than the second, evaluates to 1. If the expressions are both Numbers or both Strings and the first expression is greater than or equal to the second, evaluates to 0. Otherwise, evaluates to \texttt{empty}.} \\
 			\rule{0pt}{3ex}\texttt{>} & \texttt{Greater than} & {Equivalent rules about typing as for \texttt{<}.} \\
@@ -38,15 +35,15 @@
 			\rule{0pt}{3ex}\texttt{>=} & \texttt{Greater than or equal to} & {Equivalent rules about typing as for \texttt{<}.} \\ \hline
 			\rule{0pt}{3ex}\texttt{\&\&} & \texttt{Short-circuit Logical AND} & {If the first expression is falsey or \texttt{empty}, evaluates to 0 or \texttt{empty} respectively. Otherwise, if the second expression is truthy, falsey, or \texttt{empty}, evaluates to 1, 0, or \texttt{empty} respectively.} \\ \hline
 			\rule{0pt}{3ex}\texttt{||} & \texttt{Short-circuit Logical OR} & {If the first expression is truthy or \texttt{empty}, evaluates to 1 or \texttt{empty} respectively. Otherwise, if the second expression is truthy, falsey, or \texttt{empty}, evaluates to 1, 0, or \texttt{empty} respectively.} \\ \hline
-			\end{tabular}
-			\end{table}
+			\end{longtable}
+			\lstinputlisting{./samples/boolean1.xtnd}
 
 \subsection{Conditional Expressions}
 			There are two types of conditional expressions: a simple ternary if-then-else expression and a \texttt{switch} expression which can represent more complex logic.
 
 \subsubsection{Ternary Expressions}
 \label{sec:Ternary}
-A ternary expression, written either as \texttt{cond-expr ? expr-if-true : expr-if-false} or, equivalently, \texttt{if(cond-expr, expr-if-true, expr-if-false)} evaluates to \texttt{expr-if-true} if \texttt{cond-expr} is truthy, or \texttt{expr-if-false} if \texttt{cond-expr} is falsey. If \texttt{cond-expr} is \texttt{empty}, the expression evaluates to \texttt{empty}. Both expr-if-true and expr-if-false are mandatory. \texttt{expr-if-true} is only evaluated if \texttt{cond-expr} is truthy, and \texttt{expr-if-false} is only evaluated if \texttt{cond-expr} is falsey. If \texttt{cond-expr} is \texttt{empty}, neither expression is evaluated.
+A ternary expression, written either as \texttt{cond-expr ? expr-if-true : expr-if-false} or, equivalently, \texttt{if(cond-expr, expr-if-true, expr-if-false)} evaluates to \texttt{expr-if-true} if \texttt{cond-expr} is truthy, or \texttt{expr-if-false} if \texttt{cond-expr} is falsey. If \texttt{cond-expr} is \texttt{empty}, the expression evaluates to \texttt{empty}.  Both expr-if-true and expr-if-false are mandatory. \texttt{expr-if-true} is only evaluated if \texttt{cond-expr} is truthy, and \texttt{expr-if-false} is only evaluated if \texttt{cond-expr} is falsey. If \texttt{cond-expr} is \texttt{empty}, neither expression is evaluated. The ternary operator ? : has the lowest precedence level of all operators.
 
 \subsubsection{Switch Expressions}
 \label{sec:Switch}
@@ -64,14 +61,14 @@ There are four additional operators available to determine the size and type of 
 \textbf{Operator} & \textbf{Description} & \textbf{Definition} \\ \hline
 \texttt{size(expr)} & \texttt{Dimensions} & {Evaluates to a Range consisting of one row and two columns; the first cell contains the number of rows of \texttt{expr} and the second contains the number of columns. If \texttt{expr} is a Number, a String, or Empty, both cells will contain 1.} \\ \hline
 \texttt{type(expr)} & \texttt{Value Type} & {Evaluates to "Number", "String", "Range", or "Empty".} \\ \hline
-\texttt{row()} & \texttt{Row Location} & {No arguments; returns the row of the cell containing the formula} \\ \hline
-\texttt{column()} & \texttt{Column Location} & {No arguments; returns the column of the cell containing the formula} \\ \hline
+\texttt{row()} & \texttt{Row Location} & {No arguments; returns the row of the cell that is being calculated} \\ \hline
+\texttt{column()} & \texttt{Column Location} & {No arguments; returns the column of the cell that is being calculated} \\ \hline
 \texttt{+} & \texttt{String concatenation} & {"Hello, " + "World!\textbackslash n" == "Hello, World!\textbackslash n"}\\ \hline
 \end{tabular}
 \end{table}
-
+Given \texttt{[5,5]foo}, then \texttt{foo[1,4] = row() * 2 + col()} will evaluate to 6.
 \subsection {Function Calls}
-A function expression consists of an identifier and an optional list of expressions enclosed in parentheses and separated by commas. The value of the expression is the result of applying the function to the arguments passed in as expressions. For more detail, see section~\ref{sec:Functions}.
+A function expression consists of an identifier and an optional list of expressions enclosed in parentheses and separated by commas. The value of the expression is the result of applying the function to the arguments passed in as expressions. The arguments are evaluated from left to right before the function is called. For more detail, see section~\ref{sec:Functions}.
 \subsection{Range Expressions}
 Range expressions are used to select part or all of a range. A range expression consists of a bare identifier, a bare range literal, or an expression and a selector. If a range expression has exactly 1 row and 1 column, the value of the expression is the value of the single cell of the range. If it has more than 1 row or more than 1 column, the value of the expression is the selected range. If the range has zero or fewer rows or zero or fewer columns, the value of the expression is \texttt{empty}. If a range expression with a selector would access a row index or column index greater than the number of rows or columns of the range, or a negative row or column index, the value of the expression is \texttt{empty}.
 \subsubsection{Slices}
@@ -85,4 +82,4 @@ is syntactic sugar for \texttt{var{[},{]}}. As a result, if \texttt{var} has mor
 \subsubsection{Selection Examples}
 \lstinputlisting{./samples/selection_examples.xtnd}
 \subsection{Precedence Expressions}
-A precedence expression is used to force the evaluation of one expression before another, when that order of operation is required for functions with side-effects. It consists of an expression \texttt{prec-expr}, the precedence operator \texttt{->}, and an expression \texttt{succ-expr}. The value of the expression is \texttt{succ-expr}, but the value of \texttt{prec-expr} will be calculated first and the result ignored. All functions written purely in Extend are free of side effects. However, some of the external functions provided by the standard library, such as for file I/O and plotting, do have side effects.
+A precedence expression is used to force the evaluation of one expression before another, when that order of operation is required for functions with side-effects. It consists of an expression \texttt{prec-expr}, the precedence operator \texttt{->}, and an expression \texttt{succ-expr}. The value of the expression is \texttt{succ-expr}, but the value of \texttt{prec-expr} will be calculated first and the result ignored. All functions written purely in Extend are free of side effects. However, some of the external functions provided by the standard library, such as for file I/O and plotting, do have side effects. The precedence operator has the second-lowest grammatical precedence of all operators, higher only than the ternary operator.

@@ -27,4 +27,4 @@ import "string.xtnd";
 		When a compiled Extend program is executed, the \texttt{main} function is evaluated. All computations necessary to calculate the return value of the function are performed, after which the program terminates. The \texttt{main} function must be a function of a single argument, conventionally denoted \texttt{args}, which is guaranteed to be a 1-by-n range containing the command line arguments.
 		\subsection{Scoping and Namespace}
 		For functions and for global variables, there is a single namespace that is shared between all files composing an Extend program, and they are visible throughout the entire program. Functions declared in external libraries share this namespace as well. For a local variable, the scope is the entire body of the function in which it is defined. Functions may declare local variables sharing a name with a global variable; inside that function, the name will refer to the local variable.
-		\lstinputlisting{./samples/sum_column.xtnd}
+\lstinputlisting{./samples/scope_examples.xtnd}

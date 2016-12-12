@@ -22,6 +22,12 @@ let (=>) struct_ptr elem = (fun val_name builder ->
     let the_pointer = Llvm.build_struct_gep struct_ptr elem "the_pointer" builder in
     Llvm.build_load the_pointer val_name builder);;
 
+(* from http://stackoverflow.com/questions/243864/what-is-the-ocaml-idiom-equivalent-to-pythons-range-function without the infix *)
+let zero_until i =
+  let rec aux n acc =
+    if n < 0 then acc else aux (n-1) (n :: acc)
+  in aux (i-1) []
+
 let create_runtime_functions ctx bt the_module =
   let add_runtime_func fname returntype arglist =
     let the_func = Llvm.declare_function fname (Llvm.function_type returntype arglist) the_module
@@ -29,8 +35,8 @@ let create_runtime_functions ctx bt the_module =
   add_runtime_func "strlen" bt.long_t [|bt.char_p|];
   add_runtime_func "llvm.memcpy.p0i8.p0i8.i64" bt.void_t [|bt.char_p; bt.char_p; bt.long_t; bt.int_t; bt.bool_t|] ;
   add_runtime_func "getVal" bt.value_p [|bt.var_instance_p; bt.int_t; bt.int_t|] ;
-  add_runtime_func "deepCopy" bt.value_p [|bt.value_p;|] ;
-  add_runtime_func "freeMe" (Llvm.void_type ctx) [|bt.extend_scope_p;|] ;
+  add_runtime_func "clone_value" bt.value_p [|bt.value_p;|] ;
+  (* add_runtime_func "freeMe" (Llvm.void_type ctx) [|bt.extend_scope_p;|] ; *)
   add_runtime_func "getSize" bt.value_p [|bt.var_instance_p;|] ;
   add_runtime_func "get_variable" bt.var_instance_p [|bt.extend_scope_p; bt.int_t|] ;
   add_runtime_func "null_init" (Llvm.void_type ctx) [|bt.extend_scope_p|] ;
@@ -194,8 +200,8 @@ let translate (globals, functions, externs) =
   let main_bod = Llvm.builder_at_end context (Llvm.entry_block main_def) in
 
   (* Look these two up once and for all *)
-  let deepCopy = Hashtbl.find runtime_functions "deepCopy" in
-  let freeMe = Hashtbl.find runtime_functions "freeMe" in
+  (* let deepCopy = Hashtbl.find runtime_functions "deepCopy" in *)
+  (* let freeMe = Hashtbl.find runtime_functions "freeMe" in *)
   let getVal = Hashtbl.find runtime_functions "getVal" in (*getVal retrieves the value of a variable instance for a specific x and y*)
   let getVar = Hashtbl.find runtime_functions "get_variable" in (*getVar retrieves a variable instance based on the offset. It instanciates the variable if it does not exist yet*)
 
@@ -207,13 +213,13 @@ let translate (globals, functions, externs) =
     let global_scope = Llvm.build_load global_scope_loc "global_scope" builder in
     let rec build_expr exp = match exp with
         LitInt(i) -> let vvv = Llvm.const_float base_types.float_t (float_of_int i) in
-        let ret_val = Llvm.build_alloca base_types.value_t "" builder in
+        let ret_val = Llvm.build_malloc base_types.value_t "" builder in
         let sp = Llvm.build_struct_gep ret_val (value_field_index Number) "num_pointer" builder in
         let _ = Llvm.build_store (Llvm.const_int base_types.char_t (value_field_flags_index Number)) (Llvm.build_struct_gep ret_val (value_field_index Flags) "" builder) builder in
         let _ = Llvm.build_store vvv sp builder in
         ret_val
       | LitFlt(i) -> let vvv = Llvm.const_float base_types.float_t i in
-        let ret_val = Llvm.build_alloca base_types.value_t "" builder in
+        let ret_val = Llvm.build_malloc base_types.value_t "" builder in
         let sp = Llvm.build_struct_gep ret_val (value_field_index Number) "num_pointer" builder in
         let _ = Llvm.build_store (Llvm.const_int base_types.char_t (value_field_flags_index Number)) (Llvm.build_struct_gep ret_val (value_field_index Flags) "" builder) builder in
         let _ = Llvm.build_store vvv sp builder in
@@ -231,7 +237,11 @@ let translate (globals, functions, externs) =
           | GlobalVariable(i) ->
             let llvm_var = Llvm.build_call getVar [|global_scope; Llvm.const_int base_types.int_t i|] "" builder in
             Llvm.build_call getVal [|llvm_var; Llvm.const_int base_types.int_t 0; Llvm.const_int base_types.int_t 0|] "" builder
-          | FunctionParameter(i) -> print_endline "Function Parameter" ; raise(NotImplemented)
+          | FunctionParameter(i) ->
+            let paramarray = (local_scope => (scope_field_type_index FunctionParams)) "paramarray" builder in
+            let param_addr = Llvm.build_in_bounds_gep paramarray [|Llvm.const_int base_types.int_t i|] "param_addr" builder in
+            let param = Llvm.build_load param_addr "param" builder in
+            Llvm.build_call (Hashtbl.find runtime_functions "clone_value") [|param|] "" builder
           | ExtendFunction(i) -> raise(LogicError("Something went wrong with your semantic analyis - function " ^ name ^ " used as variable in RHS for " ^ varname))
         )
       | Selection(expr, sel) -> build_expr expr
@@ -262,9 +272,8 @@ let translate (globals, functions, externs) =
         ret_val
       | UnOp( _, expr) -> print_endline (Ast.string_of_expr exp); raise NotImplemented
       | unknown_expr -> print_endline (string_of_expr unknown_expr);raise NotImplemented in
-    let cpy = Llvm.build_call deepCopy [|(build_expr formula_expr)|] "" builder in
-    let _ = Llvm.build_call freeMe [||] in
-    let _ = Llvm.build_ret (cpy) builder in
+    let ret_value_p = (build_expr formula_expr) in
+    let _ = Llvm.build_ret ret_value_p builder in
     form_decl in
 
   (*build formula creates a formula declaration in a separate method from the function it belongs to*)
@@ -309,7 +318,7 @@ let translate (globals, functions, externs) =
     let formulas = Llvm.build_array_malloc base_types.formula_t (Llvm.const_int base_types.int_t numForm) "" main_bod in
     (*getDefn simply looks up the correct definition for a dimension declaration of a variable. Note that currently it is ambiguous whether it is a variable or a literal. TOOD: consider negative numbers*)
     let getDefn = function
-        DimId(a) -> (match StringMap.find a symbols with LocalVariable(i) -> i | GlobalVariable(i) -> i | _ ->  print_endline "fnparam" ; raise(NotImplemented))
+        DimId(a) -> (match StringMap.find a symbols with LocalVariable(i) -> i | GlobalVariable(i) -> i | _ -> raise(TransformedAway("Error in " ^ varname ^ ": The LHS expresssions should always either have dimension length 1 or be the name of a variable in their own scope.")))
       | DimInt(1) -> 1
       | DimInt(_) -> print_endline "Non1Dim" ; raise(NotImplemented) in
     let _ = (match va.var_rows with
@@ -334,6 +343,7 @@ let translate (globals, functions, externs) =
       vars (* The variables to build definitions and formula-functions for *)
       static_location_ptr (* The copy of the global pointer used in main *)
       var_defns_loc (* The copy of the global pointer used in the local function *)
+      num_params (* How many parameters the function takes *)
       builder (* The LLVM builder for the local function *)
     =
     let cardinal = Llvm.const_int base_types.int_t (StringMap.cardinal vars) in
@@ -355,6 +365,13 @@ let translate (globals, functions, externs) =
     let _ = Llvm.build_store var_defns (Llvm.build_struct_gep scope_obj (scope_field_type_index VarDefn) "" builder) builder in
     let _ = Llvm.build_store var_insts (Llvm.build_struct_gep scope_obj (scope_field_type_index VarInst) "" builder) builder in
     let _ = Llvm.build_store cardinal (Llvm.build_struct_gep scope_obj (scope_field_type_index VarNum) "" builder) builder in
+    let _ = Llvm.build_store (Llvm.const_int base_types.int_t 0) (Llvm.build_struct_gep scope_obj (scope_field_type_index ScopeRefCount) "" builder) builder in
+    let paramarray = if num_params > 0 then Llvm.build_array_malloc base_types.value_p (Llvm.const_int base_types.int_t num_params) "paramarray" builder else Llvm.const_pointer_null (Llvm.pointer_type base_types.value_p) in
+    let _ = Llvm.build_store paramarray (Llvm.build_struct_gep scope_obj (scope_field_type_index FunctionParams) "" builder) builder in
+    let copy_fn_arg i =
+      let param_addr = Llvm.build_in_bounds_gep paramarray [|Llvm.const_int base_types.int_t i|] (fname ^ "_param_" ^ string_of_int i ^ "_loc") builder in
+      ignore (Llvm.build_store (Llvm.param (StringMap.find fname function_llvalues) i) param_addr builder) in
+    List.iter copy_fn_arg (zero_until num_params);
     let _ = Llvm.build_call (Hashtbl.find runtime_functions "null_init") [|scope_obj|] "" builder in
     build_var_defns ; scope_obj in
   (* End of build_scope_obj *)
@@ -372,7 +389,7 @@ let translate (globals, functions, externs) =
     let static_location_ptr = Llvm.build_in_bounds_gep array_of_vardefn_ptrs [|Llvm.const_int base_types.int_t 0; Llvm.const_int base_types.int_t fn_idx|] (fname ^ "_global_defn_ptr") main_bod in
     let var_defns_loc = Llvm.build_in_bounds_gep array_of_vardefn_ptrs [|Llvm.const_int base_types.int_t 0; Llvm.const_int base_types.int_t fn_idx|] (fname ^ "_local_defn_ptr") builder in
 
-    let scope_obj = build_scope_obj fname symbols fn_def.func_body static_location_ptr var_defns_loc builder in
+    let scope_obj = build_scope_obj fname symbols fn_def.func_body static_location_ptr var_defns_loc (List.length fn_def.func_params) builder in
 
     let ret = snd fn_def.func_ret_val in
     match ret with
@@ -383,14 +400,14 @@ let translate (globals, functions, externs) =
           let llvm_var = Llvm.build_call getVar [|scope_obj; Llvm.const_int base_types.int_t i|] "return_variable" builder in
           let llvm_retval = Llvm.build_call getVal [|llvm_var; Llvm.const_int base_types.int_t 0; Llvm.const_int base_types.int_t 0|] "return_value" builder in
           ignore (Llvm.build_ret llvm_retval builder)
-        | _ -> print_endline (string_of_expr ret); raise(TransformedAway("The return value should always have been transformed into a local variable"))
+        | _ -> print_endline (string_of_expr ret); raise(TransformedAway("Error in " ^ fname ^ ": The return value should always have been transformed into a local variable"))
       )
-    | _ -> print_endline (string_of_expr ret); raise(TransformedAway("The return value should always have been transformed into a local variable")) in
+    | _ -> print_endline (string_of_expr ret); raise(TransformedAway("Error in " ^ fname ^ ": The return value should always have been transformed into a local variable")) in
   (* End of build_function *)
 
   (* Build the global scope object *)
   let vardefn_p_p = Llvm.build_alloca base_types.var_defn_p "v_p_p" main_bod in
-  let global_scope_obj = build_scope_obj "globals" global_symbols globals vardefn_p_p vardefn_p_p main_bod in
+  let global_scope_obj = build_scope_obj "globals" global_symbols globals vardefn_p_p vardefn_p_p 0 main_bod in
   let _ = Llvm.build_store global_scope_obj global_scope_loc main_bod in
 
   (*iterates over function definitions*)

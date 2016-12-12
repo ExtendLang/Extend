@@ -287,7 +287,7 @@ let translate (globals, functions, externs) =
 
         let falsey_bb = Llvm.append_block context "falsey" form_decl in
         let falsey_builder = Llvm.builder_at_end context falsey_bb in
-        let _ = store_number ret_val falsey_builder (Llvm.const_float base_types.float_t 1.0) in
+        let _ = store_number ret_val falsey_builder (Llvm.const_float base_types.float_t 0.0) in
         let _ = Llvm.build_br merge_bb falsey_builder in
 
         let empty_bb = Llvm.append_block context "empty" form_decl in
@@ -297,13 +297,13 @@ let translate (globals, functions, externs) =
 
         let expr_flags = (expr_val => (value_field_index Flags)) "expr_flags" expr_builder in
         let is_empty_bool = (Llvm.build_icmp Llvm.Icmp.Eq expr_flags (Llvm.const_int base_types.flags_t (value_field_flags_index Empty)) "is_empty_bool" expr_builder) in
-        let is_empty = Llvm.build_intcast is_empty_bool base_types.char_t "is_empty" expr_builder in
+        let is_empty = Llvm.build_zext is_empty_bool base_types.char_t "is_empty" expr_builder in
         let is_empty_two = Llvm.build_shl is_empty (Llvm.const_int base_types.char_t 1) "is_empty_two" expr_builder in
         let is_number = Llvm.build_icmp Llvm.Icmp.Eq expr_flags (Llvm.const_int base_types.flags_t (value_field_flags_index Number)) "is_number" expr_builder in
         let the_number = (expr_val => (value_field_index Number)) "the_number" expr_builder in
         let is_zero = Llvm.build_fcmp Llvm.Fcmp.Oeq the_number (Llvm.const_float base_types.number_t 0.0) "is_zero" expr_builder in
         let is_numeric_zero_bool = Llvm.build_and is_zero is_number "is_numeric_zero_bool" expr_builder in
-        let is_numeric_zero = Llvm.build_intcast is_numeric_zero_bool base_types.char_t "is_numeric_zero" expr_builder in
+        let is_numeric_zero = Llvm.build_zext is_numeric_zero_bool base_types.char_t "is_numeric_zero" expr_builder in
         let switch_num = Llvm.build_add is_empty_two is_numeric_zero "switch_num" expr_builder in
         let switch_inst = Llvm.build_switch switch_num empty_bb 2 expr_builder in
         Llvm.add_case switch_inst (Llvm.const_int base_types.char_t 0) truthy_bb; (* empty << 1 + is_zero == 0 ===> truthy *)
@@ -337,13 +337,13 @@ let translate (globals, functions, externs) =
 
         let expr_flags = (cond_val => (value_field_index Flags)) "expr_flags" old_builder in
         let is_empty_bool = (Llvm.build_icmp Llvm.Icmp.Eq expr_flags (Llvm.const_int base_types.flags_t (value_field_flags_index Empty)) "is_empty_bool" old_builder) in
-        let is_empty = Llvm.build_intcast is_empty_bool base_types.char_t "is_empty" old_builder in
+        let is_empty = Llvm.build_zext is_empty_bool base_types.char_t "is_empty" old_builder in
         let is_empty_two = Llvm.build_shl is_empty (Llvm.const_int base_types.char_t 1) "is_empty_two" old_builder in
         let is_number = Llvm.build_icmp Llvm.Icmp.Eq expr_flags (Llvm.const_int base_types.flags_t (value_field_flags_index Number)) "is_number" old_builder in
         let the_number = (cond_val => (value_field_index Number)) "the_number" old_builder in
         let is_zero = Llvm.build_fcmp Llvm.Fcmp.Oeq the_number (Llvm.const_float base_types.number_t 0.0) "is_zero" old_builder in
         let is_numeric_zero_bool = Llvm.build_and is_zero is_number "is_numeric_zero_bool" old_builder in
-        let is_numeric_zero = Llvm.build_intcast is_numeric_zero_bool base_types.char_t "is_numeric_zero" old_builder in
+        let is_numeric_zero = Llvm.build_zext is_numeric_zero_bool base_types.char_t "is_numeric_zero" old_builder in
         let switch_num = Llvm.build_add is_empty_two is_numeric_zero "switch_num" old_builder in
         let switch_inst = Llvm.build_switch switch_num empty_bb 2 old_builder in
         Llvm.add_case switch_inst (Llvm.const_int base_types.char_t 0) truthy_bb; (* empty << 1 + is_zero == 0 ===> truthy *)

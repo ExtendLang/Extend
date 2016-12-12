@@ -211,22 +211,24 @@ let translate (globals, functions, externs) =
     let builder_at_top = Llvm.builder_at_end context (Llvm.entry_block form_decl) in
     let local_scope = Llvm.param form_decl 0 in
     let global_scope = Llvm.build_load global_scope_loc "global_scope" builder_at_top in
+    let store_number value_ptr store_builder number_llvalue =
+      let sp = Llvm.build_struct_gep value_ptr (value_field_index Number) "num_pointer" store_builder in
+      let _ = Llvm.build_store (Llvm.const_int base_types.char_t (value_field_flags_index Number)) (Llvm.build_struct_gep value_ptr (value_field_index Flags) "" store_builder) store_builder in
+      ignore (Llvm.build_store number_llvalue sp store_builder) in
+    let store_empty value_ptr store_builder =
+      ignore (Llvm.build_store (Llvm.const_int base_types.char_t (value_field_flags_index Empty)) (Llvm.build_struct_gep value_ptr (value_field_index Flags) "" store_builder) store_builder) in
     let rec build_expr old_builder exp = match exp with
         LitInt(i) -> let vvv = Llvm.const_float base_types.float_t (float_of_int i) in
         let ret_val = Llvm.build_malloc base_types.value_t "" old_builder in
-        let sp = Llvm.build_struct_gep ret_val (value_field_index Number) "num_pointer" old_builder in
-        let _ = Llvm.build_store (Llvm.const_int base_types.char_t (value_field_flags_index Number)) (Llvm.build_struct_gep ret_val (value_field_index Flags) "" old_builder) old_builder in
-        let _ = Llvm.build_store vvv sp old_builder in
+        let _ = store_number ret_val old_builder vvv in
         (ret_val, old_builder)
-      | LitFlt(i) -> let vvv = Llvm.const_float base_types.float_t i in
+      | LitFlt(f) -> let vvv = Llvm.const_float base_types.float_t f in
         let ret_val = Llvm.build_malloc base_types.value_t "" old_builder in
-        let sp = Llvm.build_struct_gep ret_val (value_field_index Number) "num_pointer" old_builder in
-        let _ = Llvm.build_store (Llvm.const_int base_types.char_t (value_field_flags_index Number)) (Llvm.build_struct_gep ret_val (value_field_index Flags) "" old_builder) old_builder in
-        let _ = Llvm.build_store vvv sp old_builder in
+        let _ = store_number ret_val old_builder vvv in
         (ret_val, old_builder)
       | Empty ->
-        let ret_val = Llvm.build_alloca base_types.value_t "" old_builder in
-        let _ = Llvm.build_store (Llvm.const_int base_types.char_t (value_field_flags_index Empty)) (Llvm.build_struct_gep ret_val (value_field_index Flags) "" old_builder) old_builder in
+        let ret_val = Llvm.build_malloc base_types.value_t "" old_builder in
+        let _ = store_empty ret_val old_builder in
         (ret_val, old_builder)
       | Id(name) ->
         (
@@ -272,9 +274,85 @@ let translate (globals, functions, externs) =
         let _ = Llvm.build_store (Llvm.const_int base_types.char_t (value_field_flags_index Number)) (Llvm.build_struct_gep ret_val (value_field_index Flags) "" old_builder) old_builder in
         let _ = Llvm.build_store vvv sp old_builder in
         (ret_val, old_builder)
+      | UnOp(Truthy, expr) ->
+        let ret_val = Llvm.build_malloc base_types.value_t "" old_builder in
+        let (expr_val, expr_builder) = build_expr old_builder expr in
+        let merge_bb = Llvm.append_block context "merge" form_decl in
+        let merge_builder = Llvm.builder_at_end context merge_bb in
+
+        let truthy_bb = Llvm.append_block context "truthy" form_decl in
+        let truthy_builder = Llvm.builder_at_end context truthy_bb in
+        let _ = store_number ret_val truthy_builder (Llvm.const_float base_types.float_t 1.0) in
+        let _ = Llvm.build_br merge_bb truthy_builder in
+
+        let falsey_bb = Llvm.append_block context "falsey" form_decl in
+        let falsey_builder = Llvm.builder_at_end context falsey_bb in
+        let _ = store_number ret_val falsey_builder (Llvm.const_float base_types.float_t 1.0) in
+        let _ = Llvm.build_br merge_bb falsey_builder in
+
+        let empty_bb = Llvm.append_block context "empty" form_decl in
+        let empty_builder = Llvm.builder_at_end context empty_bb in
+        let _ = store_empty ret_val empty_builder in
+        let _ = Llvm.build_br merge_bb empty_builder in
+
+        let expr_flags = (expr_val => (value_field_index Flags)) "expr_flags" expr_builder in
+        let is_empty_bool = (Llvm.build_icmp Llvm.Icmp.Eq expr_flags (Llvm.const_int base_types.flags_t (value_field_flags_index Empty)) "is_empty_bool" expr_builder) in
+        let is_empty = Llvm.build_intcast is_empty_bool base_types.char_t "is_empty" expr_builder in
+        let is_empty_two = Llvm.build_shl is_empty (Llvm.const_int base_types.char_t 1) "is_empty_two" expr_builder in
+        let is_number = Llvm.build_icmp Llvm.Icmp.Eq expr_flags (Llvm.const_int base_types.flags_t (value_field_flags_index Number)) "is_number" expr_builder in
+        let the_number = (expr_val => (value_field_index Number)) "the_number" expr_builder in
+        let is_zero = Llvm.build_fcmp Llvm.Fcmp.Oeq the_number (Llvm.const_float base_types.number_t 0.0) "is_zero" expr_builder in
+        let is_numeric_zero_bool = Llvm.build_and is_zero is_number "is_numeric_zero_bool" expr_builder in
+        let is_numeric_zero = Llvm.build_intcast is_numeric_zero_bool base_types.char_t "is_numeric_zero" expr_builder in
+        let switch_num = Llvm.build_add is_empty_two is_numeric_zero "switch_num" expr_builder in
+        let switch_inst = Llvm.build_switch switch_num empty_bb 2 expr_builder in
+        Llvm.add_case switch_inst (Llvm.const_int base_types.char_t 0) truthy_bb; (* empty << 1 + is_zero == 0 ===> truthy *)
+        Llvm.add_case switch_inst (Llvm.const_int base_types.char_t 1) falsey_bb; (* empty << 1 + is_zero == 1 ===> falsey *)
+        (ret_val, merge_builder)
+      | ReducedTernary(cond_var, true_var, false_var) ->
+        let ret_val_addr = Llvm.build_alloca base_types.value_p "" old_builder in
+        let (cond_val, _) = build_expr old_builder (Id(cond_var)) in (* Relying here on the fact that Id() doesn't change the builder *)
+        let merge_bb = Llvm.append_block context "merge" form_decl in
+        let merge_builder = Llvm.builder_at_end context merge_bb in
+        let ret_val = Llvm.build_load ret_val_addr "ret_val" merge_builder in
+
+        let truthy_bb = Llvm.append_block context "truthy" form_decl in
+        let truthy_builder = Llvm.builder_at_end context truthy_bb in
+        let (truthy_val, _) = build_expr truthy_builder (Id(true_var)) in (* Relying here on the fact that Id() doesn't change the builder *)
+        let _ = Llvm.build_store truthy_val ret_val_addr truthy_builder in
+        let _ = Llvm.build_br merge_bb truthy_builder in
+
+        let falsey_bb = Llvm.append_block context "falsey" form_decl in
+        let falsey_builder = Llvm.builder_at_end context falsey_bb in
+        let (falsey_val, _) = build_expr falsey_builder (Id(false_var)) in (* Relying here on the fact that Id() doesn't change the builder *)
+        let _ = Llvm.build_store falsey_val ret_val_addr falsey_builder in
+        let _ = Llvm.build_br merge_bb falsey_builder in
+
+        let empty_bb = Llvm.append_block context "empty" form_decl in
+        let empty_builder = Llvm.builder_at_end context empty_bb in
+        let ret_val_empty = Llvm.build_malloc base_types.value_t "" empty_builder in
+        let _ = store_empty ret_val_empty empty_builder in
+        let _ = Llvm.build_store ret_val_empty ret_val_addr empty_builder in
+        let _ = Llvm.build_br merge_bb empty_builder in
+
+        let expr_flags = (cond_val => (value_field_index Flags)) "expr_flags" old_builder in
+        let is_empty_bool = (Llvm.build_icmp Llvm.Icmp.Eq expr_flags (Llvm.const_int base_types.flags_t (value_field_flags_index Empty)) "is_empty_bool" old_builder) in
+        let is_empty = Llvm.build_intcast is_empty_bool base_types.char_t "is_empty" old_builder in
+        let is_empty_two = Llvm.build_shl is_empty (Llvm.const_int base_types.char_t 1) "is_empty_two" old_builder in
+        let is_number = Llvm.build_icmp Llvm.Icmp.Eq expr_flags (Llvm.const_int base_types.flags_t (value_field_flags_index Number)) "is_number" old_builder in
+        let the_number = (cond_val => (value_field_index Number)) "the_number" old_builder in
+        let is_zero = Llvm.build_fcmp Llvm.Fcmp.Oeq the_number (Llvm.const_float base_types.number_t 0.0) "is_zero" old_builder in
+        let is_numeric_zero_bool = Llvm.build_and is_zero is_number "is_numeric_zero_bool" old_builder in
+        let is_numeric_zero = Llvm.build_intcast is_numeric_zero_bool base_types.char_t "is_numeric_zero" old_builder in
+        let switch_num = Llvm.build_add is_empty_two is_numeric_zero "switch_num" old_builder in
+        let switch_inst = Llvm.build_switch switch_num empty_bb 2 old_builder in
+        Llvm.add_case switch_inst (Llvm.const_int base_types.char_t 0) truthy_bb; (* empty << 1 + is_zero == 0 ===> truthy *)
+        Llvm.add_case switch_inst (Llvm.const_int base_types.char_t 1) falsey_bb; (* empty << 1 + is_zero == 1 ===> falsey *)
+        (ret_val, merge_builder)
+
       | UnOp( _, expr) -> print_endline (Ast.string_of_expr exp); raise NotImplemented
       | unknown_expr -> print_endline (string_of_expr unknown_expr);raise NotImplemented in
-    let (ret_value_p, final_builder) = (build_expr builder_at_top formula_expr) in
+    let (ret_value_p, final_builder) = build_expr builder_at_top formula_expr in
     let _ = Llvm.build_ret ret_value_p final_builder in
     form_decl in
 

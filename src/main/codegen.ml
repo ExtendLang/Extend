@@ -235,8 +235,11 @@ let translate (globals, functions, externs) =
             Llvm.build_call getVal [|llvm_var; Llvm.const_int base_types.int_t 0; Llvm.const_int base_types.int_t 0|] "" builder
           | FunctionParameter(i) ->
             let paramarray = (local_scope => (scope_field_type_index FunctionParams)) "paramarray" builder in
-            let param = Llvm.build_in_bounds_gep paramarray [|Llvm.const_int base_types.int_t i|] "param" builder in
-            Llvm.build_call (Hashtbl.find runtime_functions "clone_value") [|param|] "" builder
+            let param_addr = Llvm.build_in_bounds_gep paramarray [|Llvm.const_int base_types.int_t i|] "param_addr" builder in
+            let param = Llvm.build_load param_addr "param" builder in
+            (* print_endline "ID 1"; *)
+            let x = Llvm.build_call (Hashtbl.find runtime_functions "clone_value") [|param|] "" builder in
+            (* print_endline "ID 2" *) x
           | ExtendFunction(i) -> raise(LogicError("Something went wrong with your semantic analyis - function " ^ name ^ " used as variable in RHS for " ^ varname))
         )
       | Selection(expr, sel) -> build_expr expr
@@ -252,11 +255,12 @@ let translate (globals, functions, externs) =
             (Array.of_list [boxxx]) "box_value_str" builder
         in boxx
       | Call(fn,exl) -> (*TODO: Call needs to be reviewed. Possibly switch call arguments to value_p*)
-        print_endline "1";
+        (* print_endline "Call 1"; *)
         let args = Array.of_list
             (List.rev (List.fold_left (
                  fun a b -> (build_expr b) :: a) [] exl)) in
-        print_endline "2";
+        (* Array.iter (fun x -> print_endline (Llvm.string_of_lltype (Llvm.type_of x))) args ; *)
+        (* print_endline "2"; *)
         let result = Llvm.build_call (
           StringMap.find fn function_llvalues
         ) args "" builder in

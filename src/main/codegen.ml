@@ -220,19 +220,15 @@ let translate (globals, functions, externs) =
     let rec build_expr old_builder exp = match exp with
         LitInt(i) -> let vvv = Llvm.const_float base_types.float_t (float_of_int i) in
         let ret_val = Llvm.build_malloc base_types.value_t "" old_builder in
-        let sp = Llvm.build_struct_gep ret_val (value_field_index Number) "num_pointer" old_builder in
-        let _ = Llvm.build_store (Llvm.const_int base_types.char_t (value_field_flags_index Number)) (Llvm.build_struct_gep ret_val (value_field_index Flags) "" old_builder) old_builder in
-        let _ = Llvm.build_store vvv sp old_builder in
+        let _ = store_number ret_val old_builder vvv in
         (ret_val, old_builder)
       | LitFlt(f) -> let vvv = Llvm.const_float base_types.float_t f in
         let ret_val = Llvm.build_malloc base_types.value_t "" old_builder in
-        let sp = Llvm.build_struct_gep ret_val (value_field_index Number) "num_pointer" old_builder in
-        let _ = Llvm.build_store (Llvm.const_int base_types.char_t (value_field_flags_index Number)) (Llvm.build_struct_gep ret_val (value_field_index Flags) "" old_builder) old_builder in
-        let _ = Llvm.build_store vvv sp old_builder in
+        let _ = store_number ret_val old_builder vvv in
         (ret_val, old_builder)
       | Empty ->
         let ret_val = Llvm.build_malloc base_types.value_t "" old_builder in
-        let _ = Llvm.build_store (Llvm.const_int base_types.char_t (value_field_flags_index Empty)) (Llvm.build_struct_gep ret_val (value_field_index Flags) "" old_builder) old_builder in
+        let _ = store_empty ret_val old_builder in
         (ret_val, old_builder)
       | Id(name) ->
         (

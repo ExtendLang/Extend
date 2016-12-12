@@ -1,0 +1,35 @@
+selection_examples() {
+  foo[0,2] /* This evaluates to the cell value in the first row and third column. */
+  foo[0,:] /* Evaluates to the range of cells in the first row of foo. */
+  foo[:,2] /* Evaluates to the range of cells in the third column of foo. */
+  foo[:,[1]] /* The internal brackets denote RELATIVE notation.
+  In this case, 1 column right of the column of the left-hand-side cell. */
+
+  foo[3,] /* Equivalent to foo[3,[0]] if foo has more than one column
+  or foo[3,0] if foo has one column */
+
+  foo[5:, 7:] /* All cells starting from the 6th row and 8th column to the bottom right */
+
+  foo[[1]:[2], 0:[7]]
+  /* Selects the rows between the 1st and 2nd row after LHS row, and
+     all the columns up to the 7th column to the right of the LHS column */
+
+  /* In this example, each cell of bar would be equal to the cell
+   * in foo in the equivalent location plus 1. */
+  [5,5] foo;
+  [5,5] bar := #foo + 1; // #foo = foo[[0],[0]]
+
+  /* In this example, bar would be a 3x5 range where in each row,
+   * the value in bar is equal to the value in foo in the same column.
+   * In other words, each row of bar would be a copy of foo. */
+  [1,5] foo; // foo has 1 row, 5 columns
+  [3,5] bar := #foo; // #foo = foo[0,[0]]
+
+  /* In this example, the values of baz would be
+   * 11, 12, 13 in the first row;
+   * 21, 22, 23 in the second row;
+   * 31, 32, 33 in the third row. */
+  foo := {1,2,3}; // 1 row, 3 columns
+  bar := {10;20;30}; // 3 rows, 1 column
+  [3,3] baz := #foo + #bar; // Equivalent to foo[0,[0]] + bar[[0],0]
+}

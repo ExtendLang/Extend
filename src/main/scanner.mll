@@ -55,6 +55,7 @@ rule token = parse
 | "<<"            { LSHIFT }
 | ">>"            { RSHIFT }
 | '#'             { HASH }
+| "if"            { IF }
 | "empty"         { EMPTY }
 | "size"          { SIZE }
 | "type"          { TYPE }

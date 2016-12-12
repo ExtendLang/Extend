@@ -1,0 +1,15 @@
+global x := "I'm a global";
+
+foo() {
+  y := x; // Scope of x is entire function
+  x := "In here I'm a local";
+  return y; // Returns "In here I'm a local"
+}
+
+bar(x) {
+  return x; // Parameters mask globals; returns argument
+}
+
+baz() {
+  return x; // Returns "I'm a global"
+}

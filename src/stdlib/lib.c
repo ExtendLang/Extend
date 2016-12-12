@@ -18,6 +18,8 @@
 FILE *open_files[1 + MAX_FILES] = {NULL};
 int open_num_files = 0;
 
+#define FLOAT_CUTOFF 1e-7
+
 struct subrange_t;
 struct value_t;
 
@@ -101,6 +103,8 @@ struct ExtendScope {
   struct var_defn *defns;
   struct var_instance **vars;
 	int numVars;
+	int refcount;
+	value_p *functionParams;
 };
 
 struct subrange_t {
@@ -203,7 +207,7 @@ value_p to_string(value_p val) {
 			double possible_num = val->numericVal;
 			int rounded_int = (int) lrint(possible_num);
 			char *converted_str;
-			if (fabs(possible_num - rounded_int) < 1e-7) {
+			if (fabs(possible_num - rounded_int) < FLOAT_CUTOFF) {
 				int size = snprintf(NULL, 0, "%d", rounded_int);
 				converted_str = malloc(size + 1);
 				sprintf(converted_str, "%d", rounded_int);
@@ -382,6 +386,8 @@ struct var_instance *instantiate_variable(struct ExtendScope *scope_ptr, struct 
 	}
 	for(i = 0; i < inst->rows * inst->cols; i++)
 		(*inst->status) = 0;
+
+	scope_ptr->refcount++;
 	return inst;
 }
 
@@ -473,6 +479,63 @@ value_p deepCopy(value_p value) {
 		setRange(_new, v);
 	}
 	return _new;
+}
+
+value_p clone_value(value_p old_value) {
+	value_p new_value = (value_p) malloc(sizeof(struct value_t));
+	new_value->flags = old_value->flags;
+	switch (new_value->flags) {
+		case FLAG_EMPTY:
+			break;
+		case FLAG_NUMBER:
+			new_value->numericVal = old_value->numericVal;
+			break;
+		case FLAG_STRING:
+			new_value->str = old_value->str;
+			new_value->str->refs++;
+			break;
+		case FLAG_SUBRANGE:
+			new_value->subrange = (subrange_p) malloc(sizeof(struct subrange_t));
+			memcpy(new_value->subrange, old_value->subrange, sizeof(struct subrange_t));
+			new_value->subrange->range->closure->refcount++; /* Not sure about this one */
+			break;
+		default:
+			fprintf(stderr, "clone_value(%p): Illegal value of flags: %c\n", old_value, new_value->flags);
+			exit(-1);
+			break;
+	}
+	return new_value;
+}
+
+void delete_string_p(string_p old_string) {
+	old_string->refs--;
+	if (old_string->refs == 0) {
+		/* free(old_string); */
+	}
+}
+
+void delete_subrange_p(subrange_p old_subrange) {
+	old_subrange->range->closure->refcount--;
+	free(old_subrange);
+}
+
+void delete_value(value_p old_value) {
+	switch (old_value->flags) {
+		case FLAG_EMPTY:
+			break;
+		case FLAG_NUMBER:
+			break;
+		case FLAG_STRING:
+			delete_string_p(old_value->str); /* doesn't do anything besides decrement the ref count now */
+			break;
+		case FLAG_SUBRANGE:
+			delete_subrange_p(old_value->subrange);
+			break;
+		default:
+			fprintf(stderr, "delete_value(%p): Illegal value of flags: %c\n", old_value, old_value->flags);
+			exit(-1);
+			break;
+	}
 }
 
 value_p getVal(struct var_instance *inst, int x, int y) {

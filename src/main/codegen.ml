@@ -400,6 +400,16 @@ let translate (globals, functions, externs) =
                   bnumadd
                 )
                 bnumadd
+              and _ = Llvm.build_store (
+                  Llvm.const_int base_types.char_t (value_field_flags_index Number)
+                ) (
+                  Llvm.build_struct_gep
+                  result
+                  (value_field_index Flags)
+                  ""
+                  bnumadd
+                )
+                bnumadd
               in
               let _ = Llvm.build_cond_br isnumorstring numorstrorother bailout int_builder
               and _ = Llvm.build_cond_br isnumber numadd strorother bnumorstrorother

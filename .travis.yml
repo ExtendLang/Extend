@@ -17,9 +17,7 @@ addons:
     - clang-3.8
     - llvm-3.8
 
-script:
-  - make -C ./lib/gdchart0.94.b/
-  - bash -ex .travis-ci.sh
+script: bash -ex .travis-ci.sh
 
 cache:
   directories:

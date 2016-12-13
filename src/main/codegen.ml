@@ -33,6 +33,7 @@ let create_runtime_functions ctx bt the_module =
     let the_func = Llvm.declare_function fname (Llvm.function_type returntype arglist) the_module
     in Hashtbl.add runtime_functions fname the_func in
   add_runtime_func "strlen" bt.long_t [|bt.char_p|];
+  add_runtime_func "strcmp" bt.long_t [|bt.char_p; bt.char_p|];
   add_runtime_func "llvm.memcpy.p0i8.p0i8.i64" bt.void_t [|bt.char_p; bt.char_p; bt.long_t; bt.int_t; bt.bool_t|] ;
   add_runtime_func "getVal" bt.value_p [|bt.var_instance_p; bt.int_t; bt.int_t|] ;
   add_runtime_func "clone_value" bt.value_p [|bt.value_p;|] ;
@@ -459,8 +460,13 @@ let translate (globals, functions, externs) =
             let _ = Llvm.build_cond_br numeric_equality make_true_bb make_false_bb numnum_builder in
 
             let (strstr_bb, strstr_builder) = make_block "strstr" in
-            (* TODO: Make this case work *)
-            let _ = Llvm.build_br make_false_bb strstr_builder in
+            let str_p_1 = (val1 => (value_field_index String)) "string_one" strstr_builder in
+            let str_p_2 = (val2 => (value_field_index String)) "string_two" strstr_builder in
+            let char_p_1 = (str_p_1 => (string_field_index StringCharPtr)) "char_p_one" strstr_builder in
+            let char_p_2 = (str_p_2 => (string_field_index StringCharPtr)) "char_p_two" strstr_builder in
+            let strcmp_result = Llvm.build_call (Hashtbl.find runtime_functions "strcmp") [|char_p_1; char_p_2|] "strcmp_result" strstr_builder in
+            let string_equality = Llvm.build_icmp Llvm.Icmp.Eq (Llvm.const_null base_types.long_t) strcmp_result "string_equality" strstr_builder in
+            let _ = Llvm.build_cond_br string_equality make_true_bb make_false_bb strstr_builder in
 
             let (rngrng_bb, rngrng_builder) = make_block "rngrng" in
             (* TODO: Make this case work *)
@@ -500,6 +506,13 @@ let translate (globals, functions, externs) =
         Llvm.add_case switch_inst (Llvm.const_int base_types.char_t 0) truthy_bb; (* empty << 1 + is_zero == 0 ===> truthy *)
         Llvm.add_case switch_inst (Llvm.const_int base_types.char_t 1) falsey_bb; (* empty << 1 + is_zero == 1 ===> falsey *)
         (ret_val, merge_builder)
+      | UnOp(LogNot, expr) ->
+        let (truth_val, truth_builder) = build_expr old_builder (UnOp(Truthy, expr)) in
+        let the_number = (truth_val => (value_field_index Number)) "the_number" truth_builder in
+        let not_the_number = Llvm.build_fsub (Llvm.const_float base_types.float_t 1.0) the_number "not_the_number" truth_builder in
+        let sp = Llvm.build_struct_gep truth_val (value_field_index Number) "num_pointer" truth_builder in
+        let _ = Llvm.build_store not_the_number sp truth_builder in
+        (truth_val, truth_builder)
       | UnOp(Neg, expr) ->
         let vvv = Llvm.const_float base_types.float_t 42.0 in
         let ret_val = Llvm.build_malloc base_types.value_t "" old_builder in
@@ -547,7 +560,7 @@ let translate (globals, functions, externs) =
         Llvm.add_case switch_inst (Llvm.const_int base_types.char_t 1) falsey_bb; (* empty << 1 + is_zero == 1 ===> falsey *)
         (ret_val, merge_builder)
 
-      | UnOp( _, expr) -> print_endline (Ast.string_of_expr exp); raise NotImplemented
+      | UnOp( _, expr) -> print_endline "Unsupported Unop" ; print_endline (Ast.string_of_expr exp); raise NotImplemented
       | unknown_expr -> print_endline (string_of_expr unknown_expr);raise NotImplemented in
     let (ret_value_p, final_builder) = build_expr builder_at_top formula_expr in
     let _ = Llvm.build_ret ret_value_p final_builder in

@@ -306,6 +306,17 @@ void debug_print(value_p val, char *which_value) {
 	fprintf(stderr, "Flags: %d (%s)\n", val->flags, flag_meanings[val->flags]);
 	fprintf(stderr, "NumericVal: %f\n", val->numericVal);
 	fprintf(stderr, "String contents: Probably safer not to check that pointer (%p) blindly\n", val->str);
+	if (val->flags == FLAG_STRING && val->str != NULL) {
+		fprintf(stderr, "It says it's a string and it's not a NULL pointer though, so here you go:\n");
+		fprintf(stderr, "String refcount: %d\n", val->str->refs);
+		fprintf(stderr, "String length: %ld\n", val->str->length);
+		fprintf(stderr, "String char* memory address: %p\n", val->str->text);
+		if (val->str->text == NULL) {
+			fprintf(stderr, "Not going to print the contents of NULL!\n");
+		} else {
+			fprintf(stderr, "String char* contents:\n%s\n", val->str->text);
+		}
+	}
 	fprintf(stderr, "Subrange contents: Probably safer not to check that pointer (%p) blindly either\n", val->subrange);
 	fprintf(stderr, "------That's all I've got to say about %s:------\n", which_value == NULL ? "some anonymous variable" : which_value);
 }

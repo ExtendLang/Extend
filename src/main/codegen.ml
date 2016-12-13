@@ -314,8 +314,8 @@ let translate (globals, functions, externs) =
           let string_string = Llvm.const_add (Llvm.const_shl string_type bit_shift) string_type in
           let empty_empty = Llvm.const_add (Llvm.const_shl empty_type bit_shift) empty_type in
           let range_range = Llvm.const_add (Llvm.const_shl range_type bit_shift) range_type in
-          match op with
-            Minus -> let ret_val = Llvm.build_malloc base_types.value_t "binop_minus_ret_val" int_builder in
+          let build_simple_binop oppp =
+            (let ret_val = Llvm.build_malloc base_types.value_t "binop_minus_ret_val" int_builder in
               let _ = Llvm.build_store
                   (
                     Llvm.const_int
@@ -335,9 +335,9 @@ let translate (globals, functions, externs) =
               let (numnum_bb, numnum_builder) = make_block "numnum" in
               let numeric_val_1 = (val1 => (value_field_index Number)) "number_one" numnum_builder in
               let numeric_val_2 = (val2 => (value_field_index Number)) "number_two" numnum_builder in
-              let numeric_sub = Llvm.build_fsub numeric_val_1 numeric_val_2 "numeric_minus" numnum_builder in
+              let numeric_res = oppp numeric_val_1 numeric_val_2 "numeric_res" numnum_builder in
               let _ = Llvm.build_store
-                  numeric_sub (
+                  numeric_res (
                     Llvm.build_struct_gep
                     ret_val
                     (value_field_index Number)
@@ -360,7 +360,10 @@ let translate (globals, functions, externs) =
                   numnum_builder in
               let _ = Llvm.build_br bailout numnum_builder in
               let _ = Llvm.build_cond_br (Llvm.build_icmp Llvm.Icmp.Eq combined_type number_number "" int_builder) numnum_bb bailout int_builder in
-              (ret_val, bbailout)
+               (ret_val, bbailout)
+           ) in
+          match op with
+            Minus -> build_simple_binop Llvm.build_fsub
           | Plus ->
               let result = Llvm.build_malloc base_types.value_t "" int_builder
               and stradd = (Llvm.append_block context "" form_decl)
@@ -597,6 +600,7 @@ let translate (globals, functions, externs) =
               and _ = Llvm.build_br bailout bnumadd
               in
               (result, bbailout)
+          | Times -> build_simple_binop Llvm.build_fmul
           | Eq ->
             (* let _ = Llvm.build_call (Hashtbl.find runtime_functions "debug_print") [|val1; Llvm.build_global_stringptr "Eq operator - value 1" "" old_builder|] "" int_builder in
             let _ = Llvm.build_call (Hashtbl.find runtime_functions "debug_print") [|val2; Llvm.build_global_stringptr "Eq operator - value 2" "" old_builder|] "" int_builder in *)

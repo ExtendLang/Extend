@@ -10,7 +10,7 @@ and  symbolTable = symbol StringMap.t
 and  symbolTableType = Locals | Globals | ExtendFunctions
 
 let helper_functions = Hashtbl.create 10
-let runtime_functions = Hashtbl.create 10
+let runtime_functions = Hashtbl.create 20
 
 let index_map table_type m =
   let add_item key _ (accum_map, accum_idx) =
@@ -34,6 +34,8 @@ let create_runtime_functions ctx bt the_module =
     in Hashtbl.add runtime_functions fname the_func in
   add_runtime_func "strlen" bt.long_t [|bt.char_p|];
   add_runtime_func "strcmp" bt.long_t [|bt.char_p; bt.char_p|];
+  add_runtime_func "pow" bt.float_t [|bt.float_t; bt.float_t|] ;
+  add_runtime_func "lrint" bt.int_t [|bt.float_t|] ;
   add_runtime_func "llvm.memcpy.p0i8.p0i8.i64" bt.void_t [|bt.char_p; bt.char_p; bt.long_t; bt.int_t; bt.bool_t|] ;
   add_runtime_func "getVal" bt.value_p [|bt.var_instance_p; bt.int_t; bt.int_t|] ;
   add_runtime_func "clone_value" bt.value_p [|bt.value_p;|] ;
@@ -314,7 +316,7 @@ let translate (globals, functions, externs) =
           let string_string = Llvm.const_add (Llvm.const_shl string_type bit_shift) string_type in
           let empty_empty = Llvm.const_add (Llvm.const_shl empty_type bit_shift) empty_type in
           let range_range = Llvm.const_add (Llvm.const_shl range_type bit_shift) range_type in
-          let build_simple_binop oppp =
+          let build_simple_binop oppp int_builder =
             (let ret_val = Llvm.build_malloc base_types.value_t "binop_minus_ret_val" int_builder in
               let _ = Llvm.build_store
                   (
@@ -361,9 +363,59 @@ let translate (globals, functions, externs) =
               let _ = Llvm.build_br bailout numnum_builder in
               let _ = Llvm.build_cond_br (Llvm.build_icmp Llvm.Icmp.Eq combined_type number_number "" int_builder) numnum_bb bailout int_builder in
                (ret_val, bbailout)
-           ) in
+           )
+           and build_simple_int_binop oppp int_builder =
+             (let ret_val = Llvm.build_malloc base_types.value_t "binop_minus_ret_val" int_builder in
+               let _ = Llvm.build_store
+                   (
+                     Llvm.const_int
+                     base_types.char_t
+                     (value_field_flags_index Empty)
+                   ) (
+                     Llvm.build_struct_gep
+                     ret_val
+                     (value_field_index Flags)
+                     ""
+                     int_builder
+                   )
+                   int_builder
+               in
+               let bailout = (Llvm.append_block context "" form_decl) in
+               let bbailout = Llvm.builder_at_end context bailout in
+               let (numnum_bb, numnum_builder) = make_block "numnum" in
+               let roundfl x = Llvm.build_call (Hashtbl.find runtime_functions "lrint") [|x|] "" numnum_builder in
+               let numeric_val_1 = roundfl ((val1 => (value_field_index Number)) "number_one" numnum_builder) in
+               let numeric_val_2 = roundfl ((val2 => (value_field_index Number)) "number_two" numnum_builder) in
+               let numeric_res = oppp numeric_val_1 numeric_val_2 "numeric_res" numnum_builder in
+               let _ = Llvm.build_store
+                   (Llvm.build_sitofp numeric_res base_types.float_t "" numnum_builder)
+                   (
+                     Llvm.build_struct_gep
+                     ret_val
+                     (value_field_index Number)
+                     ""
+                     numnum_builder
+                   )
+                   numnum_builder in
+               let _ = Llvm.build_store
+                   (
+                     Llvm.const_int
+                     base_types.char_t
+                     (value_field_flags_index Number)
+                   ) (
+                     Llvm.build_struct_gep
+                     ret_val
+                     (value_field_index Flags)
+                     ""
+                     numnum_builder
+                   )
+                   numnum_builder in
+               let _ = Llvm.build_br bailout numnum_builder in
+               let _ = Llvm.build_cond_br (Llvm.build_icmp Llvm.Icmp.Eq combined_type number_number "" int_builder) numnum_bb bailout int_builder in
+                (ret_val, bbailout)
+            ) in
           match op with
-            Minus -> build_simple_binop Llvm.build_fsub
+            Minus -> build_simple_binop Llvm.build_fsub int_builder
           | Plus ->
               let result = Llvm.build_malloc base_types.value_t "" int_builder
               and stradd = (Llvm.append_block context "" form_decl)
@@ -600,7 +652,7 @@ let translate (globals, functions, externs) =
               and _ = Llvm.build_br bailout bnumadd
               in
               (result, bbailout)
-          | Times -> build_simple_binop Llvm.build_fmul
+          | Times -> build_simple_binop Llvm.build_fmul int_builder
           | Eq ->
             (* let _ = Llvm.build_call (Hashtbl.find runtime_functions "debug_print") [|val1; Llvm.build_global_stringptr "Eq operator - value 1" "" old_builder|] "" int_builder in
             let _ = Llvm.build_call (Hashtbl.find runtime_functions "debug_print") [|val2; Llvm.build_global_stringptr "Eq operator - value 2" "" old_builder|] "" int_builder in *)
@@ -679,14 +731,16 @@ let translate (globals, functions, externs) =
             Llvm.add_case switch_inst string_string strstr_bb;
             (ret_val, merge_builder)
           | LogAnd | LogOr -> raise (TransformedAway("&& and || should have been transformed into a short-circuit ternary expression! Error in the following expression:\n" ^ string_of_expr exp))
-          | Divide-> build_simple_binop Llvm.build_fdiv
-          | Mod-> build_simple_binop Llvm.build_frem
-          | Pow-> raise (NotImplemented)
-          | LShift-> raise (NotImplemented)
-          | RShift-> raise (NotImplemented)
-          | BitOr-> raise (NotImplemented)
-          | BitAnd-> raise (NotImplemented)
-          | BitXor-> raise (NotImplemented)
+          | Divide-> build_simple_binop Llvm.build_fdiv int_builder
+          | Mod-> build_simple_binop Llvm.build_frem int_builder
+          | Pow-> let powcall numeric_val_1 numeric_val_2 "numeric_res" numnum_builder =
+                Llvm.build_call (Hashtbl.find runtime_functions "pow") [|numeric_val_1; numeric_val_2|] "" numnum_builder
+              in build_simple_binop powcall int_builder
+          | LShift-> build_simple_int_binop Llvm.build_shl int_builder
+          | RShift-> build_simple_int_binop Llvm.build_lshr int_builder
+          | BitOr-> build_simple_int_binop Llvm.build_or int_builder
+          | BitAnd-> build_simple_int_binop Llvm.build_and int_builder
+          | BitXor-> build_simple_int_binop Llvm.build_xor int_builder
         )
       | UnOp(SizeOf,expr) -> let vvv = Llvm.const_float base_types.float_t 0.0 in
         let ret_val = Llvm.build_malloc base_types.value_t "unop_size_ret_val" old_builder in

@@ -675,7 +675,6 @@ let translate (globals, functions, externs) =
             Llvm.add_case switch_inst string_string strstr_bb;
             (ret_val, merge_builder)
           | LogAnd | LogOr -> raise (TransformedAway("&& and || should have been transformed into a short-circuit ternary expression! Error in the following expression:\n" ^ string_of_expr exp))
-          | Minus -> raise (NotImplemented)
           | Times-> raise (NotImplemented)
           | Divide-> raise (NotImplemented)
           | Mod-> raise (NotImplemented)
@@ -722,11 +721,18 @@ let translate (globals, functions, externs) =
       | UnOp(Neg, expr) ->
         let ret_val = Llvm.build_malloc base_types.value_t "unop_truthy_ret_val" old_builder in
         let _ = store_empty ret_val old_builder in
+        let (expr_val, expr_builder) = build_expr old_builder expr in
+        let expr_type = (expr_val => (value_field_index Flags)) "expr_type" expr_builder in
+        let is_number = Llvm.build_icmp Llvm.Icmp.Eq expr_type number_type "is_number" expr_builder in
         let (finish_bb, finish_builder) = make_block "finish" in
 
-        let (expr_val, expr_builder) = build_expr old_builder expr in
-
-
+        let (number_bb, number_builder) = make_block "number" in
+        let the_number = (expr_val => (value_field_index Number)) "the_number" number_builder in
+        let minus_the_number = Llvm.build_fneg the_number "minus_the_number" number_builder in
+        let _ = store_number ret_val number_builder minus_the_number in
+        let _ = Llvm.build_br finish_bb number_builder in
+        
+        let _ = Llvm.build_cond_br is_number number_bb finish_bb expr_builder in
         (ret_val, finish_builder)
       | UnOp(BitNot, expr) -> print_endline "Unsupported Unop" ; print_endline (Ast.string_of_expr exp); raise NotImplemented
       | UnOp(TypeOf, expr) -> print_endline "Unsupported Unop" ; print_endline (Ast.string_of_expr exp); raise NotImplemented

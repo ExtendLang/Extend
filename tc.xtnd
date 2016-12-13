@@ -4,5 +4,15 @@ extern "stdlib.o" {
 }
 
 main([1,1] args){
-	return print(1,to_string(2 - 1)+"\n") -> 0;
+	return
+    print(1,debug(type("hello")+"\n")) ->
+    print(1,type(4)+"\n") ->
+    print(1,type(empty)+"\n") ->
+    print(1,type(empty)+"\n") ->
+    print(1,type(empty)+"\n") ->
+    print(1,type(empty)+"\n") ->
+    print(1,type(empty)+"\n") ->
+    print(1,type(empty)+"\n") ->
+    print(1,debug(type(empty))+"\n") ->
+    0;
 }

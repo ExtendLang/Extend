@@ -39,6 +39,10 @@ void debug_print_formula(struct ExtendFormula *fdef) {
 	fprintf(stderr, "ColEnd varnum: %d %d\n", fdef->colEnd_varnum, fdef->toLastCol);
 }
 
+void debug_print_res_formula(struct ResolvedFormula *rdef) {
+	fprintf(stderr, "Some formula applies to: [%d:%d,%d:%d]\n", rdef->rowStart, rdef->rowEnd, rdef->colStart, rdef->colEnd);
+}
+
 void debug_print_vardefn(struct var_defn *pdef) {
 	fprintf(stderr, "------Everything you ever wanted to know about var defn %s:------\n", pdef->name);
 	fprintf(stderr, "Row varnum: %d\n", pdef->rows_varnum);
@@ -56,6 +60,11 @@ void debug_print_varinst(struct var_instance *inst) {
 	fprintf(stderr, "Rows: %d\n", inst->rows);
 	fprintf(stderr, "Cols: %d\n", inst->cols);
 	fprintf(stderr, "Num formulas: %d\n", inst->numFormulas);
+	fprintf(stderr, "*****Formulas:*****\n");
+	for(int i = 0; i < inst->numFormulas; i++) {
+		debug_print_res_formula(inst->formulas + i);
+	}
+	fprintf(stderr, "**** End of Formulas *** \n");
 	fprintf(stderr, "*****Values:*****\n");
 	for (int i=0; i < inst->rows * inst->cols; i++) {
 		debug_print(inst->values[i], inst->name);
@@ -255,9 +264,9 @@ char fitsDim(int dim, int rowStart_varnum, int rowEnd_varnum) {
 	return (dim >= rowStart_varnum) && (dim <= rowEnd_varnum);
 }
 
-char fitsRange(struct ResolvedFormula *formula, int x, int y) {
-	return fitsDim(x, formula->colStart, formula->colEnd)
-		&& fitsDim(y, formula->rowStart, formula->rowEnd);
+char fitsRange(struct ResolvedFormula *formula, int r, int c) {
+	return fitsDim(r, formula->rowStart, formula->rowEnd)
+		&& fitsDim(c, formula->colStart, formula->colEnd);
 }
 
 value_p calcVal(struct var_instance *inst, int x, int y) {
@@ -401,5 +410,6 @@ value_p getVal(struct var_instance *inst, int x, int y) {
 	while(return_val->flags == FLAG_SUBRANGE && return_val->subrange->subrangeRow == 1 && return_val->subrange->subrangeCol == 1) {
 		return_val = getVal(return_val->subrange->range, return_val->subrange->offsetRow, return_val->subrange->offsetCol);
 	}
+//	debug_print_varinst(inst);
 	return return_val;
 }

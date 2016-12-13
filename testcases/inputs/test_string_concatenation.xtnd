@@ -4,9 +4,9 @@ extern "stdlib.o" {
 
 [1,1] main(args) {
   foo :=
-		printv(1,"Hello" + "World\n") ->
-		printv(1,"Hello" + "World" + "\n") ->
-		printv(1,("Hello" + "World") + ("" + "\n")) ->
+		printv(1,"Hello " + "World\n") ->
+		printv(1,"Hello " + "World" + "\n") ->
+		printv(1,("Hello " + "World") + ("" + "\n")) ->
 		 0;
   return foo;
 }

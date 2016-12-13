@@ -673,6 +673,19 @@ let translate (globals, functions, externs) =
         let sp = Llvm.build_struct_gep truth_val (value_field_index Number) "num_pointer" truth_builder in
         let _ = Llvm.build_store not_the_number sp truth_builder in
         (truth_val, truth_builder)
+      | UnOp(Neg, expr) ->
+        let ret_val = Llvm.build_malloc base_types.value_t "unop_truthy_ret_val" old_builder in
+        let _ = store_empty ret_val old_builder in
+        let (finish_bb, finish_builder) = make_block "finish" in
+
+        let (expr_val, expr_builder) = build_expr old_builder expr in
+
+
+        (ret_val, finish_builder)
+      | UnOp(BitNot, expr) -> print_endline "Unsupported Unop" ; print_endline (Ast.string_of_expr exp); raise NotImplemented
+      | UnOp(TypeOf, expr) -> print_endline "Unsupported Unop" ; print_endline (Ast.string_of_expr exp); raise NotImplemented
+      | UnOp(Row, expr) -> print_endline "Unsupported Unop" ; print_endline (Ast.string_of_expr exp); raise NotImplemented
+      | UnOp(Column, expr) -> print_endline "Unsupported Unop" ; print_endline (Ast.string_of_expr exp); raise NotImplemented
       | ReducedTernary(cond_var, true_var, false_var) ->
         let ret_val_addr = Llvm.build_alloca base_types.value_p "tern_ret_val_addr" old_builder in
         let (cond_val, _) = build_expr old_builder (Id(cond_var)) in (* Relying here on the fact that Id() doesn't change the builder *)
@@ -713,8 +726,6 @@ let translate (globals, functions, externs) =
         Llvm.add_case switch_inst (Llvm.const_int base_types.char_t 0) truthy_bb; (* empty << 1 + is_zero == 0 ===> truthy *)
         Llvm.add_case switch_inst (Llvm.const_int base_types.char_t 1) falsey_bb; (* empty << 1 + is_zero == 1 ===> falsey *)
         (ret_val, merge_builder)
-
-      | UnOp( _, expr) -> print_endline "Unsupported Unop" ; print_endline (Ast.string_of_expr exp); raise NotImplemented
       | unknown_expr -> print_endline (string_of_expr unknown_expr);raise NotImplemented in
     let (ret_value_p, final_builder) = build_expr builder_at_top formula_expr in
     let _ = Llvm.build_ret ret_value_p final_builder in

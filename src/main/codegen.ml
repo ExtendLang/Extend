@@ -605,7 +605,40 @@ let translate (globals, functions, externs) =
             Llvm.add_case switch_inst number_number numnum_bb;
             Llvm.add_case switch_inst string_string strstr_bb;
             (ret_val, merge_builder)
-          | _ -> raise NotImplemented
+          | GtEq ->
+            let ret_val = Llvm.build_malloc base_types.value_t "binop_gte_ret_val" int_builder in
+            let (make_true_bb, make_false_bb, make_empty_bb, merge_builder) = make_truthiness_blocks "binop_eq" ret_val in
+
+            let (numnum_bb, numnum_builder) = make_block "numnum" in
+            let numeric_val_1 = (val1 => (value_field_index Number)) "number_one" numnum_builder in
+            let numeric_val_2 = (val2 => (value_field_index Number)) "number_two" numnum_builder in
+            let numeric_greater = Llvm.build_fcmp Llvm.Fcmp.Oge numeric_val_1 numeric_val_2 "numeric_greater" numnum_builder in
+            let _ = Llvm.build_cond_br numeric_greater make_true_bb make_false_bb numnum_builder in
+
+            let (strstr_bb, strstr_builder) = make_block "strstr" in
+            let str_p_1 = (val1 => (value_field_index String)) "string_one" strstr_builder in
+            let str_p_2 = (val2 => (value_field_index String)) "string_two" strstr_builder in
+            let char_p_1 = (str_p_1 => (string_field_index StringCharPtr)) "char_p_one" strstr_builder in
+            let char_p_2 = (str_p_2 => (string_field_index StringCharPtr)) "char_p_two" strstr_builder in
+            let strcmp_result = Llvm.build_call (Hashtbl.find runtime_functions "strcmp") [|char_p_1; char_p_2|] "strcmp_result" strstr_builder in
+            let string_greater = Llvm.build_icmp Llvm.Icmp.Sge strcmp_result (Llvm.const_null base_types.long_t) "string_greater" strstr_builder in
+            let _ = Llvm.build_cond_br string_greater make_true_bb make_false_bb strstr_builder in
+
+            let switch_inst = Llvm.build_switch combined_type make_empty_bb 2 int_builder in (* Incompatible ===> default to empty *)
+            Llvm.add_case switch_inst number_number numnum_bb;
+            Llvm.add_case switch_inst string_string strstr_bb;
+            (ret_val, merge_builder)
+          | LogAnd | LogOr -> raise (TransformedAway("&& and || should have been transformed into a short-circuit ternary expression! Error in the following expression:\n" ^ string_of_expr exp))
+          | Minus -> raise (NotImplemented)
+          | Times-> raise (NotImplemented)
+          | Divide-> raise (NotImplemented)
+          | Mod-> raise (NotImplemented)
+          | Pow-> raise (NotImplemented)
+          | LShift-> raise (NotImplemented)
+          | RShift-> raise (NotImplemented)
+          | BitOr-> raise (NotImplemented)
+          | BitAnd-> raise (NotImplemented)
+          | BitXor-> raise (NotImplemented)
         )
       | UnOp(SizeOf,expr) -> let vvv = Llvm.const_float base_types.float_t 0.0 in
         let ret_val = Llvm.build_malloc base_types.value_t "unop_size_ret_val" old_builder in

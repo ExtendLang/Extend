@@ -1,6 +1,6 @@
 type op       = Plus | Minus | Times | Divide | Mod | Pow |
                 LShift | RShift | BitOr | BitAnd | BitXor |
-                Eq | NotEq | Gt | Lt | GtEq | LtEq | LogAnd | LogOr
+                Eq | Gt | GtEq | LogAnd | LogOr
 type unop     = Neg | LogNot | BitNot | SizeOf | TypeOf | Row | Column | Truthy
 
 type expr     = LitInt of int |
@@ -109,7 +109,7 @@ let quote_string str =
 let string_of_op o = "\"" ^ (match o with
     Plus -> "+" | Minus -> "-" | Times -> "*" | Divide -> "/" | Mod -> "%" | Pow -> "**" |
     LShift -> "<<" | RShift -> ">>" | BitOr -> "|" | BitAnd -> "&" | BitXor -> "^" |
-    Eq -> "==" | NotEq -> "!-" | Gt -> ">" | Lt -> "<" | GtEq -> ">=" | LtEq -> "<=" |
+    Eq -> "==" | Gt -> ">" | GtEq -> ">=" |
     LogAnd -> "&& " | LogOr -> "||" ) ^ "\""
 
 let string_of_unop = function

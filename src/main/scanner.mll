@@ -68,6 +68,7 @@ rule token = parse
 | "import"        { IMPORT }
 | "global"        { GLOBAL }
 | "extern"        { EXTERN }
+| "debug"         { DEBUG }
 | digit+ as lit   { LIT_INT(int_of_string lit) }
 | flt as lit      { LIT_FLOAT(float_of_string lit) }
 | id as lit       { ID(lit) }

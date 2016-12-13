@@ -205,15 +205,17 @@ let translate (globals, functions, externs) =
   let main_bod = Llvm.builder_at_end context (Llvm.entry_block main_def) in
 
   (* Create the array of value_ps that will contain the responses to TypeOf(val) *)
-  let create_typeof_string s =
+  let null_val_ptr = Llvm.const_pointer_null base_types.value_p in
+  let null_val_array = Array.make (Array.length int_to_type_array) null_val_ptr in
+  let array_of_typeof_val_ptrs = Llvm.define_global "array_of_val_ptrs" (Llvm.const_array base_types.value_p null_val_array) base_module in
+  let create_typeof_string i s =
     let sp = Llvm.build_global_stringptr s "global_typeof_stringptr" main_bod in
-    Llvm.build_call (Hashtbl.find runtime_functions "new_string_go_all_the_way") [|sp|] "global_typeof_string" main_bod in
-  print_endline "1";
-  let typeof_val_array = Array.map create_typeof_string int_to_type_array in
-  print_endline "2";
-  let array_of_val_ptrs = Llvm.define_global "array_of_val_ptrs" (Llvm.const_array base_types.value_p typeof_val_array) base_module in
+    let vp = Llvm.build_call (Hashtbl.find runtime_functions "new_string_go_all_the_way") [|sp|] "global_typeof_string" main_bod in
+    let vp_dst = Llvm.build_in_bounds_gep array_of_typeof_val_ptrs [|Llvm.const_int base_types.int_t 0; Llvm.const_int base_types.int_t i|] ("global_typeof_dst") main_bod in
+    let _ = Llvm.build_store vp vp_dst main_bod in
+    () in
+  Array.iteri create_typeof_string int_to_type_array ;
 
-  print_endline "3";
   (* Look these two up once and for all *)
   (* let deepCopy = Hashtbl.find runtime_functions "deepCopy" in *)
   (* let freeMe = Hashtbl.find runtime_functions "freeMe" in *)
@@ -744,9 +746,10 @@ let translate (globals, functions, externs) =
           | LogAnd | LogOr -> raise (TransformedAway("&& and || should have been transformed into a short-circuit ternary expression! Error in the following expression:\n" ^ string_of_expr exp))
           | Divide-> build_simple_binop Llvm.build_fdiv int_builder
           | Mod-> build_simple_binop Llvm.build_frem int_builder
-          | Pow-> let powcall numeric_val_1 numeric_val_2 "numeric_res" numnum_builder =
-                Llvm.build_call (Hashtbl.find runtime_functions "pow") [|numeric_val_1; numeric_val_2|] "" numnum_builder
-              in build_simple_binop powcall int_builder
+          | Pow-> (
+            let powcall numeric_val_1 numeric_val_2 valname b =
+              Llvm.build_call (Hashtbl.find runtime_functions "pow") [|numeric_val_1; numeric_val_2|] "" b in
+            build_simple_binop powcall int_builder)
           | LShift-> build_simple_int_binop Llvm.build_shl int_builder
           | RShift-> build_simple_int_binop Llvm.build_lshr int_builder
           | BitOr-> build_simple_int_binop Llvm.build_or int_builder
@@ -803,7 +806,13 @@ let translate (globals, functions, externs) =
         let _ = Llvm.build_cond_br is_number number_bb finish_bb expr_builder in
         (ret_val, finish_builder)
       | UnOp(BitNot, expr) -> print_endline "Unsupported Unop" ; print_endline (Ast.string_of_expr exp); raise NotImplemented
-      | UnOp(TypeOf, expr) -> print_endline "Unsupported Unop" ; print_endline (Ast.string_of_expr exp); raise NotImplemented
+      | UnOp(TypeOf, expr) ->
+        let (expr_val, expr_builder) = build_expr old_builder expr in
+        let expr_type = (expr_val => (value_field_index Flags)) "expr_type" expr_builder in
+        let vp_to_clone_loc = Llvm.build_in_bounds_gep array_of_typeof_val_ptrs [|Llvm.const_int base_types.int_t 0; expr_type|] ("vp_to_clone_log") expr_builder in
+        let vp_to_clone = Llvm.build_load vp_to_clone_loc "vp_to_clone" expr_builder in
+        let ret_val = Llvm.build_call (Hashtbl.find runtime_functions "clone_value") [|vp_to_clone|] "typeof_ret_val" expr_builder in
+        (ret_val, expr_builder)
       | UnOp(Row, expr) -> print_endline "Unsupported Unop" ; print_endline (Ast.string_of_expr exp); raise NotImplemented
       | UnOp(Column, expr) -> print_endline "Unsupported Unop" ; print_endline (Ast.string_of_expr exp); raise NotImplemented
       | ReducedTernary(cond_var, true_var, false_var) ->

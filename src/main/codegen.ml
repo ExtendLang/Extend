@@ -679,10 +679,8 @@ let translate (globals, functions, externs) =
             Llvm.add_case switch_inst string_string strstr_bb;
             (ret_val, merge_builder)
           | LogAnd | LogOr -> raise (TransformedAway("&& and || should have been transformed into a short-circuit ternary expression! Error in the following expression:\n" ^ string_of_expr exp))
-          | Minus -> raise (NotImplemented)
-          | Times-> raise (NotImplemented)
-          | Divide-> raise (NotImplemented)
-          | Mod-> raise (NotImplemented)
+          | Divide-> build_simple_binop Llvm.build_fdiv
+          | Mod-> build_simple_binop Llvm.build_frem
           | Pow-> raise (NotImplemented)
           | LShift-> raise (NotImplemented)
           | RShift-> raise (NotImplemented)

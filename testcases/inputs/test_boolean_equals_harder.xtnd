@@ -1,0 +1,61 @@
+extern "stdlib.o" {
+  printv(a,b);
+  printd(a,b);
+}
+
+main([1,1] args){
+	return
+    printv(1, "True cases for ==\n") ->
+    printd(1,  (5 == 5)) ->
+    printd(1,  (5 == 5.0)) ->
+    printd(1,  (0.5 == 5e-1)) ->
+    printd(1,  (50 == 5e1)) ->
+    printd(1,  2 + 2 == 4) ->
+    printd(1,  "foo" == "foo") ->
+    printd(1,  "" == "") ->
+    printd(1,  empty == empty) ->
+    printd(1,  empty == !empty) ->
+    printd(1,  !"foo" == !"bar") ->
+    printd(1, (2 ? 3 : 4) == ("foo" ? 3 : "not 4") ) ->
+
+    printv(1, "\nFalse cases for ==\n") ->
+    printd(1,  (5 == 6)) ->
+    printd(1,  (5 == 5.01)) ->
+    printd(1,  (0.5 == 5e-2)) ->
+    printd(1,  (50 == 5e2)) ->
+    printd(1,  2 + 2 == 5) ->
+    printd(1,  "foo" == "bar") ->
+    printd(1,  "" == "foo") ->
+    printd(1,  "" == empty) ->
+    printd(1,  2 == empty) ->
+    printd(1,  empty == 2) ->
+    printd(1, (2 ? 3 : 4) == ("foo" ? "not 3" : 4) ) ->
+
+    printv(1, "\nTrue cases for !=\n") ->
+    printd(1,  (5 != 6)) ->
+    printd(1,  (5 != 5.01)) ->
+    printd(1,  (0.5 != 5e-2)) ->
+    printd(1,  (50 != 5e2)) ->
+    printd(1,  2 + 2 != 5) ->
+    printd(1,  "foo" != "bar") ->
+    printd(1,  "" != "foo") ->
+    printd(1,  "" != empty) ->
+    printd(1,  2 != empty) ->
+    printd(1,  empty != 2) ->
+    printd(1, (2 ? 3 : 4) != ("foo" ? "not 3" : 4) ) ->
+
+    printv(1, "\nFalse cases for !=\n") ->
+    printd(1,  (5 != 5)) ->
+    printd(1,  (5 != 5.0)) ->
+    printd(1,  (0.5 != 5e-1)) ->
+    printd(1,  (50 != 5e1)) ->
+    printd(1,  2 + 2 != 4) ->
+    printd(1,  "foo" != "foo") ->
+    printd(1,  "" != "") ->
+    printd(1,  empty != empty) ->
+    printd(1,  empty != !empty) ->
+    printd(1,  !"foo" != !"bar") ->
+    printd(1, (2 ? 3 : 4) != ("foo" ? 3 : "not 4") ) ->
+
+    0;
+}

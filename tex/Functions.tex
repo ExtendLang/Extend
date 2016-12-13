@@ -1,6 +1,6 @@
 \section{Functions}
 \label{sec:Functions}
-The bulk of an Extend program consists of functions. Although Extend has some features, such as immutability and lazy evaluation, that are inspired by functional languages, its functions are not \textit{first class objects}. Although the standard library is, by default, automatically compiled and linked with a program, there are no functions built into the language itself.
+The bulk of an Extend program consists of functions. Although Extend has some features, such as immutability and lazy evaluation, that are inspired by functional languages, its functions are not \textit{first class objects}. By default, the standard library is automatically compiled and linked with a program, but there are no functions built into the language itself.
 \subsection{Format}
 \label{sec:funcdecl}
 As in most programming languages, the header of the function declares the parameters it accepts. The body of the function consists of an optional set of variable declarations and formula assignments, which can occur in any order, and a return statement, which must be the last statement in the function body. All variable declarations and formula assignments, in addition to the return statement, must be terminated by a semicolon.
@@ -25,12 +25,13 @@ foo[0,1] = foo[0,0] * 2; // Assigns (foo[0,0] * 2) to the 2nd cell of the 1st ro
 bar = 3.14159; // Assigns pi to every cell of every row of bar
 baz[1:-1,0:1] = 2.71828; // Assigns e to cells (1,0) through (3,1), inclusive, of baz
 
-/* The next line assigns foo[[-1],0] + 1 to every cell in
+/* The next line assigns foo[[-1],0] + 2 to every cell in
    both columns of foo, besides the first row */
 foo[1:,:] = foo[[-1],0] + 2;
 \end{lstlisting}
 The last line of the source snippet above demonstrates the idiomatic Extend way of simulating an imperative language's loop; foo[4,0] would evaluate to 42+2+2+2+2 = 50 and foo[4,1] would evaluate to (42*2)+2+2+2+2 = 92.
 \subsubsection{Combined Variable Declaration and Formula Assignment}
+\label{sec:CombinedDeclAsgn}
 For convenience, a variable declaration and a formula assignment to all cells of that variable can be combined on a single line by inserting a \texttt{:=} and an expression after the identifier. Multiple variables and assignments, separated by commas, can be declared on a single line as well. All global variables must be defined using the combined declaration and formula assignment syntax.
 \begin{lstlisting}
 /* Creates two 2x2 ranges; every cell of foo evaluates to 1 and every cell of
@@ -38,7 +39,7 @@ For convenience, a variable declaration and a formula assignment to all cells of
 [2,2] foo := 1, bar := 2;
 \end{lstlisting}
 \subsubsection{Formula Assignment Errors}
-If the developer writes code in such a way that more than one formula applies to a cell, this causes a compile-time error if the compiler can detect it or a runtime error if the compiler cannot detect it in advance and the cell is evaluated. If there is no formula assigned to a cell, the cell will evaluate to \texttt{empty}.
+If the developer writes code in such a way that more than one formula applies to a cell, a runtime error will occur if the cell's value is required to compute the return expression. If there is no formula assigned to a cell, the cell will evaluate to \texttt{empty}.
 \subsection{Parameter Declarations}
 Parameters can be declared with or without dimensions. If dimensions are declared, they can either be specified as integer literals or as identifiers. If a dimension is specified as an integer literal, the program will verify the dimension of the argument before beginning to evaluate the return expression; if it does not match, a runtime error will occur causing the program to halt. If it is specified as an identifier, that variable will contain the dimension size and will be available inside the function body. If the same identifier is repeated in the function declaration, the program will verify that every parameter dimension with that identifier has equal dimension size; if they differ, a runtime error will occur causing the program to halt. A few examples follow:
 \lstinputlisting{./samples/param_decl_examples.xtnd}
@@ -48,7 +49,7 @@ Extend gives the developer the power to easily apply operations in a functional 
 This function normalizes a column vector to have unit norm:
 \lstinputlisting{./samples/functions_range_mix.xtnd}
 \subsection{Lazy Evaluation and Circular References}
-All cell values and variable dimensions are evaluated lazily if and when they are needed to calculate the return expression. Using lazy evaluation ensures that the cell values are calculated in a valid topological sort order and allows for detection of circular references; internally this is accomplished by constructing a function for each formula which is called if the cell's value is needed, and marking the cell as "in-progress" once it starts being evaluated and as "complete" once the value has been calculated. The only guarantees the language places on the order of cell evaluation are: (1) It will be a valid topological ordering; (2) In conditional expressions and in short-circuiting operator expressions, only the relevant conditional branches will be evaluated; and (3) In an expression using the precedence operator, the preceeding expression will be evaluated before the succeeding expression. A range selection consisting of multiple cells will not cause all the constituent cells to be evaluated; however, selection of a single cell will cause that cell's value to be evaluated.
+All cell values and variable dimensions are evaluated lazily if and when they are needed to calculate the return expression. Using lazy evaluation ensures that the cell values are calculated in a valid topological sort order and allows for detection of circular references; internally this is accomplished by constructing a function for each formula which is called the first time the cell's value is needed, and marking the cell as "in-progress" once it starts being evaluated and as "complete" once the value has been calculated. The only guarantees the language places on the order of cell evaluation are: (1) It will be a valid topological ordering; (2) In conditional expressions and in short-circuiting operator expressions, only the relevant conditional branches will be evaluated; and (3) In an expression using the precedence operator, the preceeding expression will be evaluated before the succeeding expression. A range selection consisting of multiple cells will not cause the constituent cells to be evaluated; however, selection of a single cell will cause that cell's value to be evaluated.
 If a program is written in such a way as to cause a circular dependency of one cell on another, and the return expression is dependent on that cell's value, a runtime error will occur. For example, in the following function:
 \lstinputlisting{./samples/maybe_circular.xtnd}
 A runtime error will occur if maybeCircular(1) is called; but if maybeCircular(0) is called, the function will simply return 0.
@@ -56,9 +57,9 @@ A runtime error will occur if maybeCircular(1) is called; but if maybeCircular(0
 \label{sec:ExternFunctionSignatures}
 Using the following library declaration:
 \lstinputlisting{./samples/extern.xtnd}
-will make the functions foo (taking two arguments) and bar (taking zero arguments) available within Extend. In LLVM, the compiler will declare external functions extend\textunderscore foo and extend\textunderscore bar as functions of two and zero arguments respectively. All arguments must have the type subrange\textunderscore p, and the function must have return type value\textunderscore p, both declared in the Extend standard library header file. In other words, the C file compiled to generate the library must have defined:
+will make the functions foo (taking two arguments) and bar (taking zero arguments) available within Extend. In LLVM, the compiler will declare external functions extend\textunderscore foo and extend\textunderscore bar as functions of two and zero arguments respectively. All arguments must have the type value\textunderscore p, and the function must have return type value\textunderscore p, declared in the Extend standard library header file. In other words, the C file compiled to generate the library must have defined:
 \begin{lstlisting}
-value_p extend_foo(subrange_p arg1, subrange_p arg2) {
+value_p extend_foo(value_p arg1, value_p arg2) {
   /* function body here; */
 }
 

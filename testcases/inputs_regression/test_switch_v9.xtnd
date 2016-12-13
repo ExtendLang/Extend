@@ -1,0 +1,12 @@
+extern "stdlib.o" {
+  printd(a,b);
+  to_string(a);
+}
+
+main([1,1] args){
+	x := switch {
+		case "true": 100;
+		case "also true": 200;
+	};
+	return printd(1,x) -> 0;
+}

@@ -18,4 +18,4 @@ ocaml setup.ml -build
 
 make -C lib/gdchart0.94.b/
 
-ocaml setup.ml -test
+ocaml setup.ml -test -no-hygiene

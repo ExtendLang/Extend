@@ -738,9 +738,9 @@ let translate (globals, functions, externs) =
               in build_simple_binop powcall int_builder
           | LShift-> build_simple_int_binop Llvm.build_shl int_builder
           | RShift-> build_simple_int_binop Llvm.build_lshr int_builder
-          | BitOr-> raise (NotImplemented)
-          | BitAnd-> raise (NotImplemented)
-          | BitXor-> raise (NotImplemented)
+          | BitOr-> build_simple_int_binop Llvm.build_or int_builder
+          | BitAnd-> build_simple_int_binop Llvm.build_and int_builder
+          | BitXor-> build_simple_int_binop Llvm.build_xor int_builder
         )
       | UnOp(SizeOf,expr) -> let vvv = Llvm.const_float base_types.float_t 0.0 in
         let ret_val = Llvm.build_malloc base_types.value_t "unop_size_ret_val" old_builder in

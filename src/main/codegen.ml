@@ -538,7 +538,7 @@ let translate (globals, functions, externs) =
                 bstradd
               and _ = Llvm.build_store dst_char dst_char_ptr_ptr bstradd
               in
-              let _ = Llvm.build_store fullLen (Llvm.build_struct_gep newstr (string_field_index StringLen) "" bstradd) bstradd
+              let _ = Llvm.build_store (Llvm.build_nsw_add fullLen (Llvm.const_int base_types.long_t (-1)) "" bstradd) (Llvm.build_struct_gep newstr (string_field_index StringLen) "" bstradd) bstradd
               in
               let _ = Llvm.build_cond_br isnumorstring numorstrorother bailout int_builder
               and _ = Llvm.build_cond_br isnumber numadd strorother bnumorstrorother
@@ -569,7 +569,7 @@ let translate (globals, functions, externs) =
             let _ = Llvm.build_cond_br string_equality make_true_bb make_false_bb strstr_builder in
 
             let (rngrng_bb, rngrng_builder) = make_block "rngrng" in
-            (* TODO: Make this case work *) 
+            (* TODO: Make this case work *)
             let _ = Llvm.build_br make_false_bb rngrng_builder in
 
             let switch_inst = Llvm.build_switch combined_type make_false_bb 4 int_builder in (* Incompatible ===> default to false *)

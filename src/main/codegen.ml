@@ -268,6 +268,148 @@ let translate (globals, functions, externs) =
           StringMap.find fn function_llvalues
         ) args "" call_builder in
         (result, call_builder)
+      | BinOp(expr1,op,expr2) -> (
+          let (val1, builder1) = build_expr old_builder expr1 in
+          let (val2, int_builder) = build_expr builder1 expr2 in
+          match op with
+            Plus ->
+              let result = Llvm.build_malloc base_types.value_t "" int_builder
+              and stradd = (Llvm.append_block context "" form_decl)
+              and numadd = (Llvm.append_block context "" form_decl)
+              and bailout = (Llvm.append_block context "" form_decl)
+              and numorstrorother = (Llvm.append_block context "" form_decl)
+              and strorother = (Llvm.append_block context "" form_decl)
+              in
+              let bstradd = Llvm.builder_at_end context stradd
+              and bnumadd = Llvm.builder_at_end context numadd
+              and bnumorstrorother = Llvm.builder_at_end context numorstrorother
+              and bstrorother = Llvm.builder_at_end context strorother
+              and bbailout = Llvm.builder_at_end context bailout
+              and _ = Llvm.build_store
+                  (
+                    Llvm.const_int
+                    base_types.char_t
+                    (value_field_flags_index Empty)
+                  ) (
+                    Llvm.build_struct_gep
+                    result
+                    (value_field_index Flags)
+                    ""
+                    int_builder
+                  )
+                  int_builder
+              in
+              (*let _ = Llvm.build_cond_br pred_bool body_bb merge_bb pred_builder in*)
+              let isnumber = Llvm.build_icmp
+                  Llvm.Icmp.Eq
+                  (
+                    Llvm.build_load
+                    (
+                      Llvm.build_struct_gep
+                      val1
+                      (value_field_index Flags)
+                      ""
+                      bnumorstrorother
+                    ) "" bnumorstrorother
+                  ) (
+                    Llvm.const_int
+                    base_types.char_t
+                    (value_field_flags_index Number)
+                  )
+                  ""
+                  bnumorstrorother
+              and isstring = Llvm.build_icmp
+                  Llvm.Icmp.Eq
+                  (
+                    Llvm.build_load
+                    (
+                      Llvm.build_struct_gep
+                      val1
+                      (value_field_index Flags)
+                      ""
+                      bstrorother
+                    )
+                    ""
+                    bstrorother
+                  ) (
+                    Llvm.const_int
+                    base_types.char_t
+                    (value_field_flags_index String)
+                  )
+                  ""
+                  bstrorother
+              and isnumorstring = Llvm.build_icmp
+                  Llvm.Icmp.Eq
+                  (
+                    Llvm.build_load
+                    (
+                      Llvm.build_struct_gep
+                      val1
+                      (value_field_index Flags)
+                      ""
+                      int_builder
+                    )
+                    ""
+                    int_builder
+                  ) (
+                    Llvm.build_load
+                    (
+                      Llvm.build_struct_gep
+                      val2
+                      (value_field_index Flags)
+                      ""
+                      int_builder
+                    )
+                    ""
+                    int_builder
+                  )
+                  ""
+                  int_builder
+              and _ = Llvm.build_store (
+                  Llvm.build_fadd
+                  (
+                    Llvm.build_load
+                    (
+                      Llvm.build_struct_gep
+                      val1
+                      (value_field_index Number)
+                      ""
+                      bnumadd
+                    )
+                    ""
+                    bnumadd
+                  ) (
+                    Llvm.build_load
+                    (
+                      Llvm.build_struct_gep
+                      val2
+                      (value_field_index Number)
+                      ""
+                      bnumadd
+                    )
+                    ""
+                    bnumadd
+                  )
+                  ""
+                  bnumadd
+                ) (
+                  Llvm.build_struct_gep
+                  result
+                  (value_field_index Number)
+                  ""
+                  bnumadd
+                )
+                bnumadd
+              in
+              let _ = Llvm.build_cond_br isnumorstring numorstrorother bailout int_builder
+              and _ = Llvm.build_cond_br isnumber numadd strorother bnumorstrorother
+              and _ = Llvm.build_cond_br isstring stradd bailout bstrorother
+              and _ = Llvm.build_br bailout bstradd
+              and _ = Llvm.build_br bailout bnumadd
+              in
+              (result, bbailout)
+          | _ -> raise NotImplemented
+        )
       | UnOp(SizeOf,expr) -> let vvv = Llvm.const_float base_types.float_t 0.0 in
         let ret_val = Llvm.build_malloc base_types.value_t "" old_builder in
         let sp = Llvm.build_struct_gep ret_val (value_field_index Number) "num_pointer" old_builder in

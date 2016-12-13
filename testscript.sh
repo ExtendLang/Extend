@@ -86,6 +86,7 @@ for f in $(ls $TESTDIR/$INPUTS); do
 done
 
 rm stdlib.o
+rm runtime.o
 
 echo "Passed $counterc of $counter compiler testcases"
 echo "$countern new testcases passed, $result regression tests failed"

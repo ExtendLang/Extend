@@ -1,18 +1,4 @@
-extern "stdlib.o" {
-  to_string(a);
-  print(a,b);
-}
-
-main([1,1] args){
-	return
-    print(1,debug(type("hello")+"\n")) ->
-    print(1,type(4)+"\n") ->
-    print(1,type(empty)+"\n") ->
-    print(1,type(empty)+"\n") ->
-    print(1,type(empty)+"\n") ->
-    print(1,type(empty)+"\n") ->
-    print(1,type(empty)+"\n") ->
-    print(1,type(empty)+"\n") ->
-    print(1,debug(type(empty))+"\n") ->
-    0;
+main(args){
+  foo := 2;
+  return 0;
 }

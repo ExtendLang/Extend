@@ -873,13 +873,7 @@ let translate (globals, functions, externs) =
                          | _ -> print_endline "Absdim"; raise NotImplemented
             ) intDim builder
           )
-        | Some(Rel(e)) -> (
-            ignore (Llvm.build_store (Llvm.const_int base_types.bool_t 0) boolAll builder);
-            Llvm.build_store (
-              match e with LitInt(i) -> Llvm.const_int base_types.int_t i
-              | _ -> print_endline "Reldim"; raise NotImplemented
-            ) intDim builder
-          )
+        | Some(Rel(e)) -> raise (LogicError("relative expression in formula index; this should not happen"))
         | _ -> if (atstart) then (
             ignore (Llvm.build_store (Llvm.const_int base_types.bool_t 0) boolAll builder);
             Llvm.build_store (Llvm.const_int base_types.int_t 0) intDim builder

@@ -5,6 +5,64 @@
 #include<stdbool.h>
 #include "runtime.h"
 
+void debug_print(value_p val, char *which_value) {
+	char *flag_meanings[4] = {"Empty", "Number", "String", "Subrange"};
+	fprintf(stderr, "------Everything you ever wanted to know about %s:------\n", which_value == NULL ? "some anonymous variable" : which_value);
+	fprintf(stderr, "Memory address: %p\n", val);
+	if (val == NULL) {
+		fprintf(stderr, "------------Nice try asking me to dereference a null pointer\n------------");
+		return;
+	}
+	fprintf(stderr, "Flags: %d (%s)\n", val->flags, flag_meanings[val->flags]);
+	fprintf(stderr, "NumericVal: %f\n", val->numericVal);
+	fprintf(stderr, "String contents: Probably safer not to check that pointer (%p) blindly\n", val->str);
+	if (val->flags == FLAG_STRING && val->str != NULL) {
+		fprintf(stderr, "It says it's a string and it's not a NULL pointer though, so here you go:\n");
+		fprintf(stderr, "String refcount: %d\n", val->str->refs);
+		fprintf(stderr, "String length: %ld\n", val->str->length);
+		fprintf(stderr, "String char* memory address: %p\n", val->str->text);
+		if (val->str->text == NULL) {
+			fprintf(stderr, "Not going to print the contents of NULL!\n");
+		} else {
+			fprintf(stderr, "String char* contents:\n%s\n", val->str->text);
+		}
+	}
+	fprintf(stderr, "Subrange contents: Probably safer not to check that pointer (%p) blindly either\n", val->subrange);
+	fprintf(stderr, "------That's all I've got to say about %s:------\n", which_value == NULL ? "some anonymous variable" : which_value);
+}
+
+void debug_print_formula(struct ExtendFormula *fdef) {
+	fprintf(stderr, "------Everything you ever wanted to know about your favorite formula:------\n");
+	fprintf(stderr, "RowStart varnum: %d %d\n", fdef->rowStart_varnum, fdef->fromFirstRow);
+	fprintf(stderr, "RowEnd varnum: %d %d\n", fdef->rowEnd_varnum, fdef->toLastRow);
+	fprintf(stderr, "ColStart varnum: %d %d\n", fdef->colStart_varnum, fdef->fromFirstCol);
+	fprintf(stderr, "ColEnd varnum: %d %d\n", fdef->colEnd_varnum, fdef->toLastCol);
+}
+
+void debug_print_vardefn(struct var_defn *pdef) {
+	fprintf(stderr, "------Everything you ever wanted to know about var defn %s:------\n", pdef->name);
+	fprintf(stderr, "Row varnum: %d\n", pdef->rows_varnum);
+	fprintf(stderr, "Col varnum: %d\n", pdef->cols_varnum);
+	fprintf(stderr, "Num formulas: %d\n", pdef->numFormulas);
+	fprintf(stderr, "Formula defs: \n");
+	for (int i=0; i < pdef->numFormulas; i++) {
+		debug_print_formula(pdef->formulas + i);
+	}
+	fprintf(stderr, "Is 1x1: %d\n", pdef->isOneByOne);
+}
+
+void debug_print_varinst(struct var_instance *inst) {
+	fprintf(stderr, "------Everything you ever wanted to know about var %s:------\n", inst->name);
+	fprintf(stderr, "Rows: %d\n", inst->rows);
+	fprintf(stderr, "Cols: %d\n", inst->cols);
+	fprintf(stderr, "Num formulas: %d\n", inst->numFormulas);
+	fprintf(stderr, "*****Values:*****\n");
+	for (int i=0; i < inst->rows * inst->cols; i++) {
+		debug_print(inst->values[i], inst->name);
+	}
+	fprintf(stderr, "**** End of Values *** \n");
+}
+
 double setNumeric(value_p result, double val) {
 	result->flags = FLAG_NUMBER;
 	return (result->numericVal = val);
@@ -86,29 +144,31 @@ void null_init(struct ExtendScope *scope_ptr) {
 		scope_ptr->vars[i] = NULL;
 }
 
+int getIntFromOneByOne(struct ExtendScope *scope_ptr, int varnum) {
+	struct var_instance *inst = get_variable(scope_ptr, varnum);
+	if (inst->rows != 1 || inst->cols != 1) {
+		fprintf(stderr, "The variable you claimed (%s) was one by one is actually %d by %d.\n", inst->name, inst->rows, inst->cols);
+		exit(-1);
+	}
+	value_p val = getVal(inst, 0, 0);
+	if (!assertSingleNumber(val)) {
+		fprintf(stderr, "The variable you claimed (%s) was a number isn't.\n", inst->name);
+		debug_print(val, inst->name);
+		exit(-1);
+	}
+	return (int) lrint(val->numericVal);
+}
+
 struct var_instance *instantiate_variable(struct ExtendScope *scope_ptr, struct var_defn def) {
-	double rowVal, colVal;
+	struct var_instance *inst = malloc(sizeof(struct var_instance));
 	if(def.isOneByOne) {
-		rowVal = 1;
-		colVal = 1;
+		inst->rows = 1;
+		inst->cols = 1;
 	} else {
-		struct var_instance *rows_var = get_variable(scope_ptr, def.rows_varnum);
-		fflush(stdout);
-		value_p rows = getVal(rows_var,0,0);
-		fflush(stdout);
-		struct var_instance *cols_var = get_variable(scope_ptr, def.cols_varnum);
-		fflush(stdout);
-		value_p cols = getVal(cols_var,0,0);
-		if(rows->flags == FLAG_NUMBER || cols->flags == FLAG_NUMBER) {
-			/* TODO: throw error */
-		}
-		rowVal = (int)lrint(rows->numericVal);
-		colVal = (int)lrint(cols->numericVal);
+		inst->rows = getIntFromOneByOne(scope_ptr, def.rows_varnum);
+		inst->cols = getIntFromOneByOne(scope_ptr, def.cols_varnum);
 	}
 	// TODO: do the same thing for each FormulaFP to turn an ExtendFormula into a ResolvedFormula
-	struct var_instance *inst = malloc(sizeof(struct var_instance));
-	inst->rows = (int)lrint(rowVal);
-	inst->cols = (int)lrint(colVal);
 	inst->numFormulas = def.numFormulas;
 	inst->closure = scope_ptr;
 	inst->name = def.name;
@@ -116,13 +176,21 @@ struct var_instance *instantiate_variable(struct ExtendScope *scope_ptr, struct 
 	inst->values = malloc(sizeof(value_p) * size);
 	inst->status = malloc(sizeof(struct status_t) * size);
 	inst->formulas = malloc(sizeof(struct ResolvedFormula) * inst->numFormulas);
+	//debug_print_vardefn(&def);
+	//debug_print_varinst(inst);
 	int i;
 	for(i = 0; i < inst->numFormulas; i++) {
 		inst->formulas[i].formula = def.formulas[i].formula;
 		if(def.formulas[i].fromFirstRow)
 			inst->formulas[i].rowStart = 0;
-		else
-			inst->formulas[i].rowStart = def.formulas[i].rowStart_varnum; //TODO eval;
+		else {
+			//struct var_instance *rowStartVar = get_variable(scope_ptr, def.formulas[i].rowStart_varnum);
+			//value_p rowStart = getVal(rowStartVar,0,0);
+			//inst->formulas[i].rowStart = (int)lrint(rowStart->numericVal); //TODO eval;
+				inst->formulas[i].rowStart = def.formulas[i].rowStart_varnum; //TODO eval;
+				//printf("%d\n",def.formulas[i].rowStart_varnum);
+			//printf("%d\n", getIntFromOneByOne(scope_ptr, def.formulas[i].rowStart_varnum));
+		}
 		if(def.formulas[i].toLastRow)
 			inst->formulas[i].rowEnd = inst->rows;
 		else
@@ -310,26 +378,4 @@ value_p getVal(struct var_instance *inst, int x, int y) {
 		return_val = getVal(return_val->subrange->range, return_val->subrange->offsetRow, return_val->subrange->offsetCol);
 	}
 	return return_val;
-}
-
-void debug_print(value_p val, char *which_value) {
-	char *flag_meanings[4] = {"Empty", "Number", "String", "Subrange"};
-	fprintf(stderr, "------Everything you ever wanted to know about %s:------\n", which_value == NULL ? "some anonymous variable" : which_value);
-	fprintf(stderr, "Memory address: %p\n", val);
-	fprintf(stderr, "Flags: %d (%s)\n", val->flags, flag_meanings[val->flags]);
-	fprintf(stderr, "NumericVal: %f\n", val->numericVal);
-	fprintf(stderr, "String contents: Probably safer not to check that pointer (%p) blindly\n", val->str);
-	if (val->flags == FLAG_STRING && val->str != NULL) {
-		fprintf(stderr, "It says it's a string and it's not a NULL pointer though, so here you go:\n");
-		fprintf(stderr, "String refcount: %d\n", val->str->refs);
-		fprintf(stderr, "String length: %ld\n", val->str->length);
-		fprintf(stderr, "String char* memory address: %p\n", val->str->text);
-		if (val->str->text == NULL) {
-			fprintf(stderr, "Not going to print the contents of NULL!\n");
-		} else {
-			fprintf(stderr, "String char* contents:\n%s\n", val->str->text);
-		}
-	}
-	fprintf(stderr, "Subrange contents: Probably safer not to check that pointer (%p) blindly either\n", val->subrange);
-	fprintf(stderr, "------That's all I've got to say about %s:------\n", which_value == NULL ? "some anonymous variable" : which_value);
 }

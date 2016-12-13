@@ -181,7 +181,6 @@ and evaluate scope cell e =
         | LShift -> ExtendNumber(n1 lsl n2)
         | RShift -> ExtendNumber(n1 asr n2)
         | Eq -> if n1 = n2 then ExtendNumber(1) else ExtendNumber(0)
-        | NotEq -> if n1 = n2 then ExtendNumber(0) else ExtendNumber(1)
         | Gt -> if n1 > n2 then ExtendNumber(1) else ExtendNumber(0)
         | Lt -> if n1 < n2 then ExtendNumber(1) else ExtendNumber(0)
         | GtEq -> if n1 >= n2 then ExtendNumber(1) else ExtendNumber(0)
@@ -195,15 +194,12 @@ and evaluate scope cell e =
         | _ -> EmptyValue)
     | (EmptyValue, ExtendNumber(n1)) -> (match op with
           Eq -> ExtendNumber(0)
-        | NotEq -> ExtendNumber(1)
         | _ -> EmptyValue)
     | (ExtendNumber(n1), EmptyValue) -> (match op with
           Eq -> ExtendNumber(0)
-        | NotEq -> ExtendNumber(1)
         | _ -> EmptyValue)
     | (EmptyValue, EmptyValue) -> (match op with
           Eq -> ExtendNumber(1)
-        | NotEq -> ExtendNumber(0)
         | _ -> EmptyValue)
     | _ -> EmptyValue in
 
@@ -326,6 +322,7 @@ and evaluate scope cell e =
   | UnOp(op, e1) -> eval_unop op (evaluate scope cell e1)
   | Id(s) -> find_variable s
   | Precedence(a,b) -> ignore (evaluate scope cell a); evaluate scope cell b
+  | Debug(e) -> evaluate scope cell e
   | ReducedTernary(cond_id, true_id, false_id) ->
     (match (evaluate scope cell (Selection(Id(cond_id),(Some(Some(Rel(LitInt(0))),None),Some(Some(Rel(LitInt(0))),None))))) with
        EmptyValue -> EmptyValue

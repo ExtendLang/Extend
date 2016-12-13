@@ -35,6 +35,7 @@ let create_runtime_functions ctx bt the_module =
   add_runtime_func "strlen" bt.long_t [|bt.char_p|];
   add_runtime_func "strcmp" bt.long_t [|bt.char_p; bt.char_p|];
   add_runtime_func "pow" bt.float_t [|bt.float_t; bt.float_t|] ;
+  add_runtime_func "lrint" bt.int_t [|bt.float_t|] ;
   add_runtime_func "llvm.memcpy.p0i8.p0i8.i64" bt.void_t [|bt.char_p; bt.char_p; bt.long_t; bt.int_t; bt.bool_t|] ;
   add_runtime_func "getVal" bt.value_p [|bt.var_instance_p; bt.int_t; bt.int_t|] ;
   add_runtime_func "clone_value" bt.value_p [|bt.value_p;|] ;
@@ -362,7 +363,57 @@ let translate (globals, functions, externs) =
               let _ = Llvm.build_br bailout numnum_builder in
               let _ = Llvm.build_cond_br (Llvm.build_icmp Llvm.Icmp.Eq combined_type number_number "" int_builder) numnum_bb bailout int_builder in
                (ret_val, bbailout)
-           ) in
+           )
+           and build_simple_int_binop oppp int_builder =
+             (let ret_val = Llvm.build_malloc base_types.value_t "binop_minus_ret_val" int_builder in
+               let _ = Llvm.build_store
+                   (
+                     Llvm.const_int
+                     base_types.char_t
+                     (value_field_flags_index Empty)
+                   ) (
+                     Llvm.build_struct_gep
+                     ret_val
+                     (value_field_index Flags)
+                     ""
+                     int_builder
+                   )
+                   int_builder
+               in
+               let bailout = (Llvm.append_block context "" form_decl) in
+               let bbailout = Llvm.builder_at_end context bailout in
+               let (numnum_bb, numnum_builder) = make_block "numnum" in
+               let roundfl x = Llvm.build_call (Hashtbl.find runtime_functions "lrint") [|x|] "" numnum_builder in
+               let numeric_val_1 = roundfl ((val1 => (value_field_index Number)) "number_one" numnum_builder) in
+               let numeric_val_2 = roundfl ((val2 => (value_field_index Number)) "number_two" numnum_builder) in
+               let numeric_res = oppp numeric_val_1 numeric_val_2 "numeric_res" numnum_builder in
+               let _ = Llvm.build_store
+                   (Llvm.build_sitofp numeric_res base_types.float_t "" numnum_builder)
+                   (
+                     Llvm.build_struct_gep
+                     ret_val
+                     (value_field_index Number)
+                     ""
+                     numnum_builder
+                   )
+                   numnum_builder in
+               let _ = Llvm.build_store
+                   (
+                     Llvm.const_int
+                     base_types.char_t
+                     (value_field_flags_index Number)
+                   ) (
+                     Llvm.build_struct_gep
+                     ret_val
+                     (value_field_index Flags)
+                     ""
+                     numnum_builder
+                   )
+                   numnum_builder in
+               let _ = Llvm.build_br bailout numnum_builder in
+               let _ = Llvm.build_cond_br (Llvm.build_icmp Llvm.Icmp.Eq combined_type number_number "" int_builder) numnum_bb bailout int_builder in
+                (ret_val, bbailout)
+            ) in
           match op with
             Minus -> build_simple_binop Llvm.build_fsub int_builder
           | Plus ->
@@ -685,8 +736,8 @@ let translate (globals, functions, externs) =
           | Pow-> let powcall numeric_val_1 numeric_val_2 "numeric_res" numnum_builder =
                 Llvm.build_call (Hashtbl.find runtime_functions "pow") [|numeric_val_1; numeric_val_2|] "" numnum_builder
               in build_simple_binop powcall int_builder
-          | LShift-> raise (NotImplemented)
-          | RShift-> raise (NotImplemented)
+          | LShift-> build_simple_int_binop Llvm.build_shl int_builder
+          | RShift-> build_simple_int_binop Llvm.build_lshr int_builder
           | BitOr-> raise (NotImplemented)
           | BitAnd-> raise (NotImplemented)
           | BitXor-> raise (NotImplemented)

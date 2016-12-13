@@ -430,6 +430,8 @@ let translate (globals, functions, externs) =
               in
               (result, bbailout)
           | Eq ->
+            let _ = Llvm.build_call (Hashtbl.find runtime_functions "debug_print") [|val1; Llvm.build_global_stringptr "Eq operator - value 1" "" old_builder|] "" int_builder in
+            let _ = Llvm.build_call (Hashtbl.find runtime_functions "debug_print") [|val2; Llvm.build_global_stringptr "Eq operator - value 2" "" old_builder|] "" int_builder in
             let ret_val = Llvm.build_malloc base_types.value_t "binop_eq_ret_val" int_builder in
 
             let (merge_bb, merge_builder) = make_block "merge" in

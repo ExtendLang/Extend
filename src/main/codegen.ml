@@ -40,6 +40,7 @@ let create_runtime_functions ctx bt the_module =
   add_runtime_func "getSize" bt.value_p [|bt.var_instance_p;|] ;
   add_runtime_func "get_variable" bt.var_instance_p [|bt.extend_scope_p; bt.int_t|] ;
   add_runtime_func "null_init" (Llvm.void_type ctx) [|bt.extend_scope_p|] ;
+  add_runtime_func "debug_print" (Llvm.void_type ctx) [|bt.value_p ; bt.char_p|] ;
   ()
 
 let create_helper_functions ctx bt the_module =
@@ -451,6 +452,12 @@ let translate (globals, functions, externs) =
         Llvm.add_case switch_inst (Llvm.const_int base_types.char_t 0) truthy_bb; (* empty << 1 + is_zero == 0 ===> truthy *)
         Llvm.add_case switch_inst (Llvm.const_int base_types.char_t 1) falsey_bb; (* empty << 1 + is_zero == 1 ===> falsey *)
         (ret_val, merge_builder)
+      | UnOp(Neg, expr) ->
+        let vvv = Llvm.const_float base_types.float_t 42.0 in
+        let ret_val = Llvm.build_malloc base_types.value_t "" old_builder in
+        let _ = store_number ret_val old_builder vvv in
+        let _ = Llvm.build_call (Hashtbl.find runtime_functions "debug_print") [|ret_val; Llvm.build_global_stringptr "Unary Minus" "" old_builder|] "" old_builder in
+        (ret_val, old_builder)
       | ReducedTernary(cond_var, true_var, false_var) ->
         let ret_val_addr = Llvm.build_alloca base_types.value_p "" old_builder in
         let (cond_val, _) = build_expr old_builder (Id(cond_var)) in (* Relying here on the fact that Id() doesn't change the builder *)

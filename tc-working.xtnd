@@ -1,0 +1,14 @@
+extern "stdlib.o" {
+  printd(a,b);
+}
+
+main([1,1] args){
+	return
+    /* True cases */
+    printd(1,  (5 == 5)) ->
+    printd(1,  (5 == 5.0)) ->
+    printd(1,  (0.5 == 5e-1)) ->
+    printd(1,  (50 == 5e1)) ->
+    printd(1,  2 + 2 == 4) ->
+    0;
+}

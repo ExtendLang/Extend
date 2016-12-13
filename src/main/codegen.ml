@@ -260,6 +260,10 @@ let translate (globals, functions, externs) =
         let ret_val = Llvm.build_malloc base_types.value_t "empty_ret_val" old_builder in
         let _ = store_empty ret_val old_builder in
         (ret_val, old_builder)
+      | Debug(e) ->
+        let (ret_val, new_builder) = build_expr old_builder e in
+        let _ = Llvm.build_call (Hashtbl.find runtime_functions "debug_print") [|ret_val; Llvm.const_pointer_null base_types.char_p|] "" new_builder in
+        (ret_val, new_builder)
       | Id(name) ->
         (
           match (try StringMap.find name symbols with Not_found -> raise(LogicError("Something went wrong with your semantic analysis - " ^ name ^ " not found"))) with

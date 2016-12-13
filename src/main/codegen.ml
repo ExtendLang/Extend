@@ -569,7 +569,7 @@ let translate (globals, functions, externs) =
             let char_p_1 = (str_p_1 => (string_field_index StringCharPtr)) "char_p_one" strstr_builder in
             let char_p_2 = (str_p_2 => (string_field_index StringCharPtr)) "char_p_two" strstr_builder in
             let strcmp_result = Llvm.build_call (Hashtbl.find runtime_functions "strcmp") [|char_p_1; char_p_2|] "strcmp_result" strstr_builder in
-            let string_equality = Llvm.build_icmp Llvm.Icmp.Eq (Llvm.const_null base_types.long_t) strcmp_result "string_equality" strstr_builder in
+            let string_equality = Llvm.build_icmp Llvm.Icmp.Eq strcmp_result (Llvm.const_null base_types.long_t) "string_equality" strstr_builder in
             let _ = Llvm.build_cond_br string_equality make_true_bb make_false_bb strstr_builder in
 
             let (rngrng_bb, rngrng_builder) = make_block "rngrng" in
@@ -581,6 +581,29 @@ let translate (globals, functions, externs) =
             Llvm.add_case switch_inst string_string strstr_bb;
             Llvm.add_case switch_inst range_range rngrng_bb;
             Llvm.add_case switch_inst empty_empty make_true_bb; (* Nothing to check in this case, just return true *)
+            (ret_val, merge_builder)
+          | Gt ->
+            let ret_val = Llvm.build_malloc base_types.value_t "binop_gt_ret_val" int_builder in
+            let (make_true_bb, make_false_bb, make_empty_bb, merge_builder) = make_truthiness_blocks "binop_eq" ret_val in
+
+            let (numnum_bb, numnum_builder) = make_block "numnum" in
+            let numeric_val_1 = (val1 => (value_field_index Number)) "number_one" numnum_builder in
+            let numeric_val_2 = (val2 => (value_field_index Number)) "number_two" numnum_builder in
+            let numeric_greater = Llvm.build_fcmp Llvm.Fcmp.Ogt numeric_val_1 numeric_val_2 "numeric_greater" numnum_builder in
+            let _ = Llvm.build_cond_br numeric_greater make_true_bb make_false_bb numnum_builder in
+
+            let (strstr_bb, strstr_builder) = make_block "strstr" in
+            let str_p_1 = (val1 => (value_field_index String)) "string_one" strstr_builder in
+            let str_p_2 = (val2 => (value_field_index String)) "string_two" strstr_builder in
+            let char_p_1 = (str_p_1 => (string_field_index StringCharPtr)) "char_p_one" strstr_builder in
+            let char_p_2 = (str_p_2 => (string_field_index StringCharPtr)) "char_p_two" strstr_builder in
+            let strcmp_result = Llvm.build_call (Hashtbl.find runtime_functions "strcmp") [|char_p_1; char_p_2|] "strcmp_result" strstr_builder in
+            let string_greater = Llvm.build_icmp Llvm.Icmp.Sgt strcmp_result (Llvm.const_null base_types.long_t) "string_greater" strstr_builder in
+            let _ = Llvm.build_cond_br string_greater make_true_bb make_false_bb strstr_builder in
+
+            let switch_inst = Llvm.build_switch combined_type make_empty_bb 2 int_builder in (* Incompatible ===> default to empty *)
+            Llvm.add_case switch_inst number_number numnum_bb;
+            Llvm.add_case switch_inst string_string strstr_bb;
             (ret_val, merge_builder)
           | _ -> raise NotImplemented
         )

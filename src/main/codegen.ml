@@ -222,13 +222,30 @@ let translate (globals, functions, externs) =
       let new_block = Llvm.append_block context blockname form_decl in
       let new_builder = Llvm.builder_at_end context new_block in
       (new_block, new_builder) in
-
     let store_number value_ptr store_builder number_llvalue =
       let sp = Llvm.build_struct_gep value_ptr (value_field_index Number) "num_pointer" store_builder in
       let _ = Llvm.build_store number_type (Llvm.build_struct_gep value_ptr (value_field_index Flags) "" store_builder) store_builder in
       ignore (Llvm.build_store number_llvalue sp store_builder) in
     let store_empty value_ptr store_builder =
       ignore (Llvm.build_store empty_type (Llvm.build_struct_gep value_ptr (value_field_index Flags) "" store_builder) store_builder) in
+
+    let make_truthiness_blocks blockprefix ret_val =
+      let (merge_bb, merge_builder) = make_block (blockprefix ^ "_merge") in
+
+      let (make_true_bb, make_true_builder) = make_block (blockprefix ^ "_true") in
+      let _ = store_number ret_val make_true_builder (Llvm.const_float base_types.float_t 1.0) in
+      let _ = Llvm.build_br merge_bb make_true_builder in
+
+      let (make_false_bb, make_false_builder) = make_block (blockprefix ^ "_false") in
+      let _ = store_number ret_val make_false_builder (Llvm.const_float base_types.float_t 0.0) in
+      let _ = Llvm.build_br merge_bb make_false_builder in
+
+      let (make_empty_bb, make_empty_builder) = make_block (blockprefix ^ "_empty") in
+      let _ = store_empty ret_val make_empty_builder  in
+      let _ = Llvm.build_br merge_bb make_empty_builder in
+
+      (make_true_bb, make_false_bb, make_empty_bb, merge_builder) in
+
     let rec build_expr old_builder exp = match exp with
         LitInt(i) -> let vvv = Llvm.const_float base_types.float_t (float_of_int i) in
         let ret_val = Llvm.build_malloc base_types.value_t "int_ret_val" old_builder in
@@ -430,19 +447,10 @@ let translate (globals, functions, externs) =
               in
               (result, bbailout)
           | Eq ->
-            let _ = Llvm.build_call (Hashtbl.find runtime_functions "debug_print") [|val1; Llvm.build_global_stringptr "Eq operator - value 1" "" old_builder|] "" int_builder in
-            let _ = Llvm.build_call (Hashtbl.find runtime_functions "debug_print") [|val2; Llvm.build_global_stringptr "Eq operator - value 2" "" old_builder|] "" int_builder in
+            (* let _ = Llvm.build_call (Hashtbl.find runtime_functions "debug_print") [|val1; Llvm.build_global_stringptr "Eq operator - value 1" "" old_builder|] "" int_builder in
+            let _ = Llvm.build_call (Hashtbl.find runtime_functions "debug_print") [|val2; Llvm.build_global_stringptr "Eq operator - value 2" "" old_builder|] "" int_builder in *)
             let ret_val = Llvm.build_malloc base_types.value_t "binop_eq_ret_val" int_builder in
-
-            let (merge_bb, merge_builder) = make_block "merge" in
-
-            let (make_false_bb, make_false_builder) = make_block "make_false" in
-            let _ = store_number ret_val make_false_builder (Llvm.const_float base_types.float_t 0.0) in
-            let _ = Llvm.build_br merge_bb make_false_builder in
-
-            let (make_true_bb, make_true_builder) = make_block "make_true" in
-            let _ = store_number ret_val make_true_builder (Llvm.const_float base_types.float_t 1.0) in
-            let _ = Llvm.build_br merge_bb make_true_builder in
+            let (make_true_bb, make_false_bb, _, merge_builder) = make_truthiness_blocks "binop_eq" ret_val in
 
             let (numnum_bb, numnum_builder) = make_block "numnum" in
             let numeric_val_1 = (val1 => (value_field_index Number)) "number_one" numnum_builder in
@@ -475,23 +483,8 @@ let translate (globals, functions, externs) =
       | UnOp(Truthy, expr) ->
         let ret_val = Llvm.build_malloc base_types.value_t "unop_truthy_ret_val" old_builder in
         let (expr_val, expr_builder) = build_expr old_builder expr in
-        let merge_bb = Llvm.append_block context "merge" form_decl in
-        let merge_builder = Llvm.builder_at_end context merge_bb in
 
-        let truthy_bb = Llvm.append_block context "truthy" form_decl in
-        let truthy_builder = Llvm.builder_at_end context truthy_bb in
-        let _ = store_number ret_val truthy_builder (Llvm.const_float base_types.float_t 1.0) in
-        let _ = Llvm.build_br merge_bb truthy_builder in
-
-        let falsey_bb = Llvm.append_block context "falsey" form_decl in
-        let falsey_builder = Llvm.builder_at_end context falsey_bb in
-        let _ = store_number ret_val falsey_builder (Llvm.const_float base_types.float_t 0.0) in
-        let _ = Llvm.build_br merge_bb falsey_builder in
-
-        let empty_bb = Llvm.append_block context "empty" form_decl in
-        let empty_builder = Llvm.builder_at_end context empty_bb in
-        let _ = store_empty ret_val empty_builder in
-        let _ = Llvm.build_br merge_bb empty_builder in
+        let (truthy_bb, falsey_bb, empty_bb, merge_builder) = make_truthiness_blocks "binop_eq" ret_val in
 
         let expr_flags = (expr_val => (value_field_index Flags)) "expr_flags" expr_builder in
         let is_empty_bool = (Llvm.build_icmp Llvm.Icmp.Eq expr_flags (Llvm.const_int base_types.flags_t (value_field_flags_index Empty)) "is_empty_bool" expr_builder) in

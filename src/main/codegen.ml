@@ -260,6 +260,10 @@ let translate (globals, functions, externs) =
         let ret_val = Llvm.build_malloc base_types.value_t "empty_ret_val" old_builder in
         let _ = store_empty ret_val old_builder in
         (ret_val, old_builder)
+      | Debug(e) ->
+        let (ret_val, new_builder) = build_expr old_builder e in
+        let _ = Llvm.build_call (Hashtbl.find runtime_functions "debug_print") [|ret_val; Llvm.const_pointer_null base_types.char_p|] "" new_builder in
+        (ret_val, new_builder)
       | Id(name) ->
         (
           match (try StringMap.find name symbols with Not_found -> raise(LogicError("Something went wrong with your semantic analysis - " ^ name ^ " not found"))) with
@@ -485,6 +489,106 @@ let translate (globals, functions, externs) =
                   bnumadd
                 )
                 bnumadd
+              and _ = Llvm.build_store (
+                  Llvm.const_int base_types.char_t (value_field_flags_index Number)
+                ) (
+                  Llvm.build_struct_gep
+                  result
+                  (value_field_index Flags)
+                  ""
+                  bnumadd
+                )
+                bnumadd
+              and str1 = Llvm.build_load
+              (
+                Llvm.build_struct_gep
+                val1
+                (value_field_index String)
+                ""
+                bstradd
+              ) "" bstradd
+              and str2 = Llvm.build_load
+              (
+                Llvm.build_struct_gep
+                val2
+                (value_field_index String)
+                ""
+                bstradd
+              ) "" bstradd
+              and newstr =
+              (
+                Llvm.build_malloc base_types.string_t "" bstradd
+              )
+              in
+              let len1 = Llvm.build_load (
+                Llvm.build_struct_gep
+                str1
+                (string_field_index StringLen)
+                ""
+                bstradd
+              ) "" bstradd
+              and len2 = Llvm.build_load (
+                Llvm.build_struct_gep
+                str2
+                (string_field_index StringLen)
+                ""
+                bstradd
+              ) "" bstradd
+              and p1 = Llvm.build_load (
+                Llvm.build_struct_gep
+                str1
+                (string_field_index StringCharPtr)
+                ""
+                bstradd
+              ) "" bstradd
+              and p2 = Llvm.build_load (
+                Llvm.build_struct_gep
+                str2
+                (string_field_index StringCharPtr)
+                ""
+                bstradd
+              ) "" bstradd
+              and dst_char_ptr_ptr = (
+                Llvm.build_struct_gep
+                newstr
+                (string_field_index StringCharPtr)
+                ""
+                bstradd
+              )
+              and _ = Llvm.build_store (
+                Llvm.const_int base_types.char_t (value_field_flags_index String)
+              ) (
+                Llvm.build_struct_gep
+                result
+                (value_field_index Flags)
+                ""
+                bstradd
+              ) bstradd
+              and _ = Llvm.build_store newstr (
+                Llvm.build_struct_gep
+                result
+                (value_field_index String)
+                ""
+                bstradd
+              )
+              bstradd in
+              let fullLen = Llvm.build_nsw_add (Llvm.build_nsw_add len1 len2 "" bstradd) (Llvm.const_int base_types.long_t 1) "" bstradd
+              and extra_byte2 = (Llvm.build_add len2 (Llvm.const_int base_types.long_t 1) "" bstradd) in
+              let dst_char = Llvm.build_array_malloc base_types.char_t (Llvm.build_trunc fullLen base_types.int_t "" bstradd) "" bstradd in
+              let dst_char2 = Llvm.build_in_bounds_gep dst_char [|len1|] "" bstradd in
+              let _ = Llvm.build_call
+                (Hashtbl.find runtime_functions "llvm.memcpy.p0i8.p0i8.i64")
+                [|dst_char; p1; len1; (Llvm.const_int base_types.int_t 0); (Llvm.const_int base_types.bool_t 0)|]
+                ""
+                bstradd
+              and _ = Llvm.build_call
+                (Hashtbl.find runtime_functions "llvm.memcpy.p0i8.p0i8.i64")
+                [|dst_char2; p2; extra_byte2; (Llvm.const_int base_types.int_t 0); (Llvm.const_int base_types.bool_t 0)|]
+                ""
+                bstradd
+              and _ = Llvm.build_store dst_char dst_char_ptr_ptr bstradd
+              in
+              let _ = Llvm.build_store (Llvm.build_nsw_add fullLen (Llvm.const_int base_types.long_t (-1)) "" bstradd) (Llvm.build_struct_gep newstr (string_field_index StringLen) "" bstradd) bstradd
               in
               let _ = Llvm.build_cond_br isnumorstring numorstrorother bailout int_builder
               and _ = Llvm.build_cond_br isnumber numadd strorother bnumorstrorother

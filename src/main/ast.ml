@@ -17,7 +17,8 @@ type expr     = LitInt of int |
                 Call of string * expr list |
                 Selection of expr * sel |
                 ReducedTernary of string * string * string |
-                Precedence of expr * expr
+                Precedence of expr * expr |
+                Debug of expr
 and  index    = Abs of expr |
                 Rel of expr |
                 DimensionStart |
@@ -151,7 +152,8 @@ let rec string_of_expr = function
                             "\"slices\": " ^ string_of_sel s ^ "}}"
   | Precedence(e1, e2) -> "{\"Precedence\": { " ^
                             "\"prior_expr\": " ^ string_of_expr e1 ^ ", " ^
-                            "\"dependent_expr\": " ^ string_of_expr e2 ^ "}}"
+                          "\"dependent_expr\": " ^ string_of_expr e2 ^ "}}"
+  | Debug(e) -> string_of_expr e
 
 and string_of_case (el, e) =
     "{\"Cases\": " ^ string_of_list (Exprs el) ^ ", " ^

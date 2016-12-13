@@ -159,9 +159,9 @@ op_expr:
   | expr EQ expr        { BinOp($1, Eq, $3) }
   | expr NOTEQ expr     { UnOp(LogNot,(BinOp($1, Eq, $3))) }
   | expr GT expr        { BinOp($1, Gt, $3) }
-  | expr LT expr        { BinOp($1, Lt, $3) }
+  | expr LT expr        { BinOp($3, Gt, $1) }
   | expr GTEQ expr      { BinOp($1, GtEq, $3) }
-  | expr LTEQ expr      { BinOp($1, LtEq, $3) }
+  | expr LTEQ expr      { BinOp($3, GtEq, $1) }
   | SIZE LPAREN expr RPAREN { UnOp(SizeOf, $3) }
   | TYPE LPAREN expr RPAREN { UnOp(TypeOf, $3) }
   | ROW LPAREN RPAREN       { UnOp(Row, Empty)}

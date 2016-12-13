@@ -42,6 +42,7 @@ let create_runtime_functions ctx bt the_module =
   add_runtime_func "get_variable" bt.var_instance_p [|bt.extend_scope_p; bt.int_t|] ;
   add_runtime_func "null_init" (Llvm.void_type ctx) [|bt.extend_scope_p|] ;
   add_runtime_func "debug_print" (Llvm.void_type ctx) [|bt.value_p ; bt.char_p|] ;
+  add_runtime_func "new_string_go_all_the_way" bt.value_p [|bt.char_p|] ;
   ()
 
 let create_helper_functions ctx bt the_module =
@@ -201,6 +202,16 @@ let translate (globals, functions, externs) =
   let main_def = Llvm.define_function "main" (Llvm.function_type base_types.int_t [|base_types.int_t; base_types.char_p_p|]) base_module in
   let main_bod = Llvm.builder_at_end context (Llvm.entry_block main_def) in
 
+  (* Create the array of value_ps that will contain the responses to TypeOf(val) *)
+  let create_typeof_string s =
+    let sp = Llvm.build_global_stringptr s "global_typeof_stringptr" main_bod in
+    Llvm.build_call (Hashtbl.find runtime_functions "new_string_go_all_the_way") [|sp|] "global_typeof_string" main_bod in
+  print_endline "1";
+  let typeof_val_array = Array.map create_typeof_string int_to_type_array in
+  print_endline "2";
+  let array_of_val_ptrs = Llvm.define_global "array_of_val_ptrs" (Llvm.const_array base_types.value_p typeof_val_array) base_module in
+
+  print_endline "3";
   (* Look these two up once and for all *)
   (* let deepCopy = Hashtbl.find runtime_functions "deepCopy" in *)
   (* let freeMe = Hashtbl.find runtime_functions "freeMe" in *)

@@ -49,6 +49,7 @@ let value_field_flags_index = function
   | Number -> 1
   | String -> 2
   | Range -> 3
+let int_to_type_array = [|"Empty"; "Number"; "String"; "Range"|]
 
 type value_field = Flags | Number | String | Subrange
 let value_field_index = function

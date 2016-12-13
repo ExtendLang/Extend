@@ -64,6 +64,19 @@ value_p new_number(double val) {
 	return new_v;
 }
 
+value_p new_string_go_all_the_way(char *s) {
+	if (s == NULL) return new_val();
+	value_p new_v = malloc(sizeof(struct value_t));
+	setFlag(new_v, FLAG_STRING);
+	string_p new_str = malloc(sizeof(struct string_t));
+	long len = strlen(s);
+	new_str->text = malloc(len+1);
+	strcpy(new_str->text, s);
+	new_str->length = len;
+	new_str->refs = 1;
+	new_v->str = new_str;
+	return new_v;
+}
 
 struct ExtendScope *global_scope;
 

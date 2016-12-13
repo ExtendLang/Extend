@@ -5,6 +5,16 @@
 #include<stdbool.h>
 #include "runtime.h"
 
+/*
+Unneccssary functions
+*/
+double ex_power(double v1, double v2) {
+	return pow(v1, v2);
+}
+
+/*
+Important implementation
+*/
 double setNumeric(value_p result, double val) {
 	result->flags = FLAG_NUMBER;
 	return (result->numericVal = val);

@@ -34,7 +34,7 @@ let create_runtime_functions ctx bt the_module =
     in Hashtbl.add runtime_functions fname the_func in
   add_runtime_func "strlen" bt.long_t [|bt.char_p|];
   add_runtime_func "strcmp" bt.long_t [|bt.char_p; bt.char_p|];
-  add_runtime_func "ex_power" bt.float_t [|bt.float_t; bt.float_t|] ;
+  add_runtime_func "pow" bt.float_t [|bt.float_t; bt.float_t|] ;
   add_runtime_func "llvm.memcpy.p0i8.p0i8.i64" bt.void_t [|bt.char_p; bt.char_p; bt.long_t; bt.int_t; bt.bool_t|] ;
   add_runtime_func "getVal" bt.value_p [|bt.var_instance_p; bt.int_t; bt.int_t|] ;
   add_runtime_func "clone_value" bt.value_p [|bt.value_p;|] ;
@@ -683,7 +683,7 @@ let translate (globals, functions, externs) =
           | Divide-> build_simple_binop Llvm.build_fdiv int_builder
           | Mod-> build_simple_binop Llvm.build_frem int_builder
           | Pow-> let powcall numeric_val_1 numeric_val_2 "numeric_res" numnum_builder =
-                Llvm.build_call (Hashtbl.find runtime_functions "ex_power") [|numeric_val_1; numeric_val_2|] "" numnum_builder
+                Llvm.build_call (Hashtbl.find runtime_functions "pow") [|numeric_val_1; numeric_val_2|] "" numnum_builder
               in build_simple_binop powcall int_builder
           | LShift-> raise (NotImplemented)
           | RShift-> raise (NotImplemented)

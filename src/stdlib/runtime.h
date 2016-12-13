@@ -59,6 +59,9 @@ struct ExtendFormula {
   char toLastCol;
   int colEnd_varnum;
 
+	char isSingleRow;
+	char isSingleCol;
+
   FormulaFP formula;
 };
 

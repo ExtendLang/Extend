@@ -67,7 +67,7 @@ let var_defn_field_index = function
   | OneByOne -> 4
   | VarName -> 5
 
-type formula_field  = FromFirstRow | RowStartNum | ToLastRow | RowEndNum | FromFirstCols | ColStartNum | ToLastCol | ColEndNum | FormulaCall
+type formula_field  = FromFirstRow | RowStartNum | ToLastRow | RowEndNum | FromFirstCols | ColStartNum | ToLastCol | ColEndNum | IsSingleRow | IsSingleCol | FormulaCall
 let formula_field_index = function
     FromFirstRow -> 0
   | RowStartNum -> 1
@@ -77,7 +77,9 @@ let formula_field_index = function
   | ColStartNum -> 5
   | ToLastCol -> 6
   | ColEndNum -> 7
-  | FormulaCall -> 8
+  | IsSingleRow -> 8
+  | IsSingleCol -> 9
+  | FormulaCall -> 10
 
 type var_instance_field = Rows | Cols | NumFormulas | Formulas | Closure | Values | Status
 let var_instance_field_index = function
@@ -170,6 +172,8 @@ let setup_types ctx =
       int_t (*col start*);
       char_t (*to last col*);
       int_t (*col end num*);
+      char_t (* is single row *);
+      char_t (* is single col *);
       formula_call_p (*formula to call*);
     ]) false
   and _ = Llvm.struct_set_body extend_scope_t (Array.of_list [

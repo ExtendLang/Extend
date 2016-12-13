@@ -180,29 +180,53 @@ struct var_instance *instantiate_variable(struct ExtendScope *scope_ptr, struct 
 	//debug_print_varinst(inst);
 	int i;
 	for(i = 0; i < inst->numFormulas; i++) {
+
+		// Set the formula function pointer to the pointer from the definition
 		inst->formulas[i].formula = def.formulas[i].formula;
-		if(def.formulas[i].fromFirstRow)
+
+		if (def.isOneByOne) {
 			inst->formulas[i].rowStart = 0;
-		else {
-			//struct var_instance *rowStartVar = get_variable(scope_ptr, def.formulas[i].rowStart_varnum);
-			//value_p rowStart = getVal(rowStartVar,0,0);
-			//inst->formulas[i].rowStart = (int)lrint(rowStart->numericVal); //TODO eval;
-				inst->formulas[i].rowStart = def.formulas[i].rowStart_varnum; //TODO eval;
-				//printf("%d\n",def.formulas[i].rowStart_varnum);
-			//printf("%d\n", getIntFromOneByOne(scope_ptr, def.formulas[i].rowStart_varnum));
-		}
-		if(def.formulas[i].toLastRow)
-			inst->formulas[i].rowEnd = inst->rows;
-		else
-			inst->formulas[i].rowEnd = def.formulas[i].rowEnd_varnum; //TODO eval;
-		if(def.formulas[i].fromFirstCol)
+			inst->formulas[i].rowEnd = 1;
 			inst->formulas[i].colStart = 0;
-		else
-			inst->formulas[i].colStart = def.formulas[i].colStart_varnum; //TODO eval;
-		if(def.formulas[i].toLastCol)
-			inst->formulas[i].colEnd = 0;
-		else
-			inst->formulas[i].colEnd = def.formulas[i].colEnd_varnum; //TODO eval;
+			inst->formulas[i].colEnd = 1;
+		} else {
+			if(def.formulas[i].fromFirstRow) {
+				inst->formulas[i].rowStart = 0;
+			} else {
+				inst->formulas[i].rowStart = getIntFromOneByOne(scope_ptr, def.formulas[i].rowStart_varnum);
+				if (inst->formulas[i].rowStart < 0) {
+					inst->formulas[i].rowStart += inst->rows;
+				}
+				if (inst->formulas[i].rowStart < 0 || inst->formulas[i].rowStart >= inst->rows) {
+					//Doesn't matter, but will never get called
+				}
+				if (def.formulas[i].isSingleRow) {
+					inst->formulas[i].rowEnd = inst->formulas[i].rowStart + 1;
+				} else if (def.formulas[i].toLastRow) {
+					inst->formulas[i].rowEnd = inst->rows;
+				} else {
+					inst->formulas[i].rowEnd = getIntFromOneByOne(scope_ptr, def.formulas[i].rowEnd_varnum);
+				}
+			}
+			if(def.formulas[i].fromFirstCol) {
+				inst->formulas[i].colStart = 0;
+			} else {
+				inst->formulas[i].colStart = getIntFromOneByOne(scope_ptr, def.formulas[i].colStart_varnum);
+				if (inst->formulas[i].colStart < 0) {
+					inst->formulas[i].colStart += inst->cols;
+				}
+				if (inst->formulas[i].colStart < 0 || inst->formulas[i].colStart >= inst->cols) {
+					//Doesn't matter, but will never get called
+				}
+				if (def.formulas[i].isSingleCol) {
+					inst->formulas[i].colEnd = inst->formulas[i].colStart + 1;
+				} else if (def.formulas[i].toLastCol) {
+					inst->formulas[i].colEnd = inst->cols;
+				} else {
+					inst->formulas[i].colEnd = getIntFromOneByOne(scope_ptr, def.formulas[i].colEnd_varnum);
+				}
+			}
+		}
 	}
 	for(i = 0; i < inst->rows * inst->cols; i++)
 		(*inst->status) = 0;

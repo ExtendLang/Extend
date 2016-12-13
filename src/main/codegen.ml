@@ -629,7 +629,16 @@ let translate (globals, functions, externs) =
             Llvm.add_case switch_inst string_string strstr_bb;
             (ret_val, merge_builder)
           | LogAnd | LogOr -> raise (TransformedAway("&& and || should have been transformed into a short-circuit ternary expression! Error in the following expression:\n" ^ string_of_expr exp))
-          | _ -> raise NotImplemented
+          | Minus -> raise (NotImplemented)
+          | Times-> raise (NotImplemented)
+          | Divide-> raise (NotImplemented)
+          | Mod-> raise (NotImplemented)
+          | Pow-> raise (NotImplemented)
+          | LShift-> raise (NotImplemented)
+          | RShift-> raise (NotImplemented)
+          | BitOr-> raise (NotImplemented)
+          | BitAnd-> raise (NotImplemented)
+          | BitXor-> raise (NotImplemented)
         )
       | UnOp(SizeOf,expr) -> let vvv = Llvm.const_float base_types.float_t 0.0 in
         let ret_val = Llvm.build_malloc base_types.value_t "unop_size_ret_val" old_builder in

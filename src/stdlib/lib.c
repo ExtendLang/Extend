@@ -28,7 +28,6 @@ value_p printd(value_p whatever, value_p text) {
 }
 
 value_p to_string(value_p val) {
-	printf("%d\n", (int)val->flags);
 		if(assertSingleNumber(val)) {
 			double possible_num = val->numericVal;
 			int rounded_int = (int) lrint(possible_num);

@@ -311,7 +311,53 @@ let translate (globals, functions, externs) =
           let empty_empty = Llvm.const_add (Llvm.const_shl empty_type bit_shift) empty_type in
           let range_range = Llvm.const_add (Llvm.const_shl range_type bit_shift) range_type in
           match op with
-            Plus ->
+            Minus -> let ret_val = Llvm.build_malloc base_types.value_t "binop_minus_ret_val" int_builder in
+              let _ = Llvm.build_store
+                  (
+                    Llvm.const_int
+                    base_types.char_t
+                    (value_field_flags_index Empty)
+                  ) (
+                    Llvm.build_struct_gep
+                    ret_val
+                    (value_field_index Flags)
+                    ""
+                    int_builder
+                  )
+                  int_builder
+              in
+              let bailout = (Llvm.append_block context "" form_decl) in
+              let bbailout = Llvm.builder_at_end context bailout in
+              let (numnum_bb, numnum_builder) = make_block "numnum" in
+              let numeric_val_1 = (val1 => (value_field_index Number)) "number_one" numnum_builder in
+              let numeric_val_2 = (val2 => (value_field_index Number)) "number_two" numnum_builder in
+              let numeric_sub = Llvm.build_fsub numeric_val_1 numeric_val_2 "numeric_minus" numnum_builder in
+              let _ = Llvm.build_store
+                  numeric_sub (
+                    Llvm.build_struct_gep
+                    ret_val
+                    (value_field_index Number)
+                    ""
+                    numnum_builder
+                  )
+                  numnum_builder in
+              let _ = Llvm.build_store
+                  (
+                    Llvm.const_int
+                    base_types.char_t
+                    (value_field_flags_index Number)
+                  ) (
+                    Llvm.build_struct_gep
+                    ret_val
+                    (value_field_index Flags)
+                    ""
+                    numnum_builder
+                  )
+                  numnum_builder in
+              let _ = Llvm.build_br bailout numnum_builder in
+              let _ = Llvm.build_cond_br number_number numnum_bb bailout int_builder in
+              (ret_val, bbailout)
+          | Plus ->
               let result = Llvm.build_malloc base_types.value_t "" int_builder
               and stradd = (Llvm.append_block context "" form_decl)
               and numadd = (Llvm.append_block context "" form_decl)
@@ -469,7 +515,7 @@ let translate (globals, functions, externs) =
             let _ = Llvm.build_cond_br string_equality make_true_bb make_false_bb strstr_builder in
 
             let (rngrng_bb, rngrng_builder) = make_block "rngrng" in
-            (* TODO: Make this case work *) 
+            (* TODO: Make this case work *)
             let _ = Llvm.build_br make_false_bb rngrng_builder in
 
             let switch_inst = Llvm.build_switch combined_type make_false_bb 4 int_builder in (* Incompatible ===> default to false *)

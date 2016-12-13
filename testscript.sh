@@ -26,6 +26,8 @@ result=0
 gcc -c -o stdlib.o src/stdlib/lib.c -lm
 gcc -c -o runtime.o src/stdlib/runtime.c -lm
 
+echo "Hang on tight, running testcases..."
+
 for f in $(ls $TESTDIR/$REGRESSION); do
   counter=$((counter+1))
   EXTEND_TARGET=$TMP_DIR/$f$LLVM_F
@@ -43,7 +45,7 @@ for f in $(ls $TESTDIR/$REGRESSION); do
   diff $TEXT_OUTPUT $EXPECTED_OUTPUT > $RESULT_OUTPUT 2>&1
   if [ $? -eq 0 ]; then
     counterc=$((counterc+1))
-    echo "Compiler: PASSED ($f)"
+#    echo "Compiler: PASSED ($f)"
   else
     echo "Compiler: FAILED REGRESSION TEST ($f)"
     result=$((result+1))

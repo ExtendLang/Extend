@@ -222,16 +222,16 @@ struct var_instance *get_variable(struct ExtendScope *scope_ptr, int varnum) {
 	return scope_ptr->vars[varnum];
 }
 
-bool assertInBounds(struct var_instance *defn, int x, int y) {
+char assertInBounds(struct var_instance *defn, int x, int y) {
 	if(defn->rows > x && defn->cols > y) return true;
 	return false;
 }
 
-bool fitsDim(int dim, int rowStart_varnum, int rowEnd_varnum) {
+char fitsDim(int dim, int rowStart_varnum, int rowEnd_varnum) {
 	return (dim >= rowStart_varnum) && (dim <= rowEnd_varnum);
 }
 
-bool fitsRange(struct ResolvedFormula *formula, int x, int y) {
+char fitsRange(struct ResolvedFormula *formula, int x, int y) {
 	return fitsDim(x, formula->colStart, formula->colEnd)
 		&& fitsDim(y, formula->rowStart, formula->rowEnd);
 }

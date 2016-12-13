@@ -864,10 +864,10 @@ let translate (globals, functions, externs) =
   let build_formula (varname, idx) formula_array element symbols =
     let storage_addr = Llvm.build_in_bounds_gep formula_array [|Llvm.const_int base_types.int_t idx|] "" main_bod in
     (*buildDimSide builds one end (e.g. row start, row end, col start, ...) of a formula definition, TODO: remove literals for (not atstart)*)
-    let buildDimSide index boolAll intDim builder atstart = (*print_endline (string_of_index index);*) (match index with
-          None -> Llvm.build_store (Llvm.const_int base_types.bool_t 1) boolAll builder
+    let buildDimSide index charAll intDim builder atstart = (*print_endline (string_of_index index);*) (match index with
+          None -> Llvm.build_store (Llvm.const_int base_types.char_t 1) charAll builder
         | Some(Abs(e)) -> (
-            ignore (Llvm.build_store (Llvm.const_int base_types.bool_t 0) boolAll builder);
+            ignore (Llvm.build_store (Llvm.const_int base_types.char_t 0) charAll builder);
             Llvm.build_store (
               match e with LitInt(i) -> Llvm.const_int base_types.int_t i
                          | _ -> print_endline "Absdim"; raise NotImplemented
@@ -875,10 +875,10 @@ let translate (globals, functions, externs) =
           )
         | Some(Rel(e)) -> raise (LogicError("relative expression in formula index; this should not happen"))
         | _ -> if (atstart) then (
-            ignore (Llvm.build_store (Llvm.const_int base_types.bool_t 0) boolAll builder);
+            ignore (Llvm.build_store (Llvm.const_int base_types.char_t 0) charAll builder);
             Llvm.build_store (Llvm.const_int base_types.int_t 0) intDim builder
           ) else (
-            ignore (Llvm.build_store (Llvm.const_int base_types.bool_t 0) boolAll builder);
+            ignore (Llvm.build_store (Llvm.const_int base_types.char_t 0) charAll builder);
             Llvm.build_store (Llvm.const_int base_types.int_t 1) intDim builder
           )
       ) in
@@ -900,10 +900,10 @@ let translate (globals, functions, externs) =
       | DimInt(1) -> 1
       | DimInt(_) -> print_endline "Non1Dim" ; raise(NotImplemented) in
     let _ = (match va.var_rows with
-          DimInt(1) -> Llvm.build_store (Llvm.const_int base_types.bool_t 1) (Llvm.build_struct_gep defn (var_defn_field_index OneByOne) "" main_bod) main_bod
+          DimInt(1) -> Llvm.build_store (Llvm.const_int base_types.char_t 1) (Llvm.build_struct_gep defn (var_defn_field_index OneByOne) "" main_bod) main_bod
         | DimInt(_) -> print_endline "Non1Dim" ; raise(NotImplemented)
         | DimId(a) -> (
-            let _ = Llvm.build_store (Llvm.const_int base_types.bool_t 0) (Llvm.build_struct_gep defn (var_defn_field_index OneByOne) "" main_bod) main_bod in ();
+            let _ = Llvm.build_store (Llvm.const_int base_types.char_t 0) (Llvm.build_struct_gep defn (var_defn_field_index OneByOne) "" main_bod) main_bod in ();
             let _ = Llvm.build_store (Llvm.const_int base_types.int_t (getDefn va.var_rows)) (Llvm.build_struct_gep defn (var_defn_field_index Rows) "" main_bod) main_bod in ();
             Llvm.build_store (Llvm.const_int base_types.int_t (getDefn va.var_cols)) (Llvm.build_struct_gep defn (var_defn_field_index Cols) "" main_bod) main_bod
           )

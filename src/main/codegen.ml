@@ -628,6 +628,7 @@ let translate (globals, functions, externs) =
             Llvm.add_case switch_inst number_number numnum_bb;
             Llvm.add_case switch_inst string_string strstr_bb;
             (ret_val, merge_builder)
+          | LogAnd | LogOr -> raise (TransformedAway("&& and || should have been transformed into a short-circuit ternary expression! Error in the following expression:\n" ^ string_of_expr exp))
           | _ -> raise NotImplemented
         )
       | UnOp(SizeOf,expr) -> let vvv = Llvm.const_float base_types.float_t 0.0 in

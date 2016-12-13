@@ -303,7 +303,7 @@ void debug_print(value_p val, char *which_value) {
 	char *flag_meanings[4] = {"Empty", "Number", "String", "Subrange"};
 	fprintf(stderr, "------Everything you ever wanted to know about %s:------\n", which_value == NULL ? "some anonymous variable" : which_value);
 	fprintf(stderr, "Memory address: %p\n", val);
-	fprintf(stderr, "Flags: %c (%s)\n", val->flags, flag_meanings[val->flags]);
+	fprintf(stderr, "Flags: %d (%s)\n", val->flags, flag_meanings[val->flags]);
 	fprintf(stderr, "NumericVal: %f\n", val->numericVal);
 	fprintf(stderr, "String contents: Probably safer not to check that pointer (%p) blindly\n", val->str);
 	fprintf(stderr, "Subrange contents: Probably safer not to check that pointer (%p) blindly either\n", val->subrange);

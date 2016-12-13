@@ -1,9 +1,8 @@
 extern "stdlib.o" {
   to_string(a);
-  printv(a,b);
+  print(a,b);
 }
 
-[1,1] main(args) {
-foo := printv(1,"Hello"+"World\n") -> 0;
-return foo;
+main([1,1] args){
+	return print(1,to_string(2 - 1)+"\n") -> 0;
 }

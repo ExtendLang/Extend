@@ -359,7 +359,7 @@ let translate (globals, functions, externs) =
                   )
                   numnum_builder in
               let _ = Llvm.build_br bailout numnum_builder in
-              let _ = Llvm.build_cond_br number_number numnum_bb bailout int_builder in
+              let _ = Llvm.build_cond_br (Llvm.build_icmp Llvm.Icmp.Eq combined_type number_number "" int_builder) numnum_bb bailout int_builder in
               (ret_val, bbailout)
           | Plus ->
               let result = Llvm.build_malloc base_types.value_t "" int_builder

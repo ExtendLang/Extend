@@ -5,11 +5,11 @@ maybeCircular(truth_value) {
 
 main(args) {
   foo :=
-    extend_write(STDOUT, "To be or not to be?\n") ->
-    extend_write(STDOUT, "Enter \"Not to be\" to attempt to evaluate a circular reference.\n") ->
-    extend_readline(STDIN);
+    write(STDOUT, "To be or not to be?\n") ->
+    write(STDOUT, "Enter \"Not to be\" to attempt to evaluate a circular reference.\n") ->
+    readline(STDIN);
 
   return
     maybeCircular(foo == "Not to be" || foo == "\"Not to be\"") ->
-    extend_write(STDOUT, "Good thing I didn't look at the value of x.\n");
+    write(STDOUT, "Good thing I didn't look at the value of x.\n");
 }

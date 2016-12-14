@@ -311,20 +311,70 @@ let translate (globals, functions, externs) =
         )
       | Selection(expr, sel) ->
         let (expr_val, expr_builder) = build_expr old_builder expr in
-        let build_rhs_index idx_builder = () in
-            (* Abs(e) ->
+        let build_rhs_index idx_builder = function
+            Abs(e) ->
             let (idx_expr_val, next_builder) = build_expr idx_builder e in
             let rhs_idx_ptr = Llvm.build_alloca base_types.rhs_index_t "idx_ptr" next_builder in
-            let _ = Llvm.build_store idx_expr_val (Llvm.build_struct_gep)
-            ((1,2),3)
+            let _ = (idx_expr_val $> (rhs_idx_ptr, (rhs_index_field_index RhsExprVal))) next_builder in
+            let _ = ((Llvm.const_int base_types.char_t (rhs_index_type_flags_const RhsIdxAbs)) $> (rhs_idx_ptr, (rhs_index_field_index RhsIndexType))) next_builder in
+            (rhs_idx_ptr, next_builder)
           | Rel(e) ->
-            (2,3,4)
+            let (idx_expr_val, next_builder) = build_expr idx_builder e in
+            let rhs_idx_ptr = Llvm.build_alloca base_types.rhs_index_t "idx_ptr" next_builder in
+            let _ = (idx_expr_val $> (rhs_idx_ptr, (rhs_index_field_index RhsExprVal))) next_builder in
+            let _ = ((Llvm.const_int base_types.char_t (rhs_index_type_flags_const RhsIdxRel)) $> (rhs_idx_ptr, (rhs_index_field_index RhsIndexType))) next_builder in
+            (rhs_idx_ptr, next_builder)
           | DimensionStart ->
-            (4,5,6)
+            let rhs_idx_ptr = Llvm.build_alloca base_types.rhs_index_t "idx_ptr" idx_builder in
+            let _ = ((Llvm.const_pointer_null base_types.value_p) $> (rhs_idx_ptr, (rhs_index_field_index RhsExprVal))) idx_builder in
+            let _ = ((Llvm.const_int base_types.char_t (rhs_index_type_flags_const RhsIdxDimStart)) $> (rhs_idx_ptr, (rhs_index_field_index RhsIndexType))) idx_builder in
+            (rhs_idx_ptr, idx_builder)
           | DimensionEnd ->
-            (7,8,9)
-          in *)
-
+            let rhs_idx_ptr = Llvm.build_alloca base_types.rhs_index_t "idx_ptr" idx_builder in
+            let _ = ((Llvm.const_pointer_null base_types.value_p) $> (rhs_idx_ptr, (rhs_index_field_index RhsExprVal))) idx_builder in
+            let _ = ((Llvm.const_int base_types.char_t (rhs_index_type_flags_const RhsIdxDimEnd)) $> (rhs_idx_ptr, (rhs_index_field_index RhsIndexType))) idx_builder in
+            (rhs_idx_ptr, idx_builder) in
+        let build_rhs_slice slice_builder = function
+            (Some start_idx, Some end_idx) ->
+            let rhs_slice_ptr = Llvm.build_alloca base_types.rhs_slice_t "slice_ptr" slice_builder in
+            let (start_idx_ptr, next_builder) = build_rhs_index slice_builder start_idx in
+            let (end_idx_ptr, last_builder) = build_rhs_index next_builder end_idx in
+            let _ = (start_idx_ptr $> (rhs_slice_ptr, (rhs_slice_field_index RhsSliceStartIdx))) last_builder in
+            let _ = (end_idx_ptr $> (rhs_slice_ptr, (rhs_slice_field_index RhsSliceEndIdx))) last_builder in
+            (rhs_slice_ptr,last_builder)
+          | (Some single_idx, None) ->
+            let rhs_slice_ptr = Llvm.build_alloca base_types.rhs_slice_t "slice_ptr" slice_builder in
+            let (single_idx_ptr, last_builder) = build_rhs_index slice_builder single_idx in
+            let _ = (single_idx_ptr $> (rhs_slice_ptr, (rhs_slice_field_index RhsSliceStartIdx))) last_builder in
+            let _ = ((Llvm.const_pointer_null base_types.rhs_index_p) $> (rhs_slice_ptr, (rhs_slice_field_index RhsSliceEndIdx))) last_builder in
+            (rhs_slice_ptr,last_builder)
+          | (None, None) ->
+            let rhs_slice_ptr = Llvm.build_alloca base_types.rhs_slice_t "slice_ptr" slice_builder in
+            let _ = ((Llvm.const_pointer_null base_types.rhs_index_p) $> (rhs_slice_ptr, (rhs_slice_field_index RhsSliceStartIdx))) slice_builder in
+            let _ = ((Llvm.const_pointer_null base_types.rhs_index_p) $> (rhs_slice_ptr, (rhs_slice_field_index RhsSliceEndIdx))) slice_builder in
+            (rhs_slice_ptr,slice_builder)
+          | (None, Some illegal_idx) -> print_endline (string_of_expr exp) ; raise (LogicError("This slice should not be grammatically possible")) in
+        let build_rhs_sel sel_builder = function
+            (Some first_slice, Some second_slice) ->
+            let rhs_selection_ptr = Llvm.build_alloca base_types.rhs_selection_t "selection_ptr" sel_builder in
+            let (first_slice_ptr, next_builder) = build_rhs_slice sel_builder first_slice in
+            let (second_slice_ptr, last_builder) = build_rhs_index next_builder second_slice in
+            let _ = (first_slice_ptr $> (rhs_selection_ptr, (rhs_selection_field_index RhsSelSlice1))) last_builder in
+            let _ = (second_slice_ptr $> (rhs_selection_ptr, (rhs_selection_field_index RhsSelSlice2))) last_builder in
+            (rhs_selection_ptr,last_builder)
+          | (Some single_slice, None) ->
+            let rhs_selection_ptr = Llvm.build_alloca base_types.rhs_selection_t "selection_ptr" sel_builder in
+            let (single_slice_ptr, last_builder) = build_rhs_slice sel_builder single_slice in
+            let _ = (single_slice_ptr $> (rhs_selection_ptr, (rhs_selection_field_index RhsSelSlice1))) last_builder in
+            let _ = ((Llvm.const_pointer_null base_types.rhs_slice_p) $> (rhs_selection_ptr, (rhs_selection_field_index RhsSelSlice2))) last_builder in
+            (rhs_selection_ptr,last_builder)
+          | (None, None) ->
+            let rhs_selection_ptr = Llvm.build_alloca base_types.rhs_selection_t "selection_ptr" sel_builder in
+            let _ = ((Llvm.const_pointer_null base_types.rhs_slice_p) $> (rhs_selection_ptr, (rhs_selection_field_index RhsSelSlice1))) sel_builder in
+            let _ = ((Llvm.const_pointer_null base_types.rhs_slice_p) $> (rhs_selection_ptr, (rhs_selection_field_index RhsSelSlice2))) sel_builder in
+            (rhs_selection_ptr,sel_builder)
+          | (None, Some illegal_idx) -> print_endline (string_of_expr exp) ; raise (LogicError("This slice should not be grammatically possible")) in
+        
         (expr_val, expr_builder)
       | Precedence(a,b) -> let (_, new_builder) = build_expr old_builder a in build_expr new_builder b
       | LitString(str) ->

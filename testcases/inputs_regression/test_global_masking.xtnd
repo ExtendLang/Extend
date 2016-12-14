@@ -1,8 +1,3 @@
-extern "stdlib.o" {
-	print(a,b);
-		printv(a,b);
-}
-
 bar() {
 	foo := 5;
 	return 2;

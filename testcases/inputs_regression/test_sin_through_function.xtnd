@@ -1,8 +1,3 @@
-extern "stdlib.o" {
-  extend_sin(a);
-  printd(a,b);
-}
-
 internal_sin(x,y,z) {
   return extend_sin(z);
 }

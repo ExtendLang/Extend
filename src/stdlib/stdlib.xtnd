@@ -1,11 +1,33 @@
 extern "stdlib.o" {
+  extend_current_hour();
+  print(whatever, text);
+  printv(whatever, text);
+  printd(whatever, text);
+  to_string(val);
+  extend_sin(val);
+  extend_cos(val);
+  extend_tan(val);
+  extend_acos(val);
+  extend_asin(val);
+  extend_atan(val);
+  extend_sinh(val);
+  extend_cosh(val);
+  extend_tanh(val);
+  extend_exp(val);
+  extend_log(val);
+  extend_log10(val);
+  extend_sqrt(val);
+  extend_ceil(val);
+  extend_fabs(val);
+  extend_floor(val);
   extend_get_stdin();
   extend_get_stdout();
   extend_get_stderr();
+  extend_open(filename, mode);
+  extend_close(file_handle);
+  extend_read(file_handle, num_bytes);
   extend_readline(file_handle);
-  extend_write(file_handle, str);
-  extend_current_hour();
-  to_string(x);
+  extend_write(file_handle, buffer);
 }
 
 global STDIN := extend_get_stdin();

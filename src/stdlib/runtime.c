@@ -185,7 +185,7 @@ struct var_instance *instantiate_variable(struct ExtendScope *scope_ptr, struct 
 	inst->name = def.name;
 	int size = inst->rows * inst->cols;
 	inst->values = malloc(sizeof(value_p) * size);
-	inst->status = malloc(sizeof(struct status_t) * size);
+	inst->status = malloc(sizeof(char) * size);
 	inst->formulas = malloc(sizeof(struct ResolvedFormula) * inst->numFormulas);
 	//debug_print_vardefn(&def);
 	//debug_print_varinst(inst);
@@ -240,7 +240,7 @@ struct var_instance *instantiate_variable(struct ExtendScope *scope_ptr, struct 
 		}
 	}
 	for(i = 0; i < inst->rows * inst->cols; i++)
-		(*inst->status) = 0;
+		*(inst->status + i) = 0;
 
 	scope_ptr->refcount++;
 	return inst;

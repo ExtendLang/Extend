@@ -99,10 +99,10 @@ struct ExtendScope {
 
 struct subrange_t {
 	struct var_instance *range;
-	int offsetRow;
-	int offsetCol;
-	int subrangeRow;
-	int subrangeCol;
+	int base_var_offset_row;
+	int base_var_offset_col;
+	int subrange_num_rows;
+	int subrange_num_cols;
 };
 
 typedef struct subrange_t* subrange_p;

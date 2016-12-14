@@ -189,7 +189,7 @@ let map_of_list list_of_tuples =
   let rec aux acc = function
       [] -> acc
     | t :: ts ->
-      if (StringMap.mem (fst t) acc) then (List.iter (fun x -> print_endline (fst x)) list_of_tuples ; raise(DuplicateDefinition(fst t)))
+      if (StringMap.mem (fst t) acc) then raise(DuplicateDefinition(fst t))
       else aux (StringMap.add (fst t) (snd t) acc) ts in
   aux StringMap.empty list_of_tuples
 

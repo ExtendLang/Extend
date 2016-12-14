@@ -79,6 +79,14 @@ void debug_print_varinst(struct var_instance *inst) {
 	fprintf(stderr, "~~~ End of Cells: ~~~\n");
 }
 
+void debug_print_subrange(subrange_p subrng) {
+	fprintf(stderr, "-------Everything you wanted to know about this subrange------\n");
+	fprintf(stderr, "Offset: [%d,%d]\n", subrng->base_var_offset_row, subrng->base_var_offset_col);
+	fprintf(stderr, "Dimensions: [%d,%d]\n", subrng->subrange_num_rows, subrng->subrange_num_cols);
+	fprintf(stderr, "Subrange of: \n");
+	debug_print_varinst(subrng->range);
+}
+
 void incStack() {
 	const rlim_t kStackSize = 64L * 1024L * 1024L;
 	struct rlimit rl;
@@ -293,7 +301,7 @@ value_p calcVal(struct var_instance *inst, int r, int c) {
 	return new_val();
 }
 
-void setRange(value_p val, struct var_instance *inst) {
+/* void setRange(value_p val, struct var_instance *inst) {
 	subrange_p sr = malloc(sizeof(struct subrange_t));
 	sr->offsetCol = 0;
 	sr->offsetRow = 0;
@@ -306,11 +314,11 @@ void setRange(value_p val, struct var_instance *inst) {
 
 value_p getSize(struct var_instance *inst) {
 	value_p res = malloc(sizeof(struct value_t));
-	setNumeric(res, 1); /*TODO*/
+	setNumeric(res, 1); //
 	return res;
-}
+} */
 
-value_p deepCopy(value_p value) {
+/* value_p deepCopy(value_p value) {
 	value_p _new = new_val();
 	if(value->flags == FLAG_EMPTY) {}
 	else if(value->flags == FLAG_STRING) {
@@ -337,14 +345,14 @@ value_p deepCopy(value_p value) {
 			for(j = 0; j < cols; j++) {
 				int offset = i * rows + j;
 				*(v->status + offset) = CALCULATED;
-				/*TODO: eval lazzzy*/
+				// TODO: eval lazzzy
 				*(v->values + offset) = getVal(value->subrange->range, i + value->subrange->offsetRow, j + value->subrange->offsetCol);
 			}
 		}
 		setRange(_new, v);
 	}
 	return _new;
-}
+} */
 
 value_p clone_value(value_p old_value) {
 	value_p new_value = (value_p) malloc(sizeof(struct value_t));
@@ -400,6 +408,24 @@ void delete_value(value_p old_value) {
 			fprintf(stderr, "delete_value(%p): Illegal value of flags: %c\n", old_value, old_value->flags);
 			exit(-1);
 			break;
+	}
+}
+
+value_p deref_subrange_p(subrange_p subrng) {
+	if (subrng == NULL) {
+		fprintf(stderr, "Exiting - asked to dereference a NULL pointer.\n");
+		exit(-1);
+	}
+	if (subrng->subrange_num_rows == 1 && subrng->subrange_num_cols == 1) {
+		return getVal(subrng->range, subrng->base_var_offset_row, subrng->base_var_offset_col);
+	} else {
+		value_p new_value = (value_p) malloc (sizeof(struct value_t));
+		new_value->flags = FLAG_SUBRANGE;
+		new_value->numericVal = 0.0;
+		new_value->str = NULL;
+		new_value->subrange = (subrange_p) malloc (sizeof(struct subrange_t));
+		memcpy(new_value->subrange, subrng, sizeof(struct subrange_t));
+		return new_value;
 	}
 }
 

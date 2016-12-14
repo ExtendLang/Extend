@@ -38,12 +38,6 @@ struct value_t {
 
 typedef struct value_t* value_p;
 
-struct status_t {
-	int calcStatus;
-};
-
-typedef struct status_t* status_p;
-
 struct ExtendScope;
 typedef value_p (*FormulaFP) (struct ExtendScope *scope, int row, int col);
 

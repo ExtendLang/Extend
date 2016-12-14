@@ -49,15 +49,18 @@ typedef value_p (*FormulaFP) (struct ExtendScope *scope, int row, int col);
 
 struct ExtendFormula {
   /* These 10 variables correspond to formula_row_start through formula_col_end,
-   * where bool singleRow/Col are true if formula_row_end is None */
-  bool fromFirstRow;
+   * where char singleRow/Col are true if formula_row_end is None */
+  char fromFirstRow;
   int rowStart_varnum;
-  bool toLastRow;
+  char toLastRow;
   int rowEnd_varnum;
-  bool fromFirstCol;
+  char fromFirstCol;
   int colStart_varnum;
-  bool toLastCol;
+  char toLastCol;
   int colEnd_varnum;
+
+	char isSingleRow;
+	char isSingleCol;
 
   FormulaFP formula;
 };
@@ -76,7 +79,7 @@ struct var_defn {
    int cols_varnum;
    int numFormulas;
    struct ExtendFormula *formulas;
-	 bool isOneByOne;
+	 char isOneByOne;
 	 char *name;
 };
 struct var_instance {
@@ -127,9 +130,9 @@ struct var_instance *get_variable(struct ExtendScope *scope_ptr, int varnum);
 void null_init(struct ExtendScope *scope_ptr);
 struct var_instance *instantiate_variable(struct ExtendScope *scope_ptr, struct var_defn def);
 struct var_instance *get_variable(struct ExtendScope *scope_ptr, int varnum);
-bool assertInBounds(struct var_instance *defn, int x, int y);
-bool fitsDim(int dim, int rowStart_varnum, int rowEnd_varnum);
-bool fitsRange(struct ResolvedFormula *formula, int x, int y);
+char assertInBounds(struct var_instance *defn, int x, int y);
+char fitsDim(int dim, int rowStart_varnum, int rowEnd_varnum);
+char fitsRange(struct ResolvedFormula *formula, int x, int y);
 value_p calcVal(struct var_instance *inst, int x, int y);
 void setRange(value_p val, struct var_instance *inst);
 value_p getSize(struct var_instance *inst);

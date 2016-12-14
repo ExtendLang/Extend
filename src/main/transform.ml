@@ -289,6 +289,9 @@ let ternarize_exprs (globals, functions, externs) =
     | Switch(cond, cases, dflt) ->
       ternarize_switch lhs_var cases dflt cond
     | LitRange(rowlist) -> let (lhs_varname, _) = lhs_var in formulize_litrange lhs_varname rowlist
+    | Debug(e) ->
+      let (new_e, new_e_vars) = ternarize_expr lhs_var e in
+      (Debug(new_e), new_e_vars)
     | e -> (e, [])
   and formulize_litrange lhs_varname rowlist =
     let new_range_id = idgen (lhs_varname ^ "_litrange") in
@@ -399,6 +402,9 @@ let reduce_ternaries (globals, functions, externs) =
       let (new_e1, new_e1_vars) = reduce_expr lhs_var e1 in
       let (new_e2, new_e2_vars) = reduce_expr lhs_var e2 in
       (Precedence(new_e1, new_e2), new_e1_vars @ new_e2_vars)
+    | Debug(e) ->
+      let (new_e, new_e_vars) = reduce_expr lhs_var e in
+      (Debug(new_e), new_e_vars)
     | e -> (e, [])
   and reduce_ternary lhs_var cond e1 e2 =
     let (new_cond, new_cond_vars) = reduce_expr lhs_var cond in
@@ -478,6 +484,7 @@ let check_semantics (globals, functions, externs) =
         List.iter check_expr args
       | Selection(e, (sl1, sl2)) -> check_expr e ; check_slice sl1 ; check_slice sl2
       | Precedence(e1, e2) -> check_expr e1 ; check_expr e2
+      | Debug(e) -> check_expr e;
       | LitInt(_) | LitFlt(_) | LitRange(_) | LitString(_) | Empty | Wild -> ()
     and check_case (conds, e) = List.iter check_expr conds ; check_expr e
     and check_slice = function

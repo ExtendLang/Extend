@@ -24,7 +24,15 @@ countern=0
 result=0
 
 gcc -c -o stdlib.o src/stdlib/lib.c -lm
+if [ $? -ne 0 ]; then
+	rm stdlib.o;
+	exit -1;
+fi
 gcc -c -o runtime.o src/stdlib/runtime.c -lm
+if [ $? -ne 0 ]; then
+	rm stdlib.o runtime.o
+	exit -1;
+fi
 
 for f in $(ls $TESTDIR/$REGRESSION); do
   counter=$((counter+1))

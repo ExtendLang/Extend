@@ -49,7 +49,8 @@ void debug_print_vardefn(struct var_defn *pdef) {
 	fprintf(stderr, "Col varnum: %d\n", pdef->cols_varnum);
 	fprintf(stderr, "Num formulas: %d\n", pdef->numFormulas);
 	fprintf(stderr, "Formula defs: \n");
-	for (int i=0; i < pdef->numFormulas; i++) {
+	int i;
+	for (i=0; i < pdef->numFormulas; i++) {
 		debug_print_formula(pdef->formulas + i);
 	}
 	fprintf(stderr, "Is 1x1: %d\n", pdef->isOneByOne);
@@ -61,12 +62,13 @@ void debug_print_varinst(struct var_instance *inst) {
 	fprintf(stderr, "Cols: %d\n", inst->cols);
 	fprintf(stderr, "Num formulas: %d\n", inst->numFormulas);
 	fprintf(stderr, "*****Formulas:*****\n");
-	for(int i = 0; i < inst->numFormulas; i++) {
+	int i;
+	for (i = 0; i < inst->numFormulas; i++) {
 		debug_print_res_formula(inst->formulas + i);
 	}
 	fprintf(stderr, "**** End of Formulas *** \n");
 	fprintf(stderr, "*****Values:*****\n");
-	for (int i=0; i < inst->rows * inst->cols; i++) {
+	for (i=0; i < inst->rows * inst->cols; i++) {
 		debug_print(inst->values[i], inst->name);
 	}
 	fprintf(stderr, "**** End of Values *** \n");

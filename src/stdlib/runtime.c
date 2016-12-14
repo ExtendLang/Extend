@@ -72,7 +72,7 @@ void debug_print_varinst(struct var_instance *inst) {
 		debug_print(inst->values[i], inst->name);
 	}
 	fprintf(stderr, "**** End of Values *** \n");
-}
+} 
 
 double setNumeric(value_p result, double val) {
 	result->flags = FLAG_NUMBER;

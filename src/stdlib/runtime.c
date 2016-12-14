@@ -67,6 +67,11 @@ void debug_print_varinst(struct var_instance *inst) {
 		debug_print_res_formula(inst->formulas + i);
 	}
 	fprintf(stderr, "**** End of Formulas *** \n");
+	fprintf(stderr, "~~~~~~~~Statuses:~~~~~~~\n");
+	for (i = 0; i < inst->rows * inst->cols; i++) {
+		printf("%s[%d,%d]: Status=%d\n", inst->name, i / inst->cols, i % inst->cols, inst->status[i]);
+	}
+	fprintf(stderr, "~~~ End of Statuses: ~~~\n");
 	fprintf(stderr, "*****Values:*****\n");
 	for (i=0; i < inst->rows * inst->cols; i++) {
 		debug_print(inst->values[i], inst->name);
@@ -253,6 +258,7 @@ struct var_instance *get_variable(struct ExtendScope *scope_ptr, int varnum) {
 	}
 	if (scope_ptr->vars[varnum] == NULL) {
 		scope_ptr->vars[varnum] = instantiate_variable(scope_ptr, scope_ptr->defns[varnum]);
+		debug_print_varinst(scope_ptr->vars[varnum]);
 	}
 	return scope_ptr->vars[varnum];
 }

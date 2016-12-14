@@ -1,6 +1,7 @@
 #include<stdio.h>
 #include<stdlib.h>
 #include<math.h>
+#include<sys/resource.h>
 #include<string.h>
 #include<stdbool.h>
 #include "runtime.h"
@@ -84,7 +85,7 @@ void incStack() {
 	int result;
 
 	result = getrlimit(RLIMIT_STACK, &rl);
-  rl.rlim_max = kStackSize;
+  rl.rlim_cur = kStackSize;
   result = setrlimit(RLIMIT_STACK, &rl);
 }
 

@@ -107,6 +107,25 @@ struct subrange_t {
 
 typedef struct subrange_t* subrange_p;
 
+#define RHS_IDX_ABSOLUTE 0
+#define RHS_IDX_RELATIVE 1
+#define RHS_IDX_DIM_START 2
+#define RHS_IDX_DIM_END 4
+
+struct rhs_index {
+	value_p val_of_expr;
+	char rhs_index_type;
+};
+
+struct rhs_slice {
+	struct rhs_index *slice_start_index;
+	struct rhs_index *slice_end_index;
+};
+
+struct rhs_selection {
+	struct rhs_slice *slice1;
+	struct rhs_slice *slice2;
+};
 
 string_p new_string(char *str);
 value_p box_value_string(string_p);

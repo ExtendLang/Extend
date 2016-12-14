@@ -305,7 +305,10 @@ let translate (globals, functions, externs) =
             (Llvm.build_call (Hashtbl.find runtime_functions "clone_value") [|param|] "function_param_ret_val" old_builder, old_builder)
           | ExtendFunction(i) -> raise(LogicError("Something went wrong with your semantic analyis - function " ^ name ^ " used as variable in RHS for " ^ varname))
         )
-      | Selection(expr, sel) -> build_expr old_builder expr
+      | Selection(expr, sel) ->
+        let (expr_val, expr_builder) = build_expr old_builder expr in
+
+        (expr_val, expr_builder)
       | Precedence(a,b) -> let (_, new_builder) = build_expr old_builder a in build_expr new_builder b
       | LitString(str) ->
         let boxxx = Llvm.build_call

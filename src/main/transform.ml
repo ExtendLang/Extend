@@ -12,14 +12,12 @@ exception LogicError of string;;
 module StringSet = Set.Make (String);;
 let importSet = StringSet.empty;;
 
-let builtin_signatures = [("cos", 1); ("column", 0); (*("printf", 2);*) ("toString", 1)]
-
 let idgen =
   (* from http://stackoverflow.com/questions/10459363/side-effects-and-top-level-expressions-in-ocaml*)
   let count = ref (-1) in
   fun prefix -> incr count; "_tmp_" ^ prefix ^ string_of_int !count;;
 
-let expand_file filename =
+let expand_file include_stdlib filename =
   let print_error_location filename msg lexbuf =
     let pos = lexbuf.lex_curr_p in
     prerr_endline ("Syntax error in \"" ^ filename ^ "\": " ^ msg) ;
@@ -27,7 +25,7 @@ let expand_file filename =
 
   let rec expand_imports processed_imports globals fns exts dir = function
       [] -> ([], globals, fns, exts)
-    | import :: imports ->
+    | (import, use_dir) :: imports ->
       (* print_endline "--------";
       print_endline ("Working on: " ^ import) ;
       print_endline ("Already processed:"); *)
@@ -40,16 +38,19 @@ let expand_file filename =
           Parsing.Parse_error -> print_error_location import "" lexbuf ; exit(-1)
         | Scanner.SyntaxError(s) -> print_error_location import s lexbuf ; exit(-1)
       in
-      let file_imports = List.map (fun file -> dir ^ "/" ^ file) file_imports in
+      let file_imports = List.map (fun file -> (if use_dir then (dir ^ "/") else "") ^ file) file_imports in
       let new_proc = StringSet.add import processed_imports and _ = close_in in_chan in
       (* print_endline ("Now I'm done with: ") ; *)
       (* StringSet.iter (fun a -> print_endline a) new_proc; *)
-      let first_im_hearing_about imp = not (StringSet.mem imp new_proc || List.mem imp imports) in
-      let new_imports = StringSet.elements (StringSet.of_list (List.filter first_im_hearing_about file_imports)) in
+      let first_im_hearing_about imp = not (StringSet.mem imp new_proc || List.mem imp (List.map fst imports)) in
+      let new_imports = List.map (fun e -> (e, true)) (StringSet.elements (StringSet.of_list (List.filter first_im_hearing_about file_imports))) in
       (* print_endline ("First I'm hearing about:") ; *)
       (* List.iter print_endline new_imports; *)
       expand_imports new_proc (globals @ file_globals) (fns @ file_functions) (exts @ file_externs) (Filename.dirname import) (imports @ new_imports) in
-  expand_imports StringSet.empty [] [] [] (Filename.dirname filename) [filename]
+  expand_imports
+    StringSet.empty [] [] []
+    (Filename.dirname filename)
+    (if include_stdlib then [("src/stdlib/stdlib.xtnd", false); (filename, true)] else [(filename, true)])
 
 let expand_expressions (imports, globals, functions, externs) =
   let lit_zero = LitInt(0) in let abs_zero = Abs(lit_zero) in
@@ -188,7 +189,7 @@ let map_of_list list_of_tuples =
   let rec aux acc = function
       [] -> acc
     | t :: ts ->
-      if (StringMap.mem (fst t) acc) then raise(DuplicateDefinition(fst t))
+      if (StringMap.mem (fst t) acc) then (List.iter (fun x -> print_endline (fst x)) list_of_tuples ; raise(DuplicateDefinition(fst t)))
       else aux (StringMap.add (fst t) (snd t) acc) ts in
   aux StringMap.empty list_of_tuples
 
@@ -449,8 +450,7 @@ let reduce_ternaries (globals, functions, externs) =
 
 let check_semantics (globals, functions, externs) =
   let fn_signatures = map_of_list
-      (builtin_signatures @
-       (StringMap.fold (fun s f l -> (s, List.length f.func_params) :: l) functions []) @
+      ((StringMap.fold (fun s f l -> (s, List.length f.func_params) :: l) functions []) @
        (StringMap.fold (fun s f l -> (s, List.length f.extern_fn_params) :: l) externs [])) in
   let check_function fname f =
     if StringMap.mem fname externs then raise(DuplicateDefinition(fname ^ "() is defined as both an external and local function")) else ();
@@ -515,7 +515,7 @@ let check_semantics (globals, functions, externs) =
   in StringMap.iter check_function functions
 
 let create_ast filename =
-  let ast_imp_res = expand_file filename in
+  let ast_imp_res = expand_file true filename in
   let ast_expanded = expand_expressions ast_imp_res in
   let ast_mapped = create_maps ast_expanded in check_semantics ast_mapped ;
   let ast_ternarized = ternarize_exprs ast_mapped in

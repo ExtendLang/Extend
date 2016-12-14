@@ -1,8 +1,3 @@
-extern "stdlib.o" {
-  extend_atan(a);
-  printd(a,b);
-}
-
-[1,1] main([1,n] args) {
-  return printd(1, extend_atan(45.0)) -> 0;
+main([1,n] args) {
+  return printd(1, atan(45.0)) -> 0;
 }

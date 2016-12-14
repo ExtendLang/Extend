@@ -1,0 +1,5 @@
+main(args){
+  return
+    print(1, read(open("testcases/assets/test_file.txt", "r"),0)) ->
+    0;
+}

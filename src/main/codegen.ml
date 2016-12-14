@@ -179,7 +179,8 @@ let translate (globals, functions, externs) =
    * and functions declared within Extend. *)
   let declare_library_function fname func accum_map =
     let llvm_ftype = Llvm.function_type base_types.value_p (Array.of_list (List.map (fun a -> base_types.value_p) func.extern_fn_params)) in
-    let llvm_fn = Llvm.declare_function fname llvm_ftype base_module in
+    let llvm_fname = "extend_" ^ fname in
+    let llvm_fn = Llvm.declare_function llvm_fname llvm_ftype base_module in
     StringMap.add fname llvm_fn accum_map in
   let library_functions = StringMap.fold declare_library_function externs StringMap.empty in
   let define_user_function fname func =

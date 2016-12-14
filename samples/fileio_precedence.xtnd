@@ -1,10 +1,8 @@
-import "../src/stdlib/stdlib.xtnd";
-
 greet() {
-  q1 := extend_write(STDOUT, "Your name please?\n");
-  name := q1 -> extend_readline(STDIN);
-  hour := extend_current_hour();
-  q2 := extend_write(STDOUT, to_string(hour) + "\n" +
+  q1 := write(STDOUT, "Your name please?\n");
+  name := q1 -> readline(STDIN);
+  hour := current_hour();
+  q2 := write(STDOUT, 
     switch {
       case 2 <= hour && hour < 6: "Go to sleep";
       case 6 <= hour && hour < 12: "Good morning";

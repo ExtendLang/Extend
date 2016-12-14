@@ -16,6 +16,6 @@ opam install -y $OPAM_PKGS
 ocaml setup.ml -configure --enable-tests
 ocaml setup.ml -build
 
-make -C lib/gdchart0.94.b/
+make -C lib/gdchart0.94b/
 
 ocaml setup.ml -test -no-hygiene

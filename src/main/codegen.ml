@@ -46,6 +46,7 @@ let create_runtime_functions ctx bt the_module =
   add_runtime_func "null_init" (Llvm.void_type ctx) [|bt.extend_scope_p|] ;
   add_runtime_func "debug_print" (Llvm.void_type ctx) [|bt.value_p ; bt.char_p|] ;
   add_runtime_func "new_string_go_all_the_way" bt.value_p [|bt.char_p|] ;
+  add_runtime_func "deref_subrange_p" bt.value_p [|bt.subrange_p|];
   ()
 
 let create_helper_functions ctx bt the_module =
@@ -282,14 +283,21 @@ let translate (globals, functions, externs) =
         let _ = Llvm.build_call (Hashtbl.find runtime_functions "debug_print") [|ret_val; Llvm.const_pointer_null base_types.char_p|] "" new_builder in
         (ret_val, new_builder)
       | Id(name) ->
+        let create_and_deref_subrange appropriate_scope i =
+          let llvm_var = Llvm.build_call getVar [|appropriate_scope; Llvm.const_int base_types.int_t i|] "llvm_var" old_builder in
+          let base_var_num_rows = (llvm_var => (var_instance_field_index Rows)) "base_var_num_rows" old_builder in
+          let base_var_num_cols = (llvm_var => (var_instance_field_index Cols)) "base_var_num_rows" old_builder in
+          let subrange_ptr = Llvm.build_alloca base_types.subrange_t "subrange_ptr" old_builder in
+          let _ = Llvm.build_store llvm_var (Llvm.build_struct_gep subrange_ptr (subrange_field_index BaseRangePtr) "" old_builder) old_builder in
+          let _ = Llvm.build_store (Llvm.const_null base_types.int_t) (Llvm.build_struct_gep subrange_ptr (subrange_field_index BaseOffsetRow) "" old_builder) old_builder in
+          let _ = Llvm.build_store (Llvm.const_null base_types.int_t) (Llvm.build_struct_gep subrange_ptr (subrange_field_index BaseOffsetCol) "" old_builder) old_builder in
+          let _ = Llvm.build_store base_var_num_rows (Llvm.build_struct_gep subrange_ptr (subrange_field_index SubrangeRows) "" old_builder) old_builder in
+          let _ = Llvm.build_store base_var_num_cols (Llvm.build_struct_gep subrange_ptr (subrange_field_index SubrangeCols) "" old_builder) old_builder in
+          (Llvm.build_call (Hashtbl.find runtime_functions "deref_subrange_p") [|subrange_ptr|] "local_id_ret_val" old_builder, old_builder) in
         (
           match (try StringMap.find name symbols with Not_found -> raise(LogicError("Something went wrong with your semantic analysis - " ^ name ^ " not found"))) with
-            LocalVariable(i) ->
-            let llvm_var = Llvm.build_call getVar [|local_scope; Llvm.const_int base_types.int_t i|] "llvm_var" old_builder in
-            (Llvm.build_call getVal [|llvm_var; Llvm.const_int base_types.int_t 0; Llvm.const_int base_types.int_t 0|] "local_id_ret_val" old_builder, old_builder)
-          | GlobalVariable(i) ->
-            let llvm_var = Llvm.build_call getVar [|global_scope; Llvm.const_int base_types.int_t i|] "llvm_var" old_builder in
-            (Llvm.build_call getVal [|llvm_var; Llvm.const_int base_types.int_t 0; Llvm.const_int base_types.int_t 0|] "global_id_ret_val" old_builder, old_builder)
+            LocalVariable(i) -> create_and_deref_subrange local_scope i
+          | GlobalVariable(i) -> create_and_deref_subrange global_scope i
           | FunctionParameter(i) ->
             let paramarray = (local_scope => (scope_field_type_index FunctionParams)) "paramarray" old_builder in
             let param_addr = Llvm.build_in_bounds_gep paramarray [|Llvm.const_int base_types.int_t i|] "param_addr" old_builder in

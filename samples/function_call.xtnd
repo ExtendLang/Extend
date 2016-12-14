@@ -2,6 +2,6 @@ gcd(m, n) {
   return (n == 0) ? m : gcd(n, m % n);
 }
 
-main() {
-  return gcd(70, 55);
+main(args) {
+  return extend_write(STDOUT, to_string(gcd(150, 72))+"\n");
 }

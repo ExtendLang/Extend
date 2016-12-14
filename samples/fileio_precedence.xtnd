@@ -1,5 +1,3 @@
-import "../src/stdlib/stdlib.xtnd";
-
 greet() {
   q1 := extend_write(STDOUT, "Your name please?\n");
   name := q1 -> extend_readline(STDIN);

@@ -1,5 +1,3 @@
-import "../src/stdlib/stdlib.xtnd";
-
 maybeCircular(truth_value) {
   x := x;
   return truth_value ? x : 0;
@@ -8,7 +6,10 @@ maybeCircular(truth_value) {
 main(args) {
   foo :=
     extend_write(STDOUT, "To be or not to be?\n") ->
-    extend_write(STDOUT, "Enter \"Not to be\" to crash.\n") ->
+    extend_write(STDOUT, "Enter \"Not to be\" to attempt to evaluate a circular reference.\n") ->
     extend_readline(STDIN);
-  return maybeCircular(foo == "Not to be");
+
+  return
+    maybeCircular(foo == "Not to be" || foo == "\"Not to be\"") ->
+    extend_write(STDOUT, "Good thing I didn't look at the value of x.\n");
 }

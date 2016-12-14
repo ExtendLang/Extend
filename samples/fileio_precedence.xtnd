@@ -8,7 +8,7 @@ greet() {
     switch {
       case 2 <= hour && hour < 6: "Go to sleep";
       case 6 <= hour && hour < 12: "Good morning";
-      case 12 <= hour && hour < 22: "Good afternoon";
+      case 12 <= hour && hour < 18: "Good afternoon";
       default: "Good evening";
     } + ", " + name + "!\n");
   return q2 -> 0;

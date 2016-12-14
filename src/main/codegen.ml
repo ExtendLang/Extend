@@ -22,6 +22,10 @@ let (=>) struct_ptr elem = (fun val_name builder ->
     let the_pointer = Llvm.build_struct_gep struct_ptr elem "the_pointer" builder in
     Llvm.build_load the_pointer val_name builder);;
 
+let ($>) val_to_store (struct_ptr, elem)  = (fun builder ->
+    let the_pointer = Llvm.build_struct_gep struct_ptr elem "" builder in
+    Llvm.build_store val_to_store the_pointer builder);;
+
 (* from http://stackoverflow.com/questions/243864/what-is-the-ocaml-idiom-equivalent-to-pythons-range-function without the infix *)
 let zero_until i =
   let rec aux n acc =
@@ -288,11 +292,11 @@ let translate (globals, functions, externs) =
           let base_var_num_rows = (llvm_var => (var_instance_field_index Rows)) "base_var_num_rows" old_builder in
           let base_var_num_cols = (llvm_var => (var_instance_field_index Cols)) "base_var_num_rows" old_builder in
           let subrange_ptr = Llvm.build_alloca base_types.subrange_t "subrange_ptr" old_builder in
-          let _ = Llvm.build_store llvm_var (Llvm.build_struct_gep subrange_ptr (subrange_field_index BaseRangePtr) "" old_builder) old_builder in
-          let _ = Llvm.build_store (Llvm.const_null base_types.int_t) (Llvm.build_struct_gep subrange_ptr (subrange_field_index BaseOffsetRow) "" old_builder) old_builder in
-          let _ = Llvm.build_store (Llvm.const_null base_types.int_t) (Llvm.build_struct_gep subrange_ptr (subrange_field_index BaseOffsetCol) "" old_builder) old_builder in
-          let _ = Llvm.build_store base_var_num_rows (Llvm.build_struct_gep subrange_ptr (subrange_field_index SubrangeRows) "" old_builder) old_builder in
-          let _ = Llvm.build_store base_var_num_cols (Llvm.build_struct_gep subrange_ptr (subrange_field_index SubrangeCols) "" old_builder) old_builder in
+          let _ = (llvm_var $> (subrange_ptr, (subrange_field_index BaseRangePtr))) old_builder in
+          let _ = ((Llvm.const_null base_types.int_t) $> (subrange_ptr, (subrange_field_index BaseOffsetRow))) old_builder in
+          let _ = ((Llvm.const_null base_types.int_t) $> (subrange_ptr, (subrange_field_index BaseOffsetCol))) old_builder in
+          let _ = (base_var_num_rows $> (subrange_ptr, (subrange_field_index SubrangeRows))) old_builder in
+          let _ = (base_var_num_cols $> (subrange_ptr, (subrange_field_index SubrangeCols))) old_builder in
           (Llvm.build_call (Hashtbl.find runtime_functions "deref_subrange_p") [|subrange_ptr|] "local_id_ret_val" old_builder, old_builder) in
         (
           match (try StringMap.find name symbols with Not_found -> raise(LogicError("Something went wrong with your semantic analysis - " ^ name ^ " not found"))) with
@@ -307,6 +311,19 @@ let translate (globals, functions, externs) =
         )
       | Selection(expr, sel) ->
         let (expr_val, expr_builder) = build_expr old_builder expr in
+        let build_rhs_index idx_builder = () in
+            (* Abs(e) ->
+            let (idx_expr_val, next_builder) = build_expr idx_builder e in
+            let rhs_idx_ptr = Llvm.build_alloca base_types.rhs_index_t "idx_ptr" next_builder in
+            let _ = Llvm.build_store idx_expr_val (Llvm.build_struct_gep)
+            ((1,2),3)
+          | Rel(e) ->
+            (2,3,4)
+          | DimensionStart ->
+            (4,5,6)
+          | DimensionEnd ->
+            (7,8,9)
+          in *)
 
         (expr_val, expr_builder)
       | Precedence(a,b) -> let (_, new_builder) = build_expr old_builder a in build_expr new_builder b

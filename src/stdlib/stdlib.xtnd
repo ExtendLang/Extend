@@ -1,0 +1,13 @@
+extern "stdlib.o" {
+  extend_get_stdin();
+  extend_get_stdout();
+  extend_get_stderr();
+  extend_readline(file_handle);
+  extend_write(file_handle, str);
+  extend_current_hour();
+  to_string(x);
+}
+
+global STDIN := extend_get_stdin();
+global STDOUT := extend_get_stdout();
+global STDERR := extend_get_stderr();

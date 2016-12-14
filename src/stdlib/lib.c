@@ -3,6 +3,7 @@
 #include<math.h>
 #include<string.h>
 #include<stdbool.h>
+#include <sys/time.h>
 #include "runtime.h"
 
 #define MAX_FILES 255
@@ -72,6 +73,36 @@ FUNC(ceil)
 FUNC(fabs)
 FUNC(floor)
 
+value_p extend_get_stdin() {
+	if (open_num_files + 1 > MAX_FILES) {
+		return new_val();
+	} else {
+		open_num_files++;
+		open_files[open_num_files] = stdin;
+		return new_number((double) open_num_files);
+	}
+}
+
+value_p extend_get_stdout() {
+	if (open_num_files + 1 > MAX_FILES) {
+		return new_val();
+	} else {
+		open_num_files++;
+		open_files[open_num_files] = stdout;
+		return new_number((double) open_num_files);
+	}
+}
+
+value_p extend_get_stderr() {
+	if (open_num_files + 1 > MAX_FILES) {
+		return new_val();
+	} else {
+		open_num_files++;
+		open_files[open_num_files] = stderr;
+		return new_number((double) open_num_files);
+	}
+}
+
 value_p extend_open(value_p filename, value_p mode){
 	FILE *val;
 	if (   !assertSingleString(filename)
@@ -132,6 +163,32 @@ value_p extend_read(value_p file_handle, value_p num_bytes){
 	//edge case: how to return the entire contents of the file if n == empty?
 }
 
+value_p extend_readline(value_p file_handle) {
+	int	i=0, buf_size = 256;
+	char next_char;
+	if (!assertSingleNumber(file_handle)) return new_val();
+	int fileNum = (int) file_handle->numericVal;
+	FILE *f = open_files[fileNum];
+	if (fileNum > open_num_files || open_files[fileNum] == NULL) {
+		return new_val();
+	}
+	char *buf = (char *) malloc (buf_size * sizeof(char));
+	while ((next_char = fgetc(f)) != '\n') {
+		buf[i++] = next_char;
+		if (i == buf_size - 2) {
+			buf_size *= 2;
+			char *new_buf = (char *) malloc (buf_size * sizeof(char));
+			memcpy(new_buf, buf, i);
+			free(buf);
+			buf = new_buf;
+		}
+	}
+	buf[i] = '\0';
+	value_p result = box_value_string(new_string(buf));
+	free(buf);
+	return result;
+}
+
 value_p extend_write(value_p file_handle, value_p buffer){
 	if(!assertSingleNumber(file_handle) || !assertSingleString(buffer)) return new_val();
 	int fileNum = (int) file_handle->numericVal;
@@ -144,4 +201,12 @@ value_p extend_write(value_p file_handle, value_p buffer){
 	// TODO: make this return empty once compiler handles Id(s)
 	// RN: Use the return value to close the file
 	return new_number((double) fileNum);
+}
+
+value_p extend_current_hour() {
+	struct timeval tv;
+	struct tm info;
+	gettimeofday(&tv, NULL);
+	localtime_r(&(tv.tv_sec), &info);
+	return new_number((double) info.tm_hour);
 }

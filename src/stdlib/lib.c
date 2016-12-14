@@ -6,6 +6,8 @@
 #include <values.h>
 #include "../../lib/gdchart0.94b/gdc.h"
 #include "../../lib/gdchart0.94b/gdchart.h"
+/* #include <sys/time.h> */
+#include <time.h>
 #include "runtime.h"
 
 /* Value type */
@@ -22,25 +24,25 @@
 FILE *open_files[1 + MAX_FILES] = {NULL};
 int open_num_files = 0;
 
-value_p print(value_p whatever, value_p text) {
+value_p extend_print(value_p whatever, value_p text) {
 	if(!assertSingleString(text)) return new_val();
 	if(!assertText(text)) return new_val();
 	printf("%s", text->str->text);
 	return new_val();
 }
 
-value_p printv(value_p whatever, value_p text) {
+value_p extend_printv(value_p whatever, value_p text) {
 	printf("%s", text->str->text);
 	return new_val();
 }
 
-value_p printd(value_p whatever, value_p text) {
+value_p extend_printd(value_p whatever, value_p text) {
 	printf("%f\n", text->numericVal);
 	value_p result = malloc(sizeof(struct value_t));
 	return result;
 }
 
-value_p to_string(value_p val) {
+value_p extend_to_string(value_p val) {
 		if(assertSingleNumber(val)) {
 			double possible_num = val->numericVal;
 			int rounded_int = (int) lrint(possible_num);
@@ -85,6 +87,36 @@ FUNC(ceil)
 FUNC(fabs)
 FUNC(floor)
 
+value_p extend_get_stdin() {
+	if (open_num_files + 1 > MAX_FILES) {
+		return new_val();
+	} else {
+		open_num_files++;
+		open_files[open_num_files] = stdin;
+		return new_number((double) open_num_files);
+	}
+}
+
+value_p extend_get_stdout() {
+	if (open_num_files + 1 > MAX_FILES) {
+		return new_val();
+	} else {
+		open_num_files++;
+		open_files[open_num_files] = stdout;
+		return new_number((double) open_num_files);
+	}
+}
+
+value_p extend_get_stderr() {
+	if (open_num_files + 1 > MAX_FILES) {
+		return new_val();
+	} else {
+		open_num_files++;
+		open_files[open_num_files] = stderr;
+		return new_number((double) open_num_files);
+	}
+}
+
 value_p extend_open(value_p filename, value_p mode){
 	FILE *val;
 	if (   !assertSingleString(filename)
@@ -99,20 +131,21 @@ value_p extend_open(value_p filename, value_p mode){
 	return new_number((double) open_num_files);
 }
 
-value_p extend_close(value_p fileNum){
-	if(!assertSingleNumber(fileNum)) {
+value_p extend_close(value_p file_handle) {
+	if(!assertSingleNumber(file_handle)) {
 		// Per the LRM this is actually supposed to crash the program.
 		fprintf(stderr, "EXITING - Attempted to close something that was not a valid file pointer\n");
 		exit(-1);
 	}
+	int fileNum = (int) file_handle->numericVal;
 
-	if (fileNum->numericVal > open_num_files || open_files[(int)fileNum->numericVal] == NULL) {
+	if (fileNum > open_num_files || open_files[fileNum] == NULL) {
 		// Per the LRM this is actually supposed to crash the program.
 		fprintf(stderr, "EXITING - Attempted to close something that was not a valid file pointer\n");
 		exit(-1);
 	}
-	fclose(open_files[(int)fileNum->numericVal]);
-	open_files[(int)fileNum->numericVal] = NULL; // Empty the container for the pointer.
+	fclose(open_files[fileNum]);
+	open_files[fileNum] = NULL; // Empty the container for the pointer.
 	return new_val(); // asssuming it was an open valid handle, close() is just supposed to return empty
 }
 
@@ -138,6 +171,32 @@ value_p extend_read(value_p file_handle, value_p num_bytes){
 	free(buf);
 	return result;
 	//edge case: how to return the entire contents of the file if n == empty?
+}
+
+value_p extend_readline(value_p file_handle) {
+	int	i=0, buf_size = 256;
+	char next_char;
+	if (!assertSingleNumber(file_handle)) return new_val();
+	int fileNum = (int) file_handle->numericVal;
+	FILE *f = open_files[fileNum];
+	if (fileNum > open_num_files || open_files[fileNum] == NULL) {
+		return new_val();
+	}
+	char *buf = (char *) malloc (buf_size * sizeof(char));
+	while ((next_char = fgetc(f)) != '\n') {
+		buf[i++] = next_char;
+		if (i == buf_size - 2) {
+			buf_size *= 2;
+			char *new_buf = (char *) malloc (buf_size * sizeof(char));
+			memcpy(new_buf, buf, i);
+			free(buf);
+			buf = new_buf;
+		}
+	}
+	buf[i] = '\0';
+	value_p result = box_value_string(new_string(buf));
+	free(buf);
+	return result;
 }
 
 value_p extend_write(value_p file_handle, value_p buffer){
@@ -171,4 +230,12 @@ value_p extend_plot(value_p file_name){
 	out_graph(250, 200, outpng, GDC_3DBAR, 6, t, 2, a, b);
 	fclose(outpng);
 	return new_val();
+}
+
+value_p extend_current_hour() {
+	time_t ltime;
+	struct tm info;
+	ltime = time(&ltime);
+	localtime_r(&ltime, &info);
+	return new_number((double) info.tm_hour);
 }

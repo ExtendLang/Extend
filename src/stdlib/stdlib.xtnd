@@ -1,0 +1,35 @@
+extern "stdlib.o" {
+  current_hour();
+  print(whatever, text);
+  printv(whatever, text);
+  printd(whatever, text);
+  to_string(val);
+  sin(val);
+  cos(val);
+  tan(val);
+  acos(val);
+  asin(val);
+  atan(val);
+  sinh(val);
+  cosh(val);
+  tanh(val);
+  exp(val);
+  log(val);
+  log10(val);
+  sqrt(val);
+  ceil(val);
+  fabs(val);
+  floor(val);
+  get_stdin();
+  get_stdout();
+  get_stderr();
+  open(filename, mode);
+  close(file_handle);
+  read(file_handle, num_bytes);
+  readline(file_handle);
+  write(file_handle, buffer);
+}
+
+global STDIN := get_stdin();
+global STDOUT := get_stdout();
+global STDERR := get_stderr();

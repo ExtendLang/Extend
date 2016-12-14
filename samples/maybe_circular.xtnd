@@ -2,3 +2,14 @@ maybeCircular(truth_value) {
   x := x;
   return truth_value ? x : 0;
 }
+
+main(args) {
+  foo :=
+    write(STDOUT, "To be or not to be?\n") ->
+    write(STDOUT, "Enter \"Not to be\" to attempt to evaluate a circular reference.\n") ->
+    readline(STDIN);
+
+  return
+    maybeCircular(foo == "Not to be" || foo == "\"Not to be\"") ->
+    write(STDOUT, "Good thing I didn't look at the value of x.\n");
+}

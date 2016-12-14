@@ -1,13 +1,17 @@
-main(args) {
-  return 0;
+greet() {
+  q1 := write(STDOUT, "Your name please?\n");
+  name := q1 -> readline(STDIN);
+  hour := current_hour();
+  q2 := write(STDOUT, 
+    switch {
+      case 2 <= hour && hour < 6: "Go to sleep";
+      case 6 <= hour && hour < 12: "Good morning";
+      case 12 <= hour && hour < 18: "Good afternoon";
+      default: "Good evening";
+    } + ", " + name + "!\n");
+  return q2 -> 0;
 }
 
-bmi() {
-  STDIN := 0;
-  STDOUT := 1;
-  q1 := write("What is your height in inches?\n", STDOUT);
-  height := q1 -> parseFloat(readline(STDIN));
-  q2 := height -> write("What is your weight in pounds?\n", STDOUT);
-  weight := q2 -> parseFloat(readline(STDIN));
-  return weight * 703 / height ** 2;
+main(args) {
+  return greet();
 }

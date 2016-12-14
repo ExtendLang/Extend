@@ -1,9 +1,4 @@
-extern "stdlib.o" {
-	print(a,b);
-		printv(a,b);
-}
-
-[1,1] main(args) {
+main(args) {
   foo := printv(1,"Hello World\n") -> 0;
   return foo;
 }

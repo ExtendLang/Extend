@@ -1,8 +1,3 @@
-extern "stdlib.o" {
-  printv(a,b);
-  printd(a,b);
-}
-
 main([1,1] args){
 	return
     printv(1, "True cases for ==\n") ->

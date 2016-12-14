@@ -1,8 +1,3 @@
-extern "stdlib.o" {
-  print(a,b);
-  to_string(a);
-}
-
 main([1,1] args){
 	/* Should evaluate to 4 */
 	return print(1,to_string( 20 / 5)+"\n") -> 0;

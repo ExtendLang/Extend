@@ -1,8 +1,3 @@
-extern "stdlib.o" {
-  extend_acos(a);
-  printd(a,b);
-}
-
-[1,1] main(args) {
-  return printd(1, extend_acos(0.0)) -> 0;
+main(args) {
+  return printd(1, acos(0.0)) -> 0;
 }

@@ -3,5 +3,5 @@ gcd(m, n) {
 }
 
 main(args) {
-  return printf(1, toString(gcd(70, 55)) + "\n");
+  return write(STDOUT, to_string(gcd(70, 55)) + "\n");
 }

@@ -37,6 +37,7 @@ let create_runtime_functions ctx bt the_module =
   add_runtime_func "pow" bt.float_t [|bt.float_t; bt.float_t|] ;
   add_runtime_func "lrint" bt.int_t [|bt.float_t|] ;
   add_runtime_func "llvm.memcpy.p0i8.p0i8.i64" bt.void_t [|bt.char_p; bt.char_p; bt.long_t; bt.int_t; bt.bool_t|] ;
+  add_runtime_func "incStack" bt.void_t [||] ;
   add_runtime_func "getVal" bt.value_p [|bt.var_instance_p; bt.int_t; bt.int_t|] ;
   add_runtime_func "clone_value" bt.value_p [|bt.value_p;|] ;
   (* add_runtime_func "freeMe" (Llvm.void_type ctx) [|bt.extend_scope_p;|] ; *)
@@ -45,6 +46,7 @@ let create_runtime_functions ctx bt the_module =
   add_runtime_func "null_init" (Llvm.void_type ctx) [|bt.extend_scope_p|] ;
   add_runtime_func "debug_print" (Llvm.void_type ctx) [|bt.value_p ; bt.char_p|] ;
   add_runtime_func "new_string_go_all_the_way" bt.value_p [|bt.char_p|] ;
+  add_runtime_func "deref_subrange_p" bt.value_p [|bt.subrange_p|];
   ()
 
 let create_helper_functions ctx bt the_module =
@@ -178,7 +180,8 @@ let translate (globals, functions, externs) =
    * and functions declared within Extend. *)
   let declare_library_function fname func accum_map =
     let llvm_ftype = Llvm.function_type base_types.value_p (Array.of_list (List.map (fun a -> base_types.value_p) func.extern_fn_params)) in
-    let llvm_fn = Llvm.declare_function fname llvm_ftype base_module in
+    let llvm_fname = "extend_" ^ fname in
+    let llvm_fn = Llvm.declare_function llvm_fname llvm_ftype base_module in
     StringMap.add fname llvm_fn accum_map in
   let library_functions = StringMap.fold declare_library_function externs StringMap.empty in
   let define_user_function fname func =
@@ -280,14 +283,21 @@ let translate (globals, functions, externs) =
         let _ = Llvm.build_call (Hashtbl.find runtime_functions "debug_print") [|ret_val; Llvm.const_pointer_null base_types.char_p|] "" new_builder in
         (ret_val, new_builder)
       | Id(name) ->
+        let create_and_deref_subrange appropriate_scope i =
+          let llvm_var = Llvm.build_call getVar [|appropriate_scope; Llvm.const_int base_types.int_t i|] "llvm_var" old_builder in
+          let base_var_num_rows = (llvm_var => (var_instance_field_index Rows)) "base_var_num_rows" old_builder in
+          let base_var_num_cols = (llvm_var => (var_instance_field_index Cols)) "base_var_num_rows" old_builder in
+          let subrange_ptr = Llvm.build_alloca base_types.subrange_t "subrange_ptr" old_builder in
+          let _ = Llvm.build_store llvm_var (Llvm.build_struct_gep subrange_ptr (subrange_field_index BaseRangePtr) "" old_builder) old_builder in
+          let _ = Llvm.build_store (Llvm.const_null base_types.int_t) (Llvm.build_struct_gep subrange_ptr (subrange_field_index BaseOffsetRow) "" old_builder) old_builder in
+          let _ = Llvm.build_store (Llvm.const_null base_types.int_t) (Llvm.build_struct_gep subrange_ptr (subrange_field_index BaseOffsetCol) "" old_builder) old_builder in
+          let _ = Llvm.build_store base_var_num_rows (Llvm.build_struct_gep subrange_ptr (subrange_field_index SubrangeRows) "" old_builder) old_builder in
+          let _ = Llvm.build_store base_var_num_cols (Llvm.build_struct_gep subrange_ptr (subrange_field_index SubrangeCols) "" old_builder) old_builder in
+          (Llvm.build_call (Hashtbl.find runtime_functions "deref_subrange_p") [|subrange_ptr|] "local_id_ret_val" old_builder, old_builder) in
         (
           match (try StringMap.find name symbols with Not_found -> raise(LogicError("Something went wrong with your semantic analysis - " ^ name ^ " not found"))) with
-            LocalVariable(i) ->
-            let llvm_var = Llvm.build_call getVar [|local_scope; Llvm.const_int base_types.int_t i|] "llvm_var" old_builder in
-            (Llvm.build_call getVal [|llvm_var; Llvm.const_int base_types.int_t 0; Llvm.const_int base_types.int_t 0|] "local_id_ret_val" old_builder, old_builder)
-          | GlobalVariable(i) ->
-            let llvm_var = Llvm.build_call getVar [|global_scope; Llvm.const_int base_types.int_t i|] "llvm_var" old_builder in
-            (Llvm.build_call getVal [|llvm_var; Llvm.const_int base_types.int_t 0; Llvm.const_int base_types.int_t 0|] "global_id_ret_val" old_builder, old_builder)
+            LocalVariable(i) -> create_and_deref_subrange local_scope i
+          | GlobalVariable(i) -> create_and_deref_subrange global_scope i
           | FunctionParameter(i) ->
             let paramarray = (local_scope => (scope_field_type_index FunctionParams)) "paramarray" old_builder in
             let param_addr = Llvm.build_in_bounds_gep paramarray [|Llvm.const_int base_types.int_t i|] "param_addr" old_builder in
@@ -426,7 +436,30 @@ let translate (globals, functions, externs) =
                let _ = Llvm.build_br bailout numnum_builder in
                let _ = Llvm.build_cond_br (Llvm.build_icmp Llvm.Icmp.Eq combined_type number_number "" int_builder) numnum_bb bailout int_builder in
                 (ret_val, bbailout)
-            ) in
+             ) in
+          let build_boolean_op numeric_comparator string_comparator int_builder =
+            let ret_val = Llvm.build_malloc base_types.value_t "binop_gt_ret_val" int_builder in
+            let (make_true_bb, make_false_bb, make_empty_bb, merge_builder) = make_truthiness_blocks "binop_eq" ret_val in
+
+            let (numnum_bb, numnum_builder) = make_block "numnum" in
+            let numeric_val_1 = (val1 => (value_field_index Number)) "number_one" numnum_builder in
+            let numeric_val_2 = (val2 => (value_field_index Number)) "number_two" numnum_builder in
+            let numeric_greater = Llvm.build_fcmp numeric_comparator numeric_val_1 numeric_val_2 "numeric_greater" numnum_builder in
+            let _ = Llvm.build_cond_br numeric_greater make_true_bb make_false_bb numnum_builder in
+
+            let (strstr_bb, strstr_builder) = make_block "strstr" in
+            let str_p_1 = (val1 => (value_field_index String)) "string_one" strstr_builder in
+            let str_p_2 = (val2 => (value_field_index String)) "string_two" strstr_builder in
+            let char_p_1 = (str_p_1 => (string_field_index StringCharPtr)) "char_p_one" strstr_builder in
+            let char_p_2 = (str_p_2 => (string_field_index StringCharPtr)) "char_p_two" strstr_builder in
+            let strcmp_result = Llvm.build_call (Hashtbl.find runtime_functions "strcmp") [|char_p_1; char_p_2|] "strcmp_result" strstr_builder in
+            let string_greater = Llvm.build_icmp string_comparator strcmp_result (Llvm.const_null base_types.long_t) "string_greater" strstr_builder in
+            let _ = Llvm.build_cond_br string_greater make_true_bb make_false_bb strstr_builder in
+
+            let switch_inst = Llvm.build_switch combined_type make_empty_bb 2 int_builder in (* Incompatible ===> default to empty *)
+            Llvm.add_case switch_inst number_number numnum_bb;
+            Llvm.add_case switch_inst string_string strstr_bb;
+            (ret_val, merge_builder) in
           match op with
             Minus -> build_simple_binop Llvm.build_fsub int_builder
           | Plus ->
@@ -697,52 +730,10 @@ let translate (globals, functions, externs) =
             Llvm.add_case switch_inst range_range rngrng_bb;
             Llvm.add_case switch_inst empty_empty make_true_bb; (* Nothing to check in this case, just return true *)
             (ret_val, merge_builder)
-          | Gt ->
-            let ret_val = Llvm.build_malloc base_types.value_t "binop_gt_ret_val" int_builder in
-            let (make_true_bb, make_false_bb, make_empty_bb, merge_builder) = make_truthiness_blocks "binop_eq" ret_val in
-
-            let (numnum_bb, numnum_builder) = make_block "numnum" in
-            let numeric_val_1 = (val1 => (value_field_index Number)) "number_one" numnum_builder in
-            let numeric_val_2 = (val2 => (value_field_index Number)) "number_two" numnum_builder in
-            let numeric_greater = Llvm.build_fcmp Llvm.Fcmp.Ogt numeric_val_1 numeric_val_2 "numeric_greater" numnum_builder in
-            let _ = Llvm.build_cond_br numeric_greater make_true_bb make_false_bb numnum_builder in
-
-            let (strstr_bb, strstr_builder) = make_block "strstr" in
-            let str_p_1 = (val1 => (value_field_index String)) "string_one" strstr_builder in
-            let str_p_2 = (val2 => (value_field_index String)) "string_two" strstr_builder in
-            let char_p_1 = (str_p_1 => (string_field_index StringCharPtr)) "char_p_one" strstr_builder in
-            let char_p_2 = (str_p_2 => (string_field_index StringCharPtr)) "char_p_two" strstr_builder in
-            let strcmp_result = Llvm.build_call (Hashtbl.find runtime_functions "strcmp") [|char_p_1; char_p_2|] "strcmp_result" strstr_builder in
-            let string_greater = Llvm.build_icmp Llvm.Icmp.Sgt strcmp_result (Llvm.const_null base_types.long_t) "string_greater" strstr_builder in
-            let _ = Llvm.build_cond_br string_greater make_true_bb make_false_bb strstr_builder in
-
-            let switch_inst = Llvm.build_switch combined_type make_empty_bb 2 int_builder in (* Incompatible ===> default to empty *)
-            Llvm.add_case switch_inst number_number numnum_bb;
-            Llvm.add_case switch_inst string_string strstr_bb;
-            (ret_val, merge_builder)
-          | GtEq ->
-            let ret_val = Llvm.build_malloc base_types.value_t "binop_gte_ret_val" int_builder in
-            let (make_true_bb, make_false_bb, make_empty_bb, merge_builder) = make_truthiness_blocks "binop_eq" ret_val in
-
-            let (numnum_bb, numnum_builder) = make_block "numnum" in
-            let numeric_val_1 = (val1 => (value_field_index Number)) "number_one" numnum_builder in
-            let numeric_val_2 = (val2 => (value_field_index Number)) "number_two" numnum_builder in
-            let numeric_greater = Llvm.build_fcmp Llvm.Fcmp.Oge numeric_val_1 numeric_val_2 "numeric_greater" numnum_builder in
-            let _ = Llvm.build_cond_br numeric_greater make_true_bb make_false_bb numnum_builder in
-
-            let (strstr_bb, strstr_builder) = make_block "strstr" in
-            let str_p_1 = (val1 => (value_field_index String)) "string_one" strstr_builder in
-            let str_p_2 = (val2 => (value_field_index String)) "string_two" strstr_builder in
-            let char_p_1 = (str_p_1 => (string_field_index StringCharPtr)) "char_p_one" strstr_builder in
-            let char_p_2 = (str_p_2 => (string_field_index StringCharPtr)) "char_p_two" strstr_builder in
-            let strcmp_result = Llvm.build_call (Hashtbl.find runtime_functions "strcmp") [|char_p_1; char_p_2|] "strcmp_result" strstr_builder in
-            let string_greater = Llvm.build_icmp Llvm.Icmp.Sge strcmp_result (Llvm.const_null base_types.long_t) "string_greater" strstr_builder in
-            let _ = Llvm.build_cond_br string_greater make_true_bb make_false_bb strstr_builder in
-
-            let switch_inst = Llvm.build_switch combined_type make_empty_bb 2 int_builder in (* Incompatible ===> default to empty *)
-            Llvm.add_case switch_inst number_number numnum_bb;
-            Llvm.add_case switch_inst string_string strstr_bb;
-            (ret_val, merge_builder)
+          | Gt -> build_boolean_op Llvm.Fcmp.Ogt Llvm.Icmp.Sgt int_builder
+          | GtEq -> build_boolean_op Llvm.Fcmp.Oge Llvm.Icmp.Sge int_builder
+          | Lt -> build_boolean_op Llvm.Fcmp.Olt Llvm.Icmp.Slt int_builder
+          | LtEq -> build_boolean_op Llvm.Fcmp.Ole Llvm.Icmp.Sle int_builder
           | LogAnd | LogOr -> raise (TransformedAway("&& and || should have been transformed into a short-circuit ternary expression! Error in the following expression:\n" ^ string_of_expr exp))
           | Divide-> build_simple_binop Llvm.build_fdiv int_builder
           | Mod-> build_simple_binop Llvm.build_frem int_builder
@@ -990,6 +981,7 @@ let translate (globals, functions, externs) =
   (* Build the global scope object *)
   let vardefn_p_p = Llvm.build_alloca base_types.var_defn_p "v_p_p" main_bod in
   let global_scope_obj = build_scope_obj "globals" global_symbols globals vardefn_p_p vardefn_p_p 0 main_bod in
+  let _ = Llvm.build_call (Hashtbl.find runtime_functions "incStack") [||] "" main_bod in
   let _ = Llvm.build_store global_scope_obj global_scope_loc main_bod in
 
   (*iterates over function definitions*)

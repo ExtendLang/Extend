@@ -183,6 +183,8 @@ and evaluate scope cell e =
         | Eq -> if n1 = n2 then ExtendNumber(1) else ExtendNumber(0)
         | Gt -> if n1 > n2 then ExtendNumber(1) else ExtendNumber(0)
         | GtEq -> if n1 >= n2 then ExtendNumber(1) else ExtendNumber(0)
+        | Lt -> if n1 < n2 then ExtendNumber(1) else ExtendNumber(0)
+        | LtEq -> if n1 <= n2 then ExtendNumber(1) else ExtendNumber(0)
         | LogAnd -> raise(TransformedAway("Logical And shouldn't be possible!"))
         | LogOr -> raise(TransformedAway("Logical Or shouldn't be possible!"))
         )

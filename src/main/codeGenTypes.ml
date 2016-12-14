@@ -49,6 +49,7 @@ let value_field_flags_index = function
   | Number -> 1
   | String -> 2
   | Range -> 3
+let int_to_type_array = [|"Empty"; "Number"; "String"; "Range"|]
 
 type value_field = Flags | Number | String | Subrange
 let value_field_index = function
@@ -66,7 +67,7 @@ let var_defn_field_index = function
   | OneByOne -> 4
   | VarName -> 5
 
-type formula_field  = FromFirstRow | RowStartNum | ToLastRow | RowEndNum | FromFirstCols | ColStartNum | ToLastCol | ColEndNum | FormulaCall
+type formula_field  = FromFirstRow | RowStartNum | ToLastRow | RowEndNum | FromFirstCols | ColStartNum | ToLastCol | ColEndNum | IsSingleRow | IsSingleCol | FormulaCall
 let formula_field_index = function
     FromFirstRow -> 0
   | RowStartNum -> 1
@@ -76,7 +77,9 @@ let formula_field_index = function
   | ColStartNum -> 5
   | ToLastCol -> 6
   | ColEndNum -> 7
-  | FormulaCall -> 8
+  | IsSingleRow -> 8
+  | IsSingleCol -> 9
+  | FormulaCall -> 10
 
 type var_instance_field = Rows | Cols | NumFormulas | Formulas | Closure | Values | Status
 let var_instance_field_index = function
@@ -157,18 +160,20 @@ let setup_types ctx =
       int_t(*Cols*);
       int_t(*Number of formulas*);
       formula_p;
-      bool_t(*Is one by one range*);
+      char_t(*Is one by one range*);
       char_p(*Name*);
     ]) false
   and _ = Llvm.struct_set_body formula_t (Array.of_list [
-      bool_t (*from First row*);
+      char_t (*from First row*);
       int_t (*row Start num*);
-      bool_t (*to last row*);
+      char_t (*to last row*);
       int_t (*row end num*);
-      bool_t (*from first col*);
+      char_t (*from first col*);
       int_t (*col start*);
-      bool_t (*to last col*);
+      char_t (*to last col*);
       int_t (*col end num*);
+      char_t (* is single row *);
+      char_t (* is single col *);
       formula_call_p (*formula to call*);
     ]) false
   and _ = Llvm.struct_set_body extend_scope_t (Array.of_list [

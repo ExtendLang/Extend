@@ -3,7 +3,7 @@
 #include<math.h>
 #include<string.h>
 #include<stdbool.h>
-#include <sys/time.h>
+/* #include <sys/time.h> */
 #include <time.h>
 #include "runtime.h"
 

@@ -863,35 +863,33 @@ let translate (globals, functions, externs) =
   (*build formula creates a formula declaration in a separate method from the function it belongs to*)
   let build_formula (varname, idx) formula_array element symbols =
     let storage_addr = Llvm.build_in_bounds_gep formula_array [|Llvm.const_int base_types.int_t idx|] "" main_bod in
-    (*buildDimSide builds one end (e.g. row start, row end, col start, ...) of a formula definition, TODO: remove literals for (not atstart)*)
-    let buildDimSide index boolAll intDim builder atstart = (*print_endline (string_of_index index);*) (match index with
-          None -> Llvm.build_store (Llvm.const_int base_types.bool_t 1) boolAll builder
-        | Some(Abs(e)) -> (
-            ignore (Llvm.build_store (Llvm.const_int base_types.bool_t 0) boolAll builder);
-            Llvm.build_store (
-              match e with LitInt(i) -> Llvm.const_int base_types.int_t i
-                         | _ -> print_endline "Absdim"; raise NotImplemented
-            ) intDim builder
-          )
-        | Some(Rel(e)) -> (
-            ignore (Llvm.build_store (Llvm.const_int base_types.bool_t 0) boolAll builder);
-            Llvm.build_store (
-              match e with LitInt(i) -> Llvm.const_int base_types.int_t i
-              | _ -> print_endline "Reldim"; raise NotImplemented
-            ) intDim builder
-          )
-        | _ -> if (atstart) then (
-            ignore (Llvm.build_store (Llvm.const_int base_types.bool_t 0) boolAll builder);
-            Llvm.build_store (Llvm.const_int base_types.int_t 0) intDim builder
-          ) else (
-            ignore (Llvm.build_store (Llvm.const_int base_types.bool_t 0) boolAll builder);
-            Llvm.build_store (Llvm.const_int base_types.int_t 1) intDim builder
-          )
-      ) in
-    let _ = buildDimSide (Some element.formula_col_start) (Llvm.build_struct_gep storage_addr (formula_field_index FromFirstCols) "" main_bod) (Llvm.build_struct_gep storage_addr (formula_field_index ColStartNum) "" main_bod) main_bod true in ();
-    let _ = buildDimSide (Some element.formula_row_start) (Llvm.build_struct_gep storage_addr (formula_field_index FromFirstRow) "" main_bod) (Llvm.build_struct_gep storage_addr (formula_field_index RowStartNum) "" main_bod) main_bod true in ();
-    let _ = buildDimSide element.formula_col_end (Llvm.build_struct_gep storage_addr (formula_field_index ToLastCol) "" main_bod) (Llvm.build_struct_gep storage_addr (formula_field_index ColEndNum) "" main_bod) main_bod false in ();
-    let _ = buildDimSide element.formula_row_end (Llvm.build_struct_gep storage_addr (formula_field_index ToLastRow) "" main_bod) (Llvm.build_struct_gep storage_addr (formula_field_index RowEndNum) "" main_bod) main_bod false in ();
+    let getStarts = function (* Not really just for starts *)
+        Abs(LitInt(1)) | Abs(LitInt(0)) | DimensionStart | DimensionEnd -> (1, -1)
+      | Abs(Id(s)) ->
+        (match StringMap.find s symbols with
+           LocalVariable(i) | GlobalVariable(i) -> (0, i)
+         | _ -> raise(TransformedAway("Error in " ^ varname ^ ": The LHS expresssions should always either have dimension length 1 or be the name of a variable in their own scope.")))
+      | _ -> print_endline ("Error in " ^ varname ^ " formula number " ^ string_of_int idx); raise(LogicError("Something wrong with the index of formula: " ^ string_of_formula element)) in
+    let getEnds = function
+        Some x -> let (b, c) = getStarts x in (b, c, 0)
+      | None -> (0, -1, 1) in
+    let (fromStartRow, rowStartVarnum) = getStarts element.formula_row_start in
+    let (fromStartCol, colStartVarnum) = getStarts element.formula_col_start in
+    let (toEndRow, rowEndVarnum, isSingleRow) = getEnds element.formula_row_end in
+    let (toEndCol, colEndVarnum, isSingleCol) = getEnds element.formula_col_end in
+
+    let _ = Llvm.build_store (Llvm.const_int base_types.char_t fromStartRow) (Llvm.build_struct_gep storage_addr (formula_field_index FromFirstRow) "" main_bod) main_bod in
+    let _ = Llvm.build_store (Llvm.const_int base_types.int_t rowStartVarnum) (Llvm.build_struct_gep storage_addr (formula_field_index RowStartNum) "" main_bod) main_bod in
+    let _ = Llvm.build_store (Llvm.const_int base_types.char_t toEndRow) (Llvm.build_struct_gep storage_addr (formula_field_index ToLastRow) "" main_bod) main_bod in
+    let _ = Llvm.build_store (Llvm.const_int base_types.int_t rowEndVarnum) (Llvm.build_struct_gep storage_addr (formula_field_index RowEndNum) "" main_bod) main_bod in
+    let _ = Llvm.build_store (Llvm.const_int base_types.char_t isSingleRow) (Llvm.build_struct_gep storage_addr (formula_field_index IsSingleRow) "" main_bod) main_bod in
+
+    let _ = Llvm.build_store (Llvm.const_int base_types.char_t fromStartCol) (Llvm.build_struct_gep storage_addr (formula_field_index FromFirstCols) "" main_bod) main_bod in
+    let _ = Llvm.build_store (Llvm.const_int base_types.int_t colStartVarnum) (Llvm.build_struct_gep storage_addr (formula_field_index ColStartNum) "" main_bod) main_bod in
+    let _ = Llvm.build_store (Llvm.const_int base_types.char_t toEndCol) (Llvm.build_struct_gep storage_addr (formula_field_index ToLastCol) "" main_bod) main_bod in
+    let _ = Llvm.build_store (Llvm.const_int base_types.int_t colEndVarnum) (Llvm.build_struct_gep storage_addr (formula_field_index ColEndNum) "" main_bod) main_bod in
+    let _ = Llvm.build_store (Llvm.const_int base_types.char_t isSingleCol) (Llvm.build_struct_gep storage_addr (formula_field_index IsSingleCol) "" main_bod) main_bod in
+
     let form_decl = build_formula_function (varname, idx) symbols element.formula_expr in
     let _ = Llvm.build_store form_decl (Llvm.build_struct_gep storage_addr (formula_field_index FormulaCall) "" main_bod) main_bod in
     () in
@@ -906,10 +904,10 @@ let translate (globals, functions, externs) =
       | DimInt(1) -> 1
       | DimInt(_) -> print_endline "Non1Dim" ; raise(NotImplemented) in
     let _ = (match va.var_rows with
-          DimInt(1) -> Llvm.build_store (Llvm.const_int base_types.bool_t 1) (Llvm.build_struct_gep defn (var_defn_field_index OneByOne) "" main_bod) main_bod
+          DimInt(1) -> Llvm.build_store (Llvm.const_int base_types.char_t 1) (Llvm.build_struct_gep defn (var_defn_field_index OneByOne) "" main_bod) main_bod
         | DimInt(_) -> print_endline "Non1Dim" ; raise(NotImplemented)
         | DimId(a) -> (
-            let _ = Llvm.build_store (Llvm.const_int base_types.bool_t 0) (Llvm.build_struct_gep defn (var_defn_field_index OneByOne) "" main_bod) main_bod in ();
+            let _ = Llvm.build_store (Llvm.const_int base_types.char_t 0) (Llvm.build_struct_gep defn (var_defn_field_index OneByOne) "" main_bod) main_bod in ();
             let _ = Llvm.build_store (Llvm.const_int base_types.int_t (getDefn va.var_rows)) (Llvm.build_struct_gep defn (var_defn_field_index Rows) "" main_bod) main_bod in ();
             Llvm.build_store (Llvm.const_int base_types.int_t (getDefn va.var_cols)) (Llvm.build_struct_gep defn (var_defn_field_index Cols) "" main_bod) main_bod
           )

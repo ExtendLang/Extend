@@ -124,13 +124,13 @@ value_p extend_close(value_p fileNum){
 		exit(-1);
 	}
 
-	if (fileNum->numericVal > open_num_files || open_files[(int)fileNum->numericVal] == NULL) {
+	if (lrint(fileNum->numericVal) > open_num_files || open_files[(int)lrint(fileNum->numericVal)] == NULL) {
 		// Per the LRM this is actually supposed to crash the program.
 		fprintf(stderr, "EXITING - Attempted to close something that was not a valid file pointer\n");
 		exit(-1);
 	}
-	fclose(open_files[(int)fileNum->numericVal]);
-	open_files[(int)fileNum->numericVal] = NULL; // Empty the container for the pointer.
+	fclose(open_files[(int)lrint(fileNum->numericVal)]);
+	open_files[(int)lrint(fileNum->numericVal)] = NULL; // Empty the container for the pointer.
 	return new_val(); // asssuming it was an open valid handle, close() is just supposed to return empty
 }
 
@@ -139,7 +139,7 @@ value_p extend_read(value_p file_handle, value_p num_bytes){
 //<<<<<<< HEAD
 	if(!assertSingleNumber(file_handle) || !assertSingleNumber(num_bytes)) return new_val();
 	int max_bytes = (int)num_bytes->numericVal;
-	int fileNum = (int)file_handle->numericVal;
+	int fileNum = (int)lrint(file_handle->numericVal);
 //=======
 //	if(!assertSingleNumber(rng_file_handle) || !assertSingleNumber(rng_num_bytes)) return new_val();
 //	int fileNum = (int) get_number(rng_file_handle), max_bytes;
@@ -167,7 +167,7 @@ value_p extend_readline(value_p file_handle) {
 	int	i=0, buf_size = 256;
 	char next_char;
 	if (!assertSingleNumber(file_handle)) return new_val();
-	int fileNum = (int) file_handle->numericVal;
+	int fileNum = (int) lrint(file_handle->numericVal);
 	FILE *f = open_files[fileNum];
 	if (fileNum > open_num_files || open_files[fileNum] == NULL) {
 		return new_val();
@@ -191,7 +191,7 @@ value_p extend_readline(value_p file_handle) {
 
 value_p extend_write(value_p file_handle, value_p buffer){
 	if(!assertSingleNumber(file_handle) || !assertSingleString(buffer)) return new_val();
-	int fileNum = (int) file_handle->numericVal;
+	int fileNum = (int) lrint(file_handle->numericVal);
 	if (fileNum > open_num_files || open_files[fileNum] == NULL) {
 		// Per the LRM this is actually supposed to crash the program.
 		fprintf(stderr, "EXITING - Attempted to write to something that was not a valid file pointer\n");

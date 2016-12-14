@@ -6,6 +6,7 @@
 #define FLAG_SUBRANGE 3
 
 /* Status flag */
+#define NEVER_EXAMINED 0
 #define CALCULATED 2
 #define IN_PROGRESS 4
 

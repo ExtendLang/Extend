@@ -40,7 +40,7 @@ void debug_print_formula(struct ExtendFormula *fdef) {
 }
 
 void debug_print_res_formula(struct ResolvedFormula *rdef) {
-	fprintf(stderr, "Some formula applies to: [%d:%d,%d:%d]\n", rdef->rowStart, rdef->rowEnd, rdef->colStart, rdef->colEnd);
+	fprintf(stderr, "Some formula with function pointer %p applies to: [%d:%d,%d:%d]\n", rdef->formula, rdef->rowStart, rdef->rowEnd, rdef->colStart, rdef->colEnd);
 }
 
 void debug_print_vardefn(struct var_defn *pdef) {
@@ -67,16 +67,15 @@ void debug_print_varinst(struct var_instance *inst) {
 		debug_print_res_formula(inst->formulas + i);
 	}
 	fprintf(stderr, "**** End of Formulas *** \n");
-	fprintf(stderr, "~~~~~~~~Statuses:~~~~~~~\n");
+	fprintf(stderr, "~~~~~~~~Cells:~~~~~~~\n");
 	for (i = 0; i < inst->rows * inst->cols; i++) {
 		printf("%s[%d,%d]: Status=%d\n", inst->name, i / inst->cols, i % inst->cols, inst->status[i]);
+		if (inst->status[i] == CALCULATED) {
+			printf("%s[%d,%d] Value:\n", inst->name, i / inst->cols, i % inst->cols);
+			debug_print(inst->values[i], inst->name);
+		}
 	}
-	fprintf(stderr, "~~~ End of Statuses: ~~~\n");
-	fprintf(stderr, "*****Values:*****\n");
-	for (i=0; i < inst->rows * inst->cols; i++) {
-		debug_print(inst->values[i], inst->name);
-	}
-	fprintf(stderr, "**** End of Values *** \n");
+	fprintf(stderr, "~~~ End of Cells: ~~~\n");
 }
 
 double setNumeric(value_p result, double val) {
@@ -164,6 +163,7 @@ int getIntFromOneByOne(struct ExtendScope *scope_ptr, int varnum) {
 	struct var_instance *inst = get_variable(scope_ptr, varnum);
 	if (inst->rows != 1 || inst->cols != 1) {
 		fprintf(stderr, "The variable you claimed (%s) was one by one is actually %d by %d.\n", inst->name, inst->rows, inst->cols);
+		debug_print_varinst(inst);
 		exit(-1);
 	}
 	value_p val = getVal(inst, 0, 0);
@@ -190,7 +190,9 @@ struct var_instance *instantiate_variable(struct ExtendScope *scope_ptr, struct 
 	inst->name = def.name;
 	int size = inst->rows * inst->cols;
 	inst->values = malloc(sizeof(value_p) * size);
+	memset(inst->values, 0, sizeof(value_p) * size);
 	inst->status = malloc(sizeof(char) * size);
+	memset(inst->status, 0, sizeof(char) * size);
 	inst->formulas = malloc(sizeof(struct ResolvedFormula) * inst->numFormulas);
 	//debug_print_vardefn(&def);
 	//debug_print_varinst(inst);
@@ -216,13 +218,13 @@ struct var_instance *instantiate_variable(struct ExtendScope *scope_ptr, struct 
 				if (inst->formulas[i].rowStart < 0 || inst->formulas[i].rowStart >= inst->rows) {
 					//Doesn't matter, but will never get called
 				}
-				if (def.formulas[i].isSingleRow) {
-					inst->formulas[i].rowEnd = inst->formulas[i].rowStart + 1;
-				} else if (def.formulas[i].toLastRow) {
-					inst->formulas[i].rowEnd = inst->rows;
-				} else {
-					inst->formulas[i].rowEnd = getIntFromOneByOne(scope_ptr, def.formulas[i].rowEnd_varnum);
-				}
+			}
+			if (def.formulas[i].isSingleRow) {
+				inst->formulas[i].rowEnd = inst->formulas[i].rowStart + 1;
+			} else if (def.formulas[i].toLastRow) {
+				inst->formulas[i].rowEnd = inst->rows;
+			} else {
+				inst->formulas[i].rowEnd = getIntFromOneByOne(scope_ptr, def.formulas[i].rowEnd_varnum);
 			}
 			if(def.formulas[i].fromFirstCol) {
 				inst->formulas[i].colStart = 0;
@@ -234,18 +236,16 @@ struct var_instance *instantiate_variable(struct ExtendScope *scope_ptr, struct 
 				if (inst->formulas[i].colStart < 0 || inst->formulas[i].colStart >= inst->cols) {
 					//Doesn't matter, but will never get called
 				}
-				if (def.formulas[i].isSingleCol) {
-					inst->formulas[i].colEnd = inst->formulas[i].colStart + 1;
-				} else if (def.formulas[i].toLastCol) {
-					inst->formulas[i].colEnd = inst->cols;
-				} else {
-					inst->formulas[i].colEnd = getIntFromOneByOne(scope_ptr, def.formulas[i].colEnd_varnum);
-				}
+			}
+			if (def.formulas[i].isSingleCol) {
+				inst->formulas[i].colEnd = inst->formulas[i].colStart + 1;
+			} else if (def.formulas[i].toLastCol) {
+				inst->formulas[i].colEnd = inst->cols;
+			} else {
+				inst->formulas[i].colEnd = getIntFromOneByOne(scope_ptr, def.formulas[i].colEnd_varnum);
 			}
 		}
 	}
-	for(i = 0; i < inst->rows * inst->cols; i++)
-		*(inst->status + i) = 0;
 
 	scope_ptr->refcount++;
 	return inst;
@@ -258,33 +258,26 @@ struct var_instance *get_variable(struct ExtendScope *scope_ptr, int varnum) {
 	}
 	if (scope_ptr->vars[varnum] == NULL) {
 		scope_ptr->vars[varnum] = instantiate_variable(scope_ptr, scope_ptr->defns[varnum]);
-		debug_print_varinst(scope_ptr->vars[varnum]);
 	}
 	return scope_ptr->vars[varnum];
 }
 
-char assertInBounds(struct var_instance *defn, int x, int y) {
-	if(defn->rows > x && defn->cols > y) return true;
-	return false;
+char assertInBounds(struct var_instance *defn, int r, int c) {
+	return (
+		r >= 0 && r < defn->rows &&
+		c >= 0 && c < defn->cols
+	);
 }
 
-char fitsDim(int dim, int rowStart_varnum, int rowEnd_varnum) {
-	return (dim >= rowStart_varnum) && (dim <= rowEnd_varnum);
-}
-
-char fitsRange(struct ResolvedFormula *formula, int r, int c) {
-	return fitsDim(r, formula->rowStart, formula->rowEnd)
-		&& fitsDim(c, formula->colStart, formula->colEnd);
-}
-
-value_p calcVal(struct var_instance *inst, int x, int y) {
-	struct ResolvedFormula *form = inst->formulas;
-	while(form < inst->formulas + inst->numFormulas) {
-		if(fitsRange(form, x, y)) {
-				value_p res = (form->formula)(inst->closure, x, y);
-				return res;
+value_p calcVal(struct var_instance *inst, int r, int c) {
+	int i;
+	for (i = 0; i < inst->numFormulas; i++) {
+		if (
+			r >= inst->formulas[i].rowStart && r < inst->formulas[i].rowEnd &&
+			c >= inst->formulas[i].colStart && c < inst->formulas[i].colEnd
+		) {
+			return (inst->formulas[i].formula)(inst->closure, r, c);
 		}
-		form++;
 	}
 	return new_val();
 }
@@ -399,25 +392,63 @@ void delete_value(value_p old_value) {
 	}
 }
 
-value_p getVal(struct var_instance *inst, int x, int y) {
-	if(!assertInBounds(inst, x, y)) return new_val();
-	int offset = inst->rows * y + x;
-	char *status = inst->status + offset;
-	value_p return_val;
-	if(*status & IN_PROGRESS) {
-		/* TODO: Circular dependency. Possibly throw? */
-		return_val = new_val();
-	} else if ((~(*status)) & CALCULATED) { /* value not calculated */
-		value_p val = calcVal(inst, x, y);
-		inst->values[offset] = val;
-		*status = (*status && !IN_PROGRESS) | CALCULATED;
-		return_val = val;
-	} else {
-		return_val = inst->values[offset];
+value_p getVal(struct var_instance *inst, int r, int c) {
+	/* If we're going to return new_val() then we have to
+	 * do clone_value(). Otherwise the receiver won't know
+	 * whether or not they can free the value_p they get back.
+	 * I think this should return, dangerously, return NULL if it's
+	 * invalid, and the callers will have to be careful to check the value.
+	 * The alternative is to always clone_value - safer, but much slower
+	 * and makes our memory issues even bigger.
+	 * Right now there are only a few places that call this. */
+
+	if(!assertInBounds(inst, r, c)) return NULL;
+	int cell_number = r * inst->cols + c;
+	char cell_status = inst->status[cell_number];
+	switch(cell_status) {
+		case NEVER_EXAMINED:
+			inst->status[cell_number] = IN_PROGRESS;
+			inst->values[cell_number] = calcVal(inst, r, c);
+			inst->status[cell_number] = CALCULATED;
+			break;
+		case IN_PROGRESS:
+			fprintf(stderr, "EXITING - Circular reference in %s[%d,%d]\n", inst->name, r, c);
+			exit(-1);
+			break;
+		case CALCULATED:
+			if (inst->values[cell_number] == NULL) {
+				fprintf(stderr, "Supposedly, %s[%d,%d] was already calculated, but there is a null pointer there.\n", inst->name, r, c);
+				fprintf(stderr, "Attempting to print contents of the variable instance where this occurred:\n");
+				fflush(stdout);
+				debug_print_varinst(inst);
+				exit(-1);
+			}
+			break;
+		default:
+			fprintf(stderr, "Unrecognized cell status %d (row %d, col %d)!\n", cell_status, r, c);
+			fprintf(stderr, "Attempting to print contents of the variable instance where this occurred:\n");
+			fflush(stdout);
+			debug_print_varinst(inst);
+			exit(-1);
+			break;
 	}
-	while(return_val->flags == FLAG_SUBRANGE && return_val->subrange->subrangeRow == 1 && return_val->subrange->subrangeCol == 1) {
-		return_val = getVal(return_val->subrange->range, return_val->subrange->offsetRow, return_val->subrange->offsetCol);
-	}
-//	debug_print_varinst(inst);
-	return return_val;
+	return inst->values[cell_number];
+// 	char *status = inst->status + offset;
+// 	value_p return_val;
+// 	if(*status & IN_PROGRESS) {
+// 		/* TODO: Circular dependency. Possibly throw? */
+// 		return_val = new_val();
+// 	} else if ((~(*status)) & CALCULATED) { /* value not calculated */
+// 		value_p val = calcVal(inst, x, y);
+// 		inst->values[offset] = val;
+// 		*status = (*status && !IN_PROGRESS) | CALCULATED;
+// 		return_val = val;
+// 	} else {
+// 		return_val = inst->values[offset];
+// 	}
+// 	while(return_val->flags == FLAG_SUBRANGE && return_val->subrange->subrangeRow == 1 && return_val->subrange->subrangeCol == 1) {
+// 		return_val = getVal(return_val->subrange->range, return_val->subrange->offsetRow, return_val->subrange->offsetCol);
+// 	}
+// //	debug_print_varinst(inst);
+// 	return return_val;
 }

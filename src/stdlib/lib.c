@@ -204,11 +204,9 @@ value_p extend_write(value_p file_handle, value_p buffer){
 }
 
 value_p extend_current_hour() {
-	fprintf(stderr,"Yes I am here\n");
 	time_t ltime;
 	struct tm info;
 	ltime = time(&ltime);
 	localtime_r(&ltime, &info);
-	fprintf(stderr, "I made it here too\n");
 	return new_number((double) info.tm_hour);
 }

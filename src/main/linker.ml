@@ -11,7 +11,7 @@ let link xtndOut ast compiler outputFile =
   let tmpChan = open_out tmpFilenameLL in
   output_string tmpChan xtndOut; close_out tmpChan;
   let call1 = (String.concat " " ("llc-3.8" :: "-filetype=obj" :: tmpFilenameLL :: "-o" :: tmpFilenameC :: []))
-  and call2 = (String.concat " " (compiler :: "-o" :: outputFile :: tmpFilenameC :: (getExterns ast) @ ["runtime.o"])) ^ " -lm" in
+  and call2 = (String.concat " " (compiler :: "-O -o" :: outputFile :: tmpFilenameC :: (getExterns ast) @ ["runtime.o"])) ^ " -lm" in
   let resc1 = Sys.command call1 in
   if resc1 == 0 then (
     Sys.remove tmpFilenameLL;

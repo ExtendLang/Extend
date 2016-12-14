@@ -1,4 +1,14 @@
+import "../src/stdlib/stdlib.xtnd";
+
 maybeCircular(truth_value) {
   x := x;
   return truth_value ? x : 0;
+}
+
+main(args) {
+  foo :=
+    extend_write(STDOUT, "To be or not to be?\n") ->
+    extend_write(STDOUT, "Enter \"Not to be\" to crash.\n") ->
+    extend_readline(STDIN);
+  return maybeCircular(foo == "Not to be");
 }

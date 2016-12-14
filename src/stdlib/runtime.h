@@ -6,6 +6,7 @@
 #define FLAG_SUBRANGE 3
 
 /* Status flag */
+#define NEVER_EXAMINED 0
 #define CALCULATED 2
 #define IN_PROGRESS 4
 
@@ -37,12 +38,6 @@ struct value_t {
 };
 
 typedef struct value_t* value_p;
-
-struct status_t {
-	int calcStatus;
-};
-
-typedef struct status_t* status_p;
 
 struct ExtendScope;
 typedef value_p (*FormulaFP) (struct ExtendScope *scope, int row, int col);

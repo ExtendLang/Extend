@@ -1,7 +1,7 @@
 global theta := 45.0;
 
 internal_sin(x,y,z) {
-  return extend_sin(z);
+  return sin(z);
 }
 
 [1,1] main([1,n] args) {

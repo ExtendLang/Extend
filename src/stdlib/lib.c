@@ -11,25 +11,25 @@
 FILE *open_files[1 + MAX_FILES] = {NULL};
 int open_num_files = 0;
 
-value_p print(value_p whatever, value_p text) {
+value_p extend_print(value_p whatever, value_p text) {
 	if(!assertSingleString(text)) return new_val();
 	if(!assertText(text)) return new_val();
 	printf("%s", text->str->text);
 	return new_val();
 }
 
-value_p printv(value_p whatever, value_p text) {
+value_p extend_printv(value_p whatever, value_p text) {
 	printf("%s", text->str->text);
 	return new_val();
 }
 
-value_p printd(value_p whatever, value_p text) {
+value_p extend_printd(value_p whatever, value_p text) {
 	printf("%f\n", text->numericVal);
 	value_p result = malloc(sizeof(struct value_t));
 	return result;
 }
 
-value_p to_string(value_p val) {
+value_p extend_to_string(value_p val) {
 		if(assertSingleNumber(val)) {
 			double possible_num = val->numericVal;
 			int rounded_int = (int) lrint(possible_num);

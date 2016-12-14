@@ -1,5 +1,8 @@
 main(args){
-  return extend_close(extend_write(extend_open("testcases/assets/test_file_write.out", "w"), "Hello"))
-          -> print(1,"Made it this far\n")
-          -> 0;
+  handle := open("testcases/assets/test_file_write.out", "w");
+  return
+    write(handle, "Hello") ->
+    close(handle) ->
+    print(1,"Made it this far\n") ->
+    0;
 }

@@ -12,8 +12,6 @@ exception LogicError of string;;
 module StringSet = Set.Make (String);;
 let importSet = StringSet.empty;;
 
-let builtin_signatures = [("cos", 1); ("column", 0); (*("printf", 2);*) ("toString", 1)]
-
 let idgen =
   (* from http://stackoverflow.com/questions/10459363/side-effects-and-top-level-expressions-in-ocaml*)
   let count = ref (-1) in
@@ -191,7 +189,7 @@ let map_of_list list_of_tuples =
   let rec aux acc = function
       [] -> acc
     | t :: ts ->
-      if (StringMap.mem (fst t) acc) then raise(DuplicateDefinition(fst t))
+      if (StringMap.mem (fst t) acc) then (List.iter (fun x -> print_endline (fst x)) list_of_tuples ; raise(DuplicateDefinition(fst t)))
       else aux (StringMap.add (fst t) (snd t) acc) ts in
   aux StringMap.empty list_of_tuples
 
@@ -452,8 +450,7 @@ let reduce_ternaries (globals, functions, externs) =
 
 let check_semantics (globals, functions, externs) =
   let fn_signatures = map_of_list
-      (builtin_signatures @
-       (StringMap.fold (fun s f l -> (s, List.length f.func_params) :: l) functions []) @
+      ((StringMap.fold (fun s f l -> (s, List.length f.func_params) :: l) functions []) @
        (StringMap.fold (fun s f l -> (s, List.length f.extern_fn_params) :: l) externs [])) in
   let check_function fname f =
     if StringMap.mem fname externs then raise(DuplicateDefinition(fname ^ "() is defined as both an external and local function")) else ();

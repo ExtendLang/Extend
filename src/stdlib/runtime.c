@@ -85,7 +85,7 @@ void incStack() {
 	int result;
 
 	result = getrlimit(RLIMIT_STACK, &rl);
-  rl.rlim_cur = kStackSize;
+  rl.rlim_cur = rl.rlim_max;
   result = setrlimit(RLIMIT_STACK, &rl);
 }
 

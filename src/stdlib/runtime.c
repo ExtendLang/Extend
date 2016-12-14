@@ -78,6 +78,16 @@ void debug_print_varinst(struct var_instance *inst) {
 	fprintf(stderr, "~~~ End of Cells: ~~~\n");
 }
 
+void incStack() {
+	const rlim_t kStackSize = 64L * 1024L * 1024L;
+	struct rlimit rl;
+	int result;
+
+	result = getrlimit(RLIMIT_STACK, &rl);
+  rl.rlim_max = kStackSize;
+  result = setrlimit(RLIMIT_STACK, &rl);
+}
+
 double setNumeric(value_p result, double val) {
 	result->flags = FLAG_NUMBER;
 	return (result->numericVal = val);

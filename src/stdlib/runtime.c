@@ -1,6 +1,7 @@
 #include<stdio.h>
 #include<stdlib.h>
 #include<math.h>
+#include<sys/resource.h>
 #include<string.h>
 #include<stdbool.h>
 #include "runtime.h"
@@ -76,6 +77,16 @@ void debug_print_varinst(struct var_instance *inst) {
 		}
 	}
 	fprintf(stderr, "~~~ End of Cells: ~~~\n");
+}
+
+void incStack() {
+	const rlim_t kStackSize = 64L * 1024L * 1024L;
+	struct rlimit rl;
+	int result;
+
+	result = getrlimit(RLIMIT_STACK, &rl);
+  rl.rlim_cur = rl.rlim_max;
+  result = setrlimit(RLIMIT_STACK, &rl);
 }
 
 double setNumeric(value_p result, double val) {

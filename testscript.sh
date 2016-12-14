@@ -23,12 +23,12 @@ counteri=0
 countern=0
 result=0
 
-gcc -c -o stdlib.o src/stdlib/lib.c -lm
+gcc -c -o stdlib.o src/stdlib/lib.c
 if [ $? -ne 0 ]; then
 	rm stdlib.o;
 	exit -1;
 fi
-gcc -c -o runtime.o src/stdlib/runtime.c -lm
+gcc -c -o runtime.o src/stdlib/runtime.c
 if [ $? -ne 0 ]; then
 	rm stdlib.o runtime.o
 	exit -1;

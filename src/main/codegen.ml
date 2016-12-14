@@ -37,6 +37,7 @@ let create_runtime_functions ctx bt the_module =
   add_runtime_func "pow" bt.float_t [|bt.float_t; bt.float_t|] ;
   add_runtime_func "lrint" bt.int_t [|bt.float_t|] ;
   add_runtime_func "llvm.memcpy.p0i8.p0i8.i64" bt.void_t [|bt.char_p; bt.char_p; bt.long_t; bt.int_t; bt.bool_t|] ;
+  add_runtime_func "incStack" bt.void_t [||] ;
   add_runtime_func "getVal" bt.value_p [|bt.var_instance_p; bt.int_t; bt.int_t|] ;
   add_runtime_func "clone_value" bt.value_p [|bt.value_p;|] ;
   (* add_runtime_func "freeMe" (Llvm.void_type ctx) [|bt.extend_scope_p;|] ; *)
@@ -972,6 +973,7 @@ let translate (globals, functions, externs) =
   (* Build the global scope object *)
   let vardefn_p_p = Llvm.build_alloca base_types.var_defn_p "v_p_p" main_bod in
   let global_scope_obj = build_scope_obj "globals" global_symbols globals vardefn_p_p vardefn_p_p 0 main_bod in
+  let _ = Llvm.build_call (Hashtbl.find runtime_functions "incStack") [||] "" main_bod in
   let _ = Llvm.build_store global_scope_obj global_scope_loc main_bod in
 
   (*iterates over function definitions*)

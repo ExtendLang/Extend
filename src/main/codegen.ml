@@ -425,7 +425,7 @@ let translate (globals, functions, externs) =
           | (None, Some illegal_idx) -> print_endline (string_of_expr exp) ; raise (LogicError("This selection should not be grammatically possible")) in
         let (selection_ptr, builder_to_end_all_builders) = build_rhs_sel expr_builder sel in
         (* let _ = Llvm.build_call (Hashtbl.find runtime_functions "debug_print_selection") [|selection_ptr|] "" builder_to_end_all_builders in *)
-        let ret_val = Llvm.build_call (Hashtbl.find runtime_functions "extract_selection") [|expr_val; selection_ptr; Llvm.param form_decl 1; Llvm.param form_decl 2|] "ret_val" builder_to_end_all_builders in
+        let ret_val = Llvm.build_call (Hashtbl.find runtime_functions "extract_selection") [|expr_val; selection_ptr; cell_row; cell_col|] "ret_val" builder_to_end_all_builders in
         (* let _ = Llvm.build_call (Hashtbl.find runtime_functions "debug_print") [|ret_val; Llvm.const_pointer_null base_types.char_p|] "" builder_to_end_all_builders in *)
         (ret_val, builder_to_end_all_builders)
       | Precedence(a,b) -> let (_, new_builder) = build_expr old_builder a in build_expr new_builder b
@@ -975,13 +975,13 @@ let translate (globals, functions, externs) =
         let ret_val = Llvm.build_call (Hashtbl.find runtime_functions "clone_value") [|vp_to_clone|] "typeof_ret_val" expr_builder in
         (ret_val, expr_builder)
       | UnOp(Row, _) ->
-        let row_as_int = Llvm.param form_decl 1 in
+        let row_as_int = cell_row in
         let row_as_float = Llvm.build_sitofp row_as_int base_types.float_t "row_as_float" old_builder in
         let ret_val = Llvm.build_malloc base_types.value_t "ret_val" old_builder in
         let _ = store_number ret_val old_builder row_as_float in
         (ret_val, old_builder)
       | UnOp(Column, _) ->
-        let col_as_int = Llvm.param form_decl 2 in
+        let col_as_int = cell_col in
         let col_as_float = Llvm.build_sitofp col_as_int base_types.float_t "col_as_float" old_builder in
         let ret_val = Llvm.build_malloc base_types.value_t "ret_val" old_builder in
         let _ = store_number ret_val old_builder col_as_float in

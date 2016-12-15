@@ -1,0 +1,42 @@
+main(args) {
+  should_be_nan := sqrt(-1);
+  should_also_be_nan := 0 / 0;
+  should_be_plus_inf := 2 / 0;
+  should_be_minus_inf := -3 / 0;
+  should_be_normal := 4;
+  foo := "Hello";
+  bar := empty;
+  [3,3] baz := row() * column();
+
+  return
+    print_endline(typeof(should_be_nan)) -> // "Number"
+    print_endline(typeof(should_also_be_nan)) -> // "Number"
+    print_endline(typeof(should_be_plus_inf)) -> // "Number"
+    print_endline(typeof(should_be_minus_inf)) -> // "Number"
+    print_endline(typeof(should_be_normal)) -> // "Number"
+    print_endline(typeof(foo)) -> // "String"
+    print_endline(typeof(bar)) -> // "Empty"
+    print_endline(typeof(baz)) -> // "Range"
+    print_endline("") ->
+
+    print_endline(isNaN(should_be_nan)) -> // 1
+    print_endline(isNaN(should_also_be_nan)) -> // 1
+    print_endline(isNaN(should_be_plus_inf)) -> // 0
+    print_endline(isNaN(should_be_minus_inf)) -> // 0
+    print_endline(isNaN(should_be_normal)) -> // 0
+    print_endline(isNaN(foo)) -> // 0
+    print_endline(isNaN(bar)) -> // 0
+    print_endline(isNaN(baz)) -> // 0
+    print_endline("") ->
+
+    print_endline(isInfinite(should_be_nan)) -> // 0
+    print_endline(isInfinite(should_also_be_nan)) -> // 0
+    print_endline(isInfinite(should_be_plus_inf)) -> // 1
+    print_endline(isInfinite(should_be_minus_inf)) -> // -1
+    print_endline(isInfinite(should_be_normal)) -> // 0
+    print_endline(isInfinite(foo)) -> // 0
+    print_endline(isInfinite(bar)) -> // 0
+    print_endline(isInfinite(baz)) -> // 0
+
+    0;
+}

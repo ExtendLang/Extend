@@ -20,6 +20,8 @@ extern "stdlib.o" {
   ceil(val);
   fabs(val);
   floor(val);
+  isNaN(val);
+  isInfinite(val);
   get_stdin();
   get_stdout();
   get_stderr();

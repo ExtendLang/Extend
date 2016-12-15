@@ -87,6 +87,94 @@ void debug_print_subrange(subrange_p subrng) {
 	debug_print_varinst(subrng->range);
 }
 
+void debug_print_index(struct rhs_index *idx) {
+	if (idx == NULL) {
+		fprintf(stderr, "I'd rather not try to print out the contents of a NULL index.\n");
+		exit(-1);
+	}
+	fprintf(stderr, "Index type: ");
+	switch(idx->rhs_index_type) {
+		case RHS_IDX_ABSOLUTE:
+			fprintf(stderr, "Absolute\n");
+			if (idx->val_of_expr == NULL) {
+				fprintf(stderr, "I wasn't expecting this, but the value pointer is NULL. Maybe there's a good reason for it, so I'll keep going...\n");
+			} else {
+				debug_print(idx->val_of_expr, "an absolute index");
+			}
+			break;
+		case RHS_IDX_RELATIVE:
+			fprintf(stderr, "Relative\n");
+			if (idx->val_of_expr == NULL) {
+				fprintf(stderr, "I wasn't expecting this, but the value pointer is NULL. Maybe there's a good reason for it, so I'll keep going...\n");
+			} else {
+				debug_print(idx->val_of_expr, "a relative index");
+			}
+			break;
+		case RHS_IDX_DIM_START:
+			fprintf(stderr, "DimensionStart\n");
+			if (idx->val_of_expr != NULL) {
+				fprintf(stderr, "This definitely isn't supposed to happen - the value pointer isn't NULL. You should look into that.\n");
+				exit(-1);
+			}
+			break;
+		case RHS_IDX_DIM_END:
+			fprintf(stderr, "DimensionEnd\n");
+			if (idx->val_of_expr != NULL) {
+				fprintf(stderr, "This definitely isn't supposed to happen - the value pointer isn't NULL. You should look into that.\n");
+				exit(-1);
+			}
+			break;
+	}
+}
+
+void debug_print_slice(struct rhs_slice *sl) {
+	if (sl == NULL) {
+		fprintf(stderr, "I'd rather not try to print out the contents of a NULL slice.\n");
+		exit(-1);
+	}
+	fprintf(stderr, "-------Everything about this slice------\n");
+	fprintf(stderr, "Start and end index memory addresses: %p and %p\n", sl->slice_start_index, sl->slice_end_index);
+	if (sl->slice_start_index != NULL) {
+		fprintf(stderr, "Start index info:\n");
+		debug_print_index(sl->slice_start_index);
+		if (sl->slice_end_index != NULL) {
+			fprintf(stderr, "End index info:\n");
+			debug_print_index(sl->slice_end_index);
+		}
+	}	else {
+		if (sl->slice_end_index != NULL) {
+			fprintf(stderr, "Start index is NULL but end index is not NULL. That should never happen.\n");
+			fprintf(stderr, "Attempting to print contents anyway:\n");
+			fflush(stderr);
+			debug_print_index(sl->slice_end_index);
+		}
+	}
+}
+
+void debug_print_selection(struct rhs_selection *sel) {
+	if (sel == NULL) {
+		fprintf(stderr, "I'd rather not try to print out the contents of a NULL selection.\n");
+		exit(-1);
+	}
+	fprintf(stderr, "-------Everything about this selection------\n");
+	fprintf(stderr, "Slice memory addresses: %p and %p\n", sel->slice1, sel->slice2);
+	if (sel->slice1 != NULL) {
+		fprintf(stderr, "Slice 1 info:\n");
+		debug_print_slice(sel->slice1);
+		if (sel->slice2 != NULL) {
+			fprintf(stderr, "Slice 2 info:\n");
+			debug_print_slice(sel->slice2);
+		}
+	}	else {
+		if (sel->slice2 != NULL) {
+			fprintf(stderr, "Slice 1 is NULL but slice 2 is not NULL. That should never happen.\n");
+			fprintf(stderr, "Attempting to print contents anyway:\n");
+			fflush(stderr);
+			debug_print_slice(sel->slice2);
+		}
+	}
+}
+
 void incStack() {
 	const rlim_t kStackSize = 64L * 1024L * 1024L;
 	struct rlimit rl;
@@ -179,6 +267,9 @@ void null_init(struct ExtendScope *scope_ptr) {
 }
 
 int getIntFromOneByOne(struct ExtendScope *scope_ptr, int varnum) {
+	if (!scope_ptr->defns[varnum].isOneByOne) {
+		fprintf(stderr, "The variable you claimed (%s) was one by one is not defined that way.\n", scope_ptr->defns[varnum].name);
+	}
 	struct var_instance *inst = get_variable(scope_ptr, varnum);
 	if (inst->rows != 1 || inst->cols != 1) {
 		fprintf(stderr, "The variable you claimed (%s) was one by one is actually %d by %d.\n", inst->name, inst->rows, inst->cols);
@@ -456,7 +547,7 @@ value_p getVal(struct var_instance *inst, int r, int c) {
 			if (inst->values[cell_number] == NULL) {
 				fprintf(stderr, "Supposedly, %s[%d,%d] was already calculated, but there is a null pointer there.\n", inst->name, r, c);
 				fprintf(stderr, "Attempting to print contents of the variable instance where this occurred:\n");
-				fflush(stdout);
+				fflush(stderr);
 				debug_print_varinst(inst);
 				exit(-1);
 			}
@@ -464,7 +555,7 @@ value_p getVal(struct var_instance *inst, int r, int c) {
 		default:
 			fprintf(stderr, "Unrecognized cell status %d (row %d, col %d)!\n", cell_status, r, c);
 			fprintf(stderr, "Attempting to print contents of the variable instance where this occurred:\n");
-			fflush(stdout);
+			fflush(stderr);
 			debug_print_varinst(inst);
 			exit(-1);
 			break;

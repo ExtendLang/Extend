@@ -879,8 +879,18 @@ let translate (globals, functions, externs) =
         let vp_to_clone = Llvm.build_load vp_to_clone_loc "vp_to_clone" expr_builder in
         let ret_val = Llvm.build_call (Hashtbl.find runtime_functions "clone_value") [|vp_to_clone|] "typeof_ret_val" expr_builder in
         (ret_val, expr_builder)
-      | UnOp(Row, expr) -> print_endline "Unsupported Unop" ; print_endline (Ast.string_of_expr exp); raise NotImplemented
-      | UnOp(Column, expr) -> print_endline "Unsupported Unop" ; print_endline (Ast.string_of_expr exp); raise NotImplemented
+      | UnOp(Row, _) ->
+        let row_as_int = Llvm.param form_decl 1 in
+        let row_as_float = Llvm.build_sitofp row_as_int base_types.float_t "row_as_float" old_builder in
+        let ret_val = Llvm.build_malloc base_types.value_t "ret_val" old_builder in
+        let _ = store_number ret_val old_builder row_as_float in
+        (ret_val, old_builder)
+      | UnOp(Column, _) ->
+        let col_as_int = Llvm.param form_decl 2 in
+        let col_as_float = Llvm.build_sitofp col_as_int base_types.float_t "col_as_float" old_builder in 
+        let ret_val = Llvm.build_malloc base_types.value_t "ret_val" old_builder in
+        let _ = store_number ret_val old_builder col_as_float in
+        (ret_val, old_builder)
       | ReducedTernary(cond_var, true_var, false_var) ->
         let ret_val_addr = Llvm.build_alloca base_types.value_p "tern_ret_val_addr" old_builder in
         let (cond_val, _) = build_expr old_builder (Id(cond_var)) in (* Relying here on the fact that Id() doesn't change the builder *)

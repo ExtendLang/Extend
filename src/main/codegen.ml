@@ -341,7 +341,7 @@ let translate (globals, functions, externs) =
 
         (* Not empty basic block: *)
         let the_number = (cond_val => (value_field_index Number)) "the_number" not_empty_builder in
-        let is_not_zero = Llvm.build_fcmp Llvm.Fcmp.One the_number (Llvm.const_float base_types.number_t 0.0) "is_zero" not_empty_builder in (* Fcmp.One = Not equal *)
+        let is_not_zero = Llvm.build_fcmp Llvm.Fcmp.One the_number (Llvm.const_float base_types.number_t 0.0) "is_not_zero" not_empty_builder in (* Fcmp.One = Not equal *)
         let _ = Llvm.build_cond_br is_not_zero truthy_bb falsey_bb not_empty_builder in
 
         (* Truthy basic block: *)
@@ -351,7 +351,7 @@ let translate (globals, functions, externs) =
         let _ = Llvm.build_br merge_bb truthy_builder in
 
         (* Falsey basic block: *)
-        let falsey_llvm_var = get_llvm_var true_var falsey_builder in
+        let falsey_llvm_var = get_llvm_var false_var falsey_builder in
         let falsey_val = Llvm.build_call getVal [|falsey_llvm_var; cell_row; cell_col|] "falsey_val" falsey_builder in
         let _ = Llvm.build_store falsey_val ret_val_addr falsey_builder in
         let _ = Llvm.build_br merge_bb falsey_builder in

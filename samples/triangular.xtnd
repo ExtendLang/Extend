@@ -1,12 +1,11 @@
 ssum([m,n] rng) {
-  [m,n] numbers := isNumber(#rng) ? #rng : 0;
-  return print_endline("this is ssum talking") -> print_endline(debug(rng));
+  [m,n] numbers := (print_endline(isNumber(#rng)) -> isNumber(#rng)) ? (print_endline(#rng) -> #rng) : 0;
+  return numbers;
 }
 
 main(args) {
   [10,1] x;
   x[0,0] = 1;
   x[1:,0] = x[[-1]] + 1;
-//  return print_endline(debug(ssum(x)));
-  return debug(ssum(x));
+  return print_endline(debug(ssum(x)));
 }

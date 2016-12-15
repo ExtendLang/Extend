@@ -1,26 +1,14 @@
-extern "math.o" {
-  [1,1] sin([1,1] theta);
-}
-
-extern "fileio.o" {
-  open(filename, mode);
-  close(handle);
-  read(handle, max_bytes);
-  readline(handle);
-  write(handle, str);
-}
-
 transpose([m,n] rng) {
   [n,m] ret := rng[column(),row()];
   return ret;
 }
 
 isNumber(x) {
-  return type(x) == "Number";
+  return typeof(x) == "Number";
 }
 
 isEmpty(x) {
-  return type(x) == "Empty";
+  return typeof(x) == "Empty";
 }
 
 sum_column([m,1] rng) {

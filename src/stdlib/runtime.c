@@ -173,6 +173,7 @@ void debug_print_selection(struct rhs_selection *sel) {
 			debug_print_slice(sel->slice2);
 		}
 	}
+	fprintf(stderr, "-------That's all I've got about that selection------\n\n");
 }
 
 void incStack() {
@@ -517,6 +518,107 @@ value_p deref_subrange_p(subrange_p subrng) {
 		new_value->subrange = (subrange_p) malloc (sizeof(struct subrange_t));
 		memcpy(new_value->subrange, subrng, sizeof(struct subrange_t));
 		return new_value;
+	}
+}
+
+char resolve_rhs_index(struct rhs_index *index, int dimension_len, int dimension_cell_num, int *result_ptr) {
+	if (index == NULL) {
+		fprintf(stderr, "Exiting - asked to dereference a NULL index\n");
+		exit(-1);
+	}
+	int i;
+	switch(index->rhs_index_type) {
+		case RHS_IDX_ABSOLUTE:
+			if (!assertSingleNumber(index->val_of_expr)) return false;
+			i = (int) lrint(index->numericVal);
+			if (i >= 0) {
+				*result_ptr = i;
+			} else {
+				*result_ptr = i + dimension_len;
+			}
+			return true;
+			break;
+		case RHS_IDX_RELATIVE:
+			if (!assertSingleNumber(index->val_of_expr)) return false;
+			*result_ptr = dimension_cell_num + (int) lrint(index->numericVal);
+			return true;
+			break;
+		case RHS_IDX_DIM_START:
+			*result_ptr = 0;
+			return true;
+			break;
+		case RHS_IDX_DIM_END:
+			*result_ptr = dimension_len;
+			return true;
+			break;
+		default:
+			fprintf(stderr, "Exiting - illegal index type\n");
+			exit(-1);
+			break;
+	}
+}
+
+void resolve_rhs_slice(struct rhs_slice *slice, int dimension_len, int dimension_cell_num, int *start_ptr, int *end_ptr) {
+
+}
+
+value_p extract_selection(value_p expr, struct rhs_selection *sel, int r, int c) {
+	int expr_rows, expr_cols;
+	struct subrange_t subrange;
+	struct value_t zero_val = {FLAG_NUMBER, 0.0, NULL, NULL};
+	struct value_t one_val = {FLAG_NUMBER, 1.0, NULL, NULL};
+	struct rhs_index absolute_zero = {&zero_val, RHS_IDX_ABSOLUTE};
+	struct rhs_index absolute_one = {&one_val, RHS_IDX_ABSOLUTE};
+	struct rhs_slice zero_to_one = {&absolute_zero, &absolute_one};
+	struct rhs_slice corresponding_cell = {NULL, NULL};
+	struct rhs_slice *row_slice_p, *col_slice_p;
+	int row_start, row_end, col_start, col_end;
+
+	if (expr == NULL || sel == NULL) {
+		fprintf(stderr, "Exiting - asked to extract a selection using a NULL pointer.\n");
+		exit(-1);
+	}
+	switch(expr->flags) {
+		case FLAG_EMPTY:
+			return new_val();
+			break;
+		case FLAG_NUMBER: case FLAG_STRING:
+			expr_rows = 1;
+			expr_cols = 1;
+			break;
+		case FLAG_SUBRANGE:
+			expr_rows = expr->subrange->subrange_num_rows;
+			expr_cols = expr->subrange->subrange_num_cols;
+			break;
+		default:
+			fprintf(stderr, "Exiting - invalid value type\n");
+			exit(-1);
+			break;
+	}
+	if (sel->slice1 == NULL) {
+		if (sel->slice2 != NULL) {
+			fprintf(stderr, "Exiting - illegal selection\n");
+			exit(-1);
+		}
+		row_slice_p = &corresponding_cell;
+		col_slice_p = &corresponding_cell;
+	} else {
+		if (sel->slice2 == NULL) {
+			if (rows == 1) {
+				row_slice_p = &zero_to_one;
+				col_slice_p = sel->slice1;
+			} else if (cols == 1) {
+				row_slice_p = sel->slice1;
+				col_slice_p = &zero_to_one;
+			} else {
+				fprintf(stderr, "Runtime error: Only given one slice for a value with multiple rows and multiple columns\n");
+				debug_print(expr);
+				exit(-1);
+			}
+		} else {
+			row_slice_p = sel->slice1;
+			col_slice_p = sel->slice2;
+		}
 	}
 }
 

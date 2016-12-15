@@ -51,6 +51,8 @@ let create_runtime_functions ctx bt the_module =
   add_runtime_func "debug_print" (Llvm.void_type ctx) [|bt.value_p ; bt.char_p|] ;
   add_runtime_func "new_string_go_all_the_way" bt.value_p [|bt.char_p|] ;
   add_runtime_func "deref_subrange_p" bt.value_p [|bt.subrange_p|];
+  add_runtime_func "debug_print_selection" (Llvm.void_type ctx) [|bt.rhs_selection_p|];
+  add_runtime_func "extract_selection" bt.value_p [|bt.value_p; bt.rhs_selection_p; bt.int_t; bt.int_t|];
   ()
 
 let create_helper_functions ctx bt the_module =
@@ -375,6 +377,7 @@ let translate (globals, functions, externs) =
             (rhs_selection_ptr,sel_builder)
           | (None, Some illegal_idx) -> print_endline (string_of_expr exp) ; raise (LogicError("This selection should not be grammatically possible")) in
         let (selection_ptr, builder_to_end_all_builders) = build_rhs_sel expr_builder sel in
+        let _ = Llvm.build_call (Hashtbl.find runtime_functions "debug_print_selection") [|selection_ptr|] "" builder_to_end_all_builders in
         (expr_val, builder_to_end_all_builders)
       | Precedence(a,b) -> let (_, new_builder) = build_expr old_builder a in build_expr new_builder b
       | LitString(str) ->

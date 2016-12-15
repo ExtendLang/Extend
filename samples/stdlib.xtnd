@@ -1,15 +1,3 @@
-extern "math.o" {
-  [1,1] sin([1,1] theta);
-}
-
-extern "fileio.o" {
-  open(filename, mode);
-  close(handle);
-  read(handle, max_bytes);
-  readline(handle);
-  write(handle, str);
-}
-
 transpose([m,n] rng) {
   [n,m] ret := rng[column(),row()];
   return ret;

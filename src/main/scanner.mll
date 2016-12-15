@@ -58,7 +58,7 @@ rule token = parse
 | "if"            { IF }
 | "empty"         { EMPTY }
 | "size"          { SIZE }
-| "typeof"        { TYPE }
+| "typeof"        { TYPEOF }
 | "row"           { ROW }
 | "column"        { COLUMN }
 | "switch"        { SWITCH }

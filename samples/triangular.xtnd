@@ -1,18 +1,9 @@
-ssum([m,n] rng) {
-  [m,n] numbers := #rng;
-  [m,n] is_number := isNumber(#rng);
-  [m,n] only_numbers := isNumber(#rng) ? #rng : 0;
-  return
-    print_endline(rng[3,0]) ->
-    print_endline(numbers[3,0]) ->
-    print_endline(is_number[3,0]) ->
-    print_endline(only_numbers[3,0]) ->
-    3;
-}
-
 main(args) {
   [10,1] x;
   x[0,0] = 1;
   x[1:,0] = x[[-1]] + 1;
-  return ssum(x);
+
+  [10,10] lower_triangular := if(row()>column(),row()-column(),0);
+  [1,10] individual_column_max := max(lower_triangular[:,]);
+  return print_endline(sum(x)) -> print_endline(sum(lower_triangular)) -> print_endline(individual_column_max);
 }

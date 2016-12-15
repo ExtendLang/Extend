@@ -1,6 +1,6 @@
 main([1,1] args) {
-  [29945,1] x; // 29945 is the limit if it goes recursive :-(
+  [126450,1] x; // 29945 is the limit if it goes recursive :-(
   x[0,:] = 1;
   x[1:,:] = x[[-1],] + 1;
-  return x[-1,-1];
+  return write(STDOUT,to_string(x[-1,-1])+"\n");
 }

@@ -1,8 +1,29 @@
 main(args){
   [5,5]foo;
-  [1,1] x := 2;
-  foo[1:4,1:x] = 1 + 1 + 1;
+  [1,1] x := 3;
+  foo[1:5,1:x] = 1 + 1 + 1;
   foo[0,0] = 3 + 2;
   foo[1:,0] = 67 - 42;
-  return foo[0,0] -> 0;
+  [5,5] bar := #foo + 1;
+  return
+    write(STDOUT,to_string(foo[0,0])+"\n") ->
+    write(STDOUT,to_string(foo[0,0:2])+"\n") ->
+    write(STDOUT,to_string(foo[0:1,1])+"\n") ->
+    write(STDOUT,to_string(foo[,])+"\n") ->
+    write(STDOUT,to_string(foo[x,x])+"\n") ->
+    write(STDOUT,to_string(#foo)+"\n") ->
+    write(STDOUT,to_string(foo[4,])+"\n") ->
+    write(STDOUT,to_string(foo[2,1])+"\n") ->
+    write(STDOUT,to_string(foo)+"\n") ->
+    write(STDOUT,"\n") ->
+    write(STDOUT,to_string(bar[0,0])+"\n") ->
+    write(STDOUT,to_string(bar[0,0:2])+"\n") ->
+    write(STDOUT,to_string(bar[0:1,1])+"\n") ->
+    write(STDOUT,to_string(bar[,])+"\n") ->
+    write(STDOUT,to_string(bar[x,x])+"\n") ->
+    write(STDOUT,to_string(#bar)+"\n") ->
+    write(STDOUT,to_string(bar[4,])+"\n") ->
+    write(STDOUT,to_string(bar[2,1])+"\n") ->
+    write(STDOUT,to_string(bar)+"\n") ->
+    0;
 }

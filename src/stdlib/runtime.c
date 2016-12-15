@@ -673,6 +673,13 @@ value_p extract_selection(value_p expr, struct rhs_selection *sel, int r, int c)
 	}
 }
 
+value_p getValSR(struct subrange_t *sr, int r, int c) {
+	if(sr->base_var_offset_row + sr->subrange_num_rows <= r
+		|| sr->base_var_offset_col + sr->subrange_num_cols <= c)
+		return new_val();
+	return getVal(sr->range, r + sr->base_var_offset_row, c + sr->base_var_offset_col);
+}
+
 value_p getVal(struct var_instance *inst, int r, int c) {
 	/* If we're going to return new_val() then we have to
 	 * do clone_value(). Otherwise the receiver won't know

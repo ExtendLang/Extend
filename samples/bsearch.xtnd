@@ -16,5 +16,5 @@ main([1,n] args) {
   array[1:,0] = array[[-1],] + 2;
   array[1:,1] = array[[-1],] + 1;
   array[0,1] = 10;
-  return printf(1, toString(array[bsearch(array[:,0],300),1]) + "\n");
+  return print_endline(array[bsearch(array[:,0],300),1]);
 }

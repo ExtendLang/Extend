@@ -51,7 +51,9 @@ value_p extend_to_string(value_p val) {
  			value_p _new = new_val();
  			setString(_new, "empty", 5);
  			return _new;
- 		}
+ 		} if (val->flags == FLAG_SUBRANGE) {
+			return box_value_string(new_string("a wild subrange appeared"));
+		}
 		// If the struct does not hold a string or number, return empty?
 		return new_val();
 }

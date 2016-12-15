@@ -377,8 +377,10 @@ let translate (globals, functions, externs) =
             (rhs_selection_ptr,sel_builder)
           | (None, Some illegal_idx) -> print_endline (string_of_expr exp) ; raise (LogicError("This selection should not be grammatically possible")) in
         let (selection_ptr, builder_to_end_all_builders) = build_rhs_sel expr_builder sel in
-        let _ = Llvm.build_call (Hashtbl.find runtime_functions "debug_print_selection") [|selection_ptr|] "" builder_to_end_all_builders in
-        (expr_val, builder_to_end_all_builders)
+        (* let _ = Llvm.build_call (Hashtbl.find runtime_functions "debug_print_selection") [|selection_ptr|] "" builder_to_end_all_builders in *)
+        let ret_val = Llvm.build_call (Hashtbl.find runtime_functions "extract_selection") [|expr_val; selection_ptr; Llvm.param form_decl 1; Llvm.param form_decl 2|] "ret_val" builder_to_end_all_builders in
+        (* let _ = Llvm.build_call (Hashtbl.find runtime_functions "debug_print") [|ret_val; Llvm.const_pointer_null base_types.char_p|] "" builder_to_end_all_builders in *)
+        (ret_val, builder_to_end_all_builders)
       | Precedence(a,b) -> let (_, new_builder) = build_expr old_builder a in build_expr new_builder b
       | LitString(str) ->
         let boxxx = Llvm.build_call

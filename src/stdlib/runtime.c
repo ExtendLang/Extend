@@ -537,7 +537,7 @@ char resolve_rhs_index(struct rhs_index *index, int dimension_len, int dimension
 	switch(index->rhs_index_type) {
 		case RHS_IDX_ABSOLUTE:
 			if (!assertSingleNumber(index->val_of_expr)) return false;
-			i = (int) lrint(index->numericVal);
+			i = (int) lrint(index->val_of_expr->numericVal);
 			if (i >= 0) {
 				*result_ptr = i;
 			} else {
@@ -547,7 +547,7 @@ char resolve_rhs_index(struct rhs_index *index, int dimension_len, int dimension
 			break;
 		case RHS_IDX_RELATIVE:
 			if (!assertSingleNumber(index->val_of_expr)) return false;
-			*result_ptr = dimension_cell_num + (int) lrint(index->numericVal);
+			*result_ptr = dimension_cell_num + (int) lrint(index->val_of_expr->numericVal);
 			return true;
 			break;
 		case RHS_IDX_DIM_START:
@@ -603,6 +603,7 @@ value_p extract_selection(value_p expr, struct rhs_selection *sel, int r, int c)
 	struct subrange_t subrange;
 	struct rhs_slice *row_slice_p, *col_slice_p;
 	int row_start, row_end, col_start, col_end;
+	char row_slice_success, col_slice_success;
 
 	if (expr == NULL || sel == NULL) {
 		fprintf(stderr, "Exiting - asked to extract a selection using a NULL pointer.\n");
@@ -634,23 +635,42 @@ value_p extract_selection(value_p expr, struct rhs_selection *sel, int r, int c)
 		col_slice_p = &corresponding_cell;
 	} else {
 		if (sel->slice2 == NULL) {
-			if (rows == 1) {
+			if (expr_rows == 1) {
 				row_slice_p = &zero_to_one;
 				col_slice_p = sel->slice1;
-			} else if (cols == 1) {
+			} else if (expr_cols == 1) {
 				row_slice_p = sel->slice1;
 				col_slice_p = &zero_to_one;
 			} else {
+				return new_val();
+/*			Alternately:
 				fprintf(stderr, "Runtime error: Only given one slice for a value with multiple rows and multiple columns\n");
 				debug_print(expr);
-				exit(-1);
+				exit(-1); */
 			}
 		} else {
 			row_slice_p = sel->slice1;
 			col_slice_p = sel->slice2;
 		}
 	}
-	
+	row_slice_success = resolve_rhs_slice(row_slice_p, expr_rows, r, &row_start, &row_end);
+	col_slice_success = resolve_rhs_slice(col_slice_p, expr_cols, c, &col_start, &col_end);
+	if (!row_slice_success || !col_slice_success) return new_val();
+	if (row_start < 0) row_start = 0;
+	if (col_start < 0) col_start = 0;
+	if (row_end > expr_rows) row_end = expr_rows;
+	if (col_end > expr_cols)  col_end = expr_cols;
+	if (row_end <= row_start || col_end <= col_start) return new_val();
+	if (expr->flags == FLAG_NUMBER || expr->flags == FLAG_STRING) {
+		return clone_value(expr);
+	} else {
+		subrange.range = expr->subrange->range;
+		subrange.base_var_offset_row = expr->subrange->base_var_offset_row + row_start;
+		subrange.base_var_offset_col = expr->subrange->base_var_offset_col + col_start;
+		subrange.subrange_num_rows = row_end - row_start;
+		subrange.subrange_num_cols = col_end - col_start;
+		return deref_subrange_p(&subrange);
+	}
 }
 
 value_p getVal(struct var_instance *inst, int r, int c) {

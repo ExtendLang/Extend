@@ -13,6 +13,8 @@ struct rhs_index absolute_one = {&one_val, RHS_IDX_ABSOLUTE};
 struct rhs_slice zero_to_one = {&absolute_zero, &absolute_one};
 struct rhs_slice corresponding_cell = {NULL, NULL};
 
+void debug_print_subrange(subrange_p subrng);
+
 void debug_print(value_p val, char *which_value) {
 	char *flag_meanings[4] = {"Empty", "Number", "String", "Subrange"};
 	fprintf(stderr, "------Everything you ever wanted to know about %s:------\n", which_value == NULL ? "some anonymous variable" : which_value);
@@ -36,6 +38,10 @@ void debug_print(value_p val, char *which_value) {
 		}
 	}
 	fprintf(stderr, "Subrange contents: Probably safer not to check that pointer (%p) blindly either\n", val->subrange);
+	if (val->flags == FLAG_SUBRANGE && val->subrange != NULL) {
+		fprintf(stderr, "It says it's a subrange and it's not a NULL pointer though, so here you go:\n");
+		debug_print_subrange(val->subrange);
+	}
 	fprintf(stderr, "------That's all I've got to say about %s:------\n", which_value == NULL ? "some anonymous variable" : which_value);
 }
 

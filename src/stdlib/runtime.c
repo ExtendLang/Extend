@@ -6,6 +6,13 @@
 #include<stdbool.h>
 #include "runtime.h"
 
+struct value_t zero_val = {FLAG_NUMBER, 0.0, NULL, NULL};
+struct value_t one_val = {FLAG_NUMBER, 1.0, NULL, NULL};
+struct rhs_index absolute_zero = {&zero_val, RHS_IDX_ABSOLUTE};
+struct rhs_index absolute_one = {&one_val, RHS_IDX_ABSOLUTE};
+struct rhs_slice zero_to_one = {&absolute_zero, &absolute_one};
+struct rhs_slice corresponding_cell = {NULL, NULL};
+
 void debug_print(value_p val, char *which_value) {
 	char *flag_meanings[4] = {"Empty", "Number", "String", "Subrange"};
 	fprintf(stderr, "------Everything you ever wanted to know about %s:------\n", which_value == NULL ? "some anonymous variable" : which_value);
@@ -558,19 +565,42 @@ char resolve_rhs_index(struct rhs_index *index, int dimension_len, int dimension
 	}
 }
 
-void resolve_rhs_slice(struct rhs_slice *slice, int dimension_len, int dimension_cell_num, int *start_ptr, int *end_ptr) {
-
+char resolve_rhs_slice(struct rhs_slice *slice, int dimension_len, int dimension_cell_num, int *start_ptr, int *end_ptr) {
+	char start_success, end_success;
+	if (slice == NULL) {
+		fprintf(stderr, "Exiting - asked to dereference a NULL slice\n");
+		exit(-1);
+	}
+	if (slice->slice_start_index == NULL) {
+		if (slice->slice_end_index != NULL) {
+			fprintf(stderr, "Exiting - illegal slice\n");
+			exit(-1);
+		}
+		if (dimension_len == 1) {
+			*start_ptr = 0;
+			*end_ptr = 1;
+			return true;
+		} else {
+			*start_ptr = dimension_cell_num;
+			*end_ptr = dimension_cell_num + 1;
+			return true;
+		}
+	} else {
+		start_success = resolve_rhs_index(slice->slice_start_index, dimension_len, dimension_cell_num, start_ptr);
+		if (!start_success) return false;
+		if (slice->slice_end_index == NULL) {
+			*end_ptr = *start_ptr + 1;
+			return true;
+		} else {
+			end_success = resolve_rhs_index(slice->slice_end_index, dimension_len, dimension_cell_num, end_ptr);
+			return end_success;
+		}
+	}
 }
 
 value_p extract_selection(value_p expr, struct rhs_selection *sel, int r, int c) {
 	int expr_rows, expr_cols;
 	struct subrange_t subrange;
-	struct value_t zero_val = {FLAG_NUMBER, 0.0, NULL, NULL};
-	struct value_t one_val = {FLAG_NUMBER, 1.0, NULL, NULL};
-	struct rhs_index absolute_zero = {&zero_val, RHS_IDX_ABSOLUTE};
-	struct rhs_index absolute_one = {&one_val, RHS_IDX_ABSOLUTE};
-	struct rhs_slice zero_to_one = {&absolute_zero, &absolute_one};
-	struct rhs_slice corresponding_cell = {NULL, NULL};
 	struct rhs_slice *row_slice_p, *col_slice_p;
 	int row_start, row_end, col_start, col_end;
 
@@ -620,6 +650,7 @@ value_p extract_selection(value_p expr, struct rhs_selection *sel, int r, int c)
 			col_slice_p = sel->slice2;
 		}
 	}
+	
 }
 
 value_p getVal(struct var_instance *inst, int r, int c) {

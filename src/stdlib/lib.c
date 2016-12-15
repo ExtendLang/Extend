@@ -52,6 +52,46 @@ value_p extend_to_string(value_p val) {
  			setString(_new, "empty", 5);
  			return _new;
  		}
+		else if(val->flags == FLAG_SUBRANGE) {
+			int i,j,len;
+			value_p value;
+			char *result, *res;
+			len = 0;
+			subrange_p sr = val->subrange;
+			value_p *strs = malloc(sizeof(value_p) * sr->subrange_num_cols * sr->subrange_num_rows);
+			for(i = 0; i < sr->subrange_num_rows; i++) {
+				for(j = 0; j < sr->subrange_num_cols; j++) {
+					value = extend_to_string(getValSR(sr, i, j));
+					//debug_print(value, "");
+					strs[i * sr->subrange_num_cols + j] = value;
+					len += value->str->length;
+				}
+			}
+			len += sr->subrange_num_rows * sr->subrange_num_cols + 1 /*closing paren*/;
+			res = result = malloc(len + 1/*terminal character*/);
+			*result = '{';
+			result++;
+			for(i = 0; i < sr->subrange_num_rows; i++) {
+				for(j = 0; j < sr->subrange_num_cols; j++) {
+					memcpy(result,strs[i * sr->subrange_num_cols + j]->str->text, strs[i * sr->subrange_num_cols + j]->str->length);
+					result += strs[i * sr->subrange_num_cols + j]->str->length;
+					if(j != sr->subrange_num_cols - 1) {
+						*result = ',';
+						result++;
+					}
+				}
+				if(i != sr->subrange_num_rows - 1) {
+					*result = ';';
+					result++;
+				}
+			}
+			*result = '}';
+			value_p ret_val = new_val();
+			setString(ret_val, res, len);
+			return ret_val;
+		} else {
+			__builtin_unreachable();
+		}
 		// If the struct does not hold a string or number, return empty?
 		return new_val();
 }

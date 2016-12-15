@@ -155,4 +155,5 @@ value_p clone_value(value_p old_value);
 void delete_string_p(string_p old_string);
 void delete_subrange_p(subrange_p old_subrange);
 void delete_value(value_p old_value);
+value_p getValSR(struct subrange_t *sr, int r, int c);
 value_p getVal(struct var_instance *inst, int x, int y);

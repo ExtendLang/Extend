@@ -33,6 +33,12 @@ type something = {
   char_p_p : Llvm.lltype;
   (*void_p : Llvm.lltype;*)
   float_t : Llvm.lltype;
+  rhs_index_t : Llvm.lltype;
+  rhs_slice_t : Llvm.lltype;
+  rhs_selection_t : Llvm.lltype;
+  rhs_index_p : Llvm.lltype;
+  rhs_slice_p : Llvm.lltype;
+  rhs_selection_p : Llvm.lltype;
 };;
 
 type scope_field_type = VarDefn | VarInst | VarNum | ScopeRefCount | FunctionParams
@@ -110,6 +116,28 @@ let string_field_index = function
   | StringLen -> 1
   | StringRefCount -> 2
 
+type rhs_index_field = RhsExprVal | RhsIndexType
+let rhs_index_field_index = function
+    RhsExprVal -> 0
+  | RhsIndexType -> 1
+
+type rhs_index_type_flags = RhsIdxAbs | RhsIdxRel | RhsIdxDimStart | RhsIdxDimEnd
+let rhs_index_type_flags_const = function
+    RhsIdxAbs -> 0
+  | RhsIdxRel -> 1
+  | RhsIdxDimStart -> 2
+  | RhsIdxDimEnd -> 4 (* No 3 *)
+
+type rhs_slice_field = RhsSliceStartIdx | RhsSliceEndIdx
+let rhs_slice_field_index = function
+    RhsSliceStartIdx -> 0
+  | RhsSliceEndIdx -> 1
+
+type rhs_selection_field = RhsSelSlice1 | RhsSelSlice2
+let rhs_selection_field_index = function
+    RhsSelSlice1 -> 0
+  | RhsSelSlice2 -> 1
+
 let setup_types ctx =
   let var_instance_t = Llvm.named_struct_type ctx "var_instance" (*Range struct is a 2D Matrix of values*)
   and subrange_t = Llvm.named_struct_type ctx "subrange" (*Subrange is a wrapper around a range to cut cells*)
@@ -140,11 +168,29 @@ let setup_types ctx =
   and char_p_p = (Llvm.pointer_type (Llvm.pointer_type char_t))
   and string_p_p = (Llvm.pointer_type (Llvm.pointer_type string_t))
   and number_t = float_t
-  and formula_p = (Llvm.pointer_type formula_t)
+  and formula_p = (Llvm.pointer_type formula_t) in
+  let rhs_index_t = Llvm.named_struct_type ctx "rhs_index"
+  and rhs_slice_t = Llvm.named_struct_type ctx "rhs_slice"
+  and rhs_selection_t = Llvm.named_struct_type ctx "rhs_selection" in
+  let rhs_index_p = Llvm.pointer_type rhs_index_t
+  and rhs_slice_p = Llvm.pointer_type rhs_slice_t
+  and rhs_selection_p = Llvm.pointer_type rhs_selection_t
   (*and void_p = (Llvm.pointer_type void_t)*) in
   let var_instance_p_p = (Llvm.pointer_type var_instance_p)
   and formula_call_t = (Llvm.function_type value_p [|extend_scope_p(*scope*); int_t(*row*); int_t(*col*)|]) in
   let formula_call_p = Llvm.pointer_type formula_call_t in
+  let _ = Llvm.struct_set_body rhs_index_t (Array.of_list [
+      value_p (*val_of_expr*);
+      char_t (*rhs_index_type*);
+    ]) false in
+  let _ = Llvm.struct_set_body rhs_slice_t (Array.of_list [
+      rhs_index_p (*slice start index*);
+      rhs_index_p (*slice end index*);
+    ]) false in
+  let _ = Llvm.struct_set_body rhs_selection_t (Array.of_list [
+      rhs_slice_p (*first slice*);
+      rhs_slice_p (*second slice*);
+    ]) false in
   let _ = Llvm.struct_set_body var_instance_t (Array.of_list [
       int_t(*rows*);
       int_t(*columns*);
@@ -240,5 +286,12 @@ let setup_types ctx =
     void_t = void_t;
     char_p_p = char_p_p;
     string_p_p = string_p_p;
+
+    rhs_index_t = rhs_index_t;
+    rhs_slice_t = rhs_slice_t;
+    rhs_selection_t = rhs_selection_t;
+    rhs_index_p = rhs_index_p;
+    rhs_slice_p = rhs_slice_p;
+    rhs_selection_p = rhs_selection_p;
     (*void_p = void_p;*)
   }

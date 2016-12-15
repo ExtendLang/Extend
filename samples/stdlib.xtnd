@@ -16,11 +16,11 @@ transpose([m,n] rng) {
 }
 
 isNumber(x) {
-  return type(x) == "Number";
+  return typeof(x) == "Number";
 }
 
 isEmpty(x) {
-  return type(x) == "Empty";
+  return typeof(x) == "Empty";
 }
 
 sum_column([m,1] rng) {

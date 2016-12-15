@@ -2,7 +2,6 @@ type something = {
   var_instance_t : Llvm.lltype;
   subrange_t : Llvm.lltype;
   resolved_formula_t : Llvm.lltype;
-  status_t : Llvm.lltype;
   value_t : Llvm.lltype;
   dimensions_t : Llvm.lltype;
   var_defn_t : Llvm.lltype;
@@ -17,7 +16,6 @@ type something = {
   var_instance_p : Llvm.lltype;
   subrange_p : Llvm.lltype;
   resolved_formula_p : Llvm.lltype;
-  status_p : Llvm.lltype;
   value_p : Llvm.lltype;
   extend_scope_p : Llvm.lltype;
   string_p : Llvm.lltype;
@@ -97,6 +95,12 @@ let var_instance_field_index = function
   | Values -> 5
   | Status -> 6
 
+type var_instance_status_flags = NeverExamined | Calculated | InProgress
+let var_instance_status_flags_index = function
+    NeverExamined -> 0
+  | Calculated -> 2
+  | InProgress -> 4
+
 type subrange_field = BaseRangePtr | BaseOffsetRow | BaseOffsetCol | SubrangeRows | SubrangeCols
 let subrange_field_index = function
     BaseRangePtr -> 0
@@ -150,7 +154,6 @@ let setup_types ctx =
   and void_t = Llvm.void_type ctx (**)
   and value_t = Llvm.named_struct_type ctx "value" (*Value encapsulates the content of a cell*)
   and dimensions_t = Llvm.named_struct_type ctx "dimensions" (**)
-  and status_t = Llvm.named_struct_type ctx "status" (*Status indicates how a cell must be treated*)
   and resolved_formula_t = Llvm.named_struct_type ctx "resolved_formula"
   and extend_scope_t = Llvm.named_struct_type ctx "extend_scope"
   and var_defn_t = Llvm.named_struct_type ctx "var_def"
@@ -161,7 +164,7 @@ let setup_types ctx =
   and resolved_formula_p = (Llvm.pointer_type resolved_formula_t)
   and subrange_p = (Llvm.pointer_type subrange_t)
   and value_p = (Llvm.pointer_type value_t)
-  and status_p = (Llvm.pointer_type status_t)
+  and value_p_p = (Llvm.pointer_type (Llvm.pointer_type value_t))
   and extend_scope_p = (Llvm.pointer_type extend_scope_t)
   and char_p = (Llvm.pointer_type char_t)
   and string_p = (Llvm.pointer_type string_t)
@@ -197,8 +200,8 @@ let setup_types ctx =
       int_t(*numFormulas*);
       resolved_formula_p(*formula with resolved dimensions*);
       extend_scope_p(*scope that contains all variables of a function*);
-      value_p(*2D array of cell values*);
-      status_p(*2D array of calculation status for each cell*);
+      value_p_p(*2D array of cell values*);
+      char_p(*2D array of calculation status for each cell*);
       char_p(*Name*);
     ]) false
   and _ = Llvm.struct_set_body var_defn_t (Array.of_list [
@@ -252,7 +255,6 @@ let setup_types ctx =
   {
     var_instance_t = var_instance_t;
     value_t = value_t;
-    status_t = status_t;
     subrange_t = subrange_t;
     resolved_formula_t = resolved_formula_t;
     dimensions_t = dimensions_t;
@@ -267,7 +269,6 @@ let setup_types ctx =
     var_instance_p = var_instance_p;
     subrange_p = subrange_p;
     value_p = value_p;
-    status_p = status_p;
     resolved_formula_p = resolved_formula_p;
     string_p = string_p;
     char_p = char_p;

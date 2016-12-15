@@ -13,6 +13,8 @@ struct rhs_index absolute_one = {&one_val, RHS_IDX_ABSOLUTE};
 struct rhs_slice zero_to_one = {&absolute_zero, &absolute_one};
 struct rhs_slice corresponding_cell = {NULL, NULL};
 
+void debug_print_subrange(subrange_p subrng);
+
 void debug_print(value_p val, char *which_value) {
 	char *flag_meanings[4] = {"Empty", "Number", "String", "Subrange"};
 	fprintf(stderr, "------Everything you ever wanted to know about %s:------\n", which_value == NULL ? "some anonymous variable" : which_value);
@@ -36,6 +38,10 @@ void debug_print(value_p val, char *which_value) {
 		}
 	}
 	fprintf(stderr, "Subrange contents: Probably safer not to check that pointer (%p) blindly either\n", val->subrange);
+	if (val->flags == FLAG_SUBRANGE && val->subrange != NULL) {
+		fprintf(stderr, "It says it's a subrange and it's not a NULL pointer though, so here you go:\n");
+		debug_print_subrange(val->subrange);
+	}
 	fprintf(stderr, "------That's all I've got to say about %s:------\n", which_value == NULL ? "some anonymous variable" : which_value);
 }
 
@@ -76,6 +82,7 @@ void debug_print_varinst(struct var_instance *inst) {
 	}
 	fprintf(stderr, "**** End of Formulas *** \n");
 	fprintf(stderr, "~~~~~~~~Cells:~~~~~~~\n");
+	fprintf(stderr, "Status memory address: %p\n", inst->status);
 	for (i = 0; i < inst->rows * inst->cols; i++) {
 		printf("%s[%d,%d]: Status=%d\n", inst->name, i / inst->cols, i % inst->cols, inst->status[i]);
 		if (inst->status[i] == CALCULATED) {
@@ -524,6 +531,7 @@ value_p deref_subrange_p(subrange_p subrng) {
 		new_value->str = NULL;
 		new_value->subrange = (subrange_p) malloc (sizeof(struct subrange_t));
 		memcpy(new_value->subrange, subrng, sizeof(struct subrange_t));
+		new_value->subrange->range->closure->refcount++;
 		return new_value;
 	}
 }
@@ -662,6 +670,9 @@ value_p extract_selection(value_p expr, struct rhs_selection *sel, int r, int c)
 	if (col_end > expr_cols)  col_end = expr_cols;
 	if (row_end <= row_start || col_end <= col_start) return new_val();
 	if (expr->flags == FLAG_NUMBER || expr->flags == FLAG_STRING) {
+		/* You would have thought we could figure this out a lot further up
+		 * in the code, but had to be sure that (row_start, row_end, col_start, col_end)
+		 * actually ended up as (0, 1, 0, 1) */
 		return clone_value(expr);
 	} else {
 		subrange.range = expr->subrange->range;

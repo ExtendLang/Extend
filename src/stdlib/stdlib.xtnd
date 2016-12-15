@@ -33,3 +33,7 @@ extern "stdlib.o" {
 global STDIN := get_stdin();
 global STDOUT := get_stdout();
 global STDERR := get_stderr();
+
+print_endline(val) {
+  return write(STDOUT, to_string(val) + "\n");
+}

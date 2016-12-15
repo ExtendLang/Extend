@@ -822,17 +822,65 @@ let translate (globals, functions, externs) =
           | BitAnd-> build_simple_int_binop Llvm.build_and int_builder
           | BitXor-> build_simple_int_binop Llvm.build_xor int_builder
         )
-      | UnOp(SizeOf,expr) -> let vvv = Llvm.const_float base_types.float_t 0.0 in
+      | UnOp(SizeOf,expr) ->
         let ret_val = Llvm.build_malloc base_types.value_t "unop_size_ret_val" old_builder in
-        let sp = Llvm.build_struct_gep ret_val (value_field_index Number) "num_pointer" old_builder in
-        let _ = Llvm.build_store (Llvm.const_int base_types.char_t (value_field_flags_index Number)) (Llvm.build_struct_gep ret_val (value_field_index Flags) "" old_builder) old_builder in
-        let _ = Llvm.build_store vvv sp old_builder in
-        (ret_val, old_builder)
+
+        (* TODO: We actually have to keep track of these anonymous objects somewhere so we can free them *)
+        let _ = (range_type $> (ret_val, (value_field_index Flags))) old_builder in
+        let anonymous_subrange_p = Llvm.build_malloc base_types.subrange_t "anonymous_subrange" old_builder in
+        let _ = (anonymous_subrange_p $> (ret_val, (value_field_index Subrange))) old_builder in
+
+        let _ = ((Llvm.const_int base_types.int_t 0) $> (anonymous_subrange_p, (subrange_field_index BaseOffsetRow))) old_builder in
+        let _ = ((Llvm.const_int base_types.int_t 0) $> (anonymous_subrange_p, (subrange_field_index BaseOffsetCol))) old_builder in
+        let _ = ((Llvm.const_int base_types.int_t 1) $> (anonymous_subrange_p, (subrange_field_index SubrangeRows))) old_builder in
+        let _ = ((Llvm.const_int base_types.int_t 2) $> (anonymous_subrange_p, (subrange_field_index SubrangeCols))) old_builder in
+        let anonymous_var_inst_p = Llvm.build_malloc base_types.var_instance_t "anonymous_var_inst" old_builder in
+        let _ = (anonymous_var_inst_p $> (anonymous_subrange_p, (subrange_field_index BaseRangePtr))) old_builder in
+
+        let _ = ((Llvm.const_int base_types.int_t 1) $> (anonymous_var_inst_p, (var_instance_field_index Rows))) old_builder in
+        let _ = ((Llvm.const_int base_types.int_t 2) $> (anonymous_var_inst_p, (var_instance_field_index Cols))) old_builder in
+        let _ = ((Llvm.const_int base_types.int_t 0) $> (anonymous_var_inst_p, (var_instance_field_index NumFormulas))) old_builder in
+        let _ = ((Llvm.const_pointer_null base_types.resolved_formula_p) $> (anonymous_var_inst_p, (var_instance_field_index Formulas))) old_builder in
+        let _ = ((Llvm.const_pointer_null base_types.extend_scope_p) $> (anonymous_var_inst_p, (var_instance_field_index Closure))) old_builder in
+        let num_rows_val = Llvm.build_malloc base_types.value_t "num_rows_val" old_builder in
+        let num_cols_val = Llvm.build_malloc base_types.value_t "num_cols_val" old_builder in
+        let vals_array = Llvm.build_array_malloc base_types.value_p (Llvm.const_int base_types.int_t 2) "vals_array" old_builder in
+        let _ = (vals_array $> (anonymous_var_inst_p, (var_instance_field_index Values))) old_builder in
+        let _ = Llvm.build_store num_rows_val (Llvm.build_in_bounds_gep vals_array [|Llvm.const_int base_types.int_t 0|] "" old_builder) old_builder in
+        let _ = Llvm.build_store num_cols_val (Llvm.build_in_bounds_gep vals_array [|Llvm.const_int base_types.int_t 1|] "" old_builder) old_builder in
+        let status_array = Llvm.build_array_malloc base_types.char_t (Llvm.const_int base_types.int_t 2) "status_array" old_builder in
+        let _ = (status_array $> (anonymous_var_inst_p, (var_instance_field_index Status))) old_builder in
+        let _ = Llvm.build_store (Llvm.const_int base_types.char_t (var_instance_status_flags_index Calculated)) (Llvm.build_in_bounds_gep status_array [|Llvm.const_int base_types.int_t 0|] "" old_builder) old_builder in
+        let _ = Llvm.build_store (Llvm.const_int base_types.char_t (var_instance_status_flags_index Calculated)) (Llvm.build_in_bounds_gep status_array [|Llvm.const_int base_types.int_t 1|] "" old_builder) old_builder in
+
+        let (expr_val, expr_builder) = build_expr old_builder expr in
+        let val_flags = (expr_val => (value_field_index Flags)) "val_flags" expr_builder in
+        let is_subrange = Llvm.build_icmp Llvm.Icmp.Eq val_flags range_type "is_subrange" expr_builder in
+
+        let (merge_bb, merge_builder) = make_block "merge" in
+
+        let (primitive_bb, primitive_builder) = make_block "primitive" in
+        let _ = store_number num_rows_val primitive_builder (Llvm.const_float base_types.float_t 1.0) in
+        let _ = store_number num_cols_val primitive_builder (Llvm.const_float base_types.float_t 1.0) in
+        let _ = Llvm.build_br merge_bb primitive_builder in
+
+        let (subrange_bb, subrange_builder) = make_block "subrange" in
+        let subrange_ptr = (expr_val => (value_field_index Subrange)) "subrange_ptr" subrange_builder in
+        let rows_as_int = (subrange_ptr => (subrange_field_index SubrangeRows)) "rows_as_int" subrange_builder in
+        let cols_as_int = (subrange_ptr => (subrange_field_index SubrangeCols)) "cols_as_int" subrange_builder in
+        let rows_as_float = Llvm.build_sitofp rows_as_int base_types.float_t "rows_as_float" subrange_builder in
+        let cols_as_float = Llvm.build_sitofp cols_as_int base_types.float_t "cols_as_float" subrange_builder in
+        let _ = store_number num_rows_val subrange_builder rows_as_float in
+        let _ = store_number num_cols_val subrange_builder cols_as_float in
+        let _ = Llvm.build_br merge_bb subrange_builder in
+
+        let _ = Llvm.build_cond_br is_subrange subrange_bb primitive_bb expr_builder in
+        (ret_val, merge_builder)
       | UnOp(Truthy, expr) ->
         let ret_val = Llvm.build_malloc base_types.value_t "unop_truthy_ret_val" old_builder in
         let (expr_val, expr_builder) = build_expr old_builder expr in
 
-        let (truthy_bb, falsey_bb, empty_bb, merge_builder) = make_truthiness_blocks "binop_eq" ret_val in
+        let (truthy_bb, falsey_bb, empty_bb, merge_builder) = make_truthiness_blocks "unop_truthy" ret_val in
 
         let expr_flags = (expr_val => (value_field_index Flags)) "expr_flags" expr_builder in
         let is_empty_bool = (Llvm.build_icmp Llvm.Icmp.Eq expr_flags (Llvm.const_int base_types.flags_t (value_field_flags_index Empty)) "is_empty_bool" expr_builder) in
@@ -879,8 +927,18 @@ let translate (globals, functions, externs) =
         let vp_to_clone = Llvm.build_load vp_to_clone_loc "vp_to_clone" expr_builder in
         let ret_val = Llvm.build_call (Hashtbl.find runtime_functions "clone_value") [|vp_to_clone|] "typeof_ret_val" expr_builder in
         (ret_val, expr_builder)
-      | UnOp(Row, expr) -> print_endline "Unsupported Unop" ; print_endline (Ast.string_of_expr exp); raise NotImplemented
-      | UnOp(Column, expr) -> print_endline "Unsupported Unop" ; print_endline (Ast.string_of_expr exp); raise NotImplemented
+      | UnOp(Row, _) ->
+        let row_as_int = Llvm.param form_decl 1 in
+        let row_as_float = Llvm.build_sitofp row_as_int base_types.float_t "row_as_float" old_builder in
+        let ret_val = Llvm.build_malloc base_types.value_t "ret_val" old_builder in
+        let _ = store_number ret_val old_builder row_as_float in
+        (ret_val, old_builder)
+      | UnOp(Column, _) ->
+        let col_as_int = Llvm.param form_decl 2 in
+        let col_as_float = Llvm.build_sitofp col_as_int base_types.float_t "col_as_float" old_builder in
+        let ret_val = Llvm.build_malloc base_types.value_t "ret_val" old_builder in
+        let _ = store_number ret_val old_builder col_as_float in
+        (ret_val, old_builder)
       | ReducedTernary(cond_var, true_var, false_var) ->
         let ret_val_addr = Llvm.build_alloca base_types.value_p "tern_ret_val_addr" old_builder in
         let (cond_val, _) = build_expr old_builder (Id(cond_var)) in (* Relying here on the fact that Id() doesn't change the builder *)
@@ -921,7 +979,8 @@ let translate (globals, functions, externs) =
         Llvm.add_case switch_inst (Llvm.const_int base_types.char_t 0) truthy_bb; (* empty << 1 + is_zero == 0 ===> truthy *)
         Llvm.add_case switch_inst (Llvm.const_int base_types.char_t 1) falsey_bb; (* empty << 1 + is_zero == 1 ===> falsey *)
         (ret_val, merge_builder)
-      | unknown_expr -> print_endline (string_of_expr unknown_expr);raise NotImplemented in
+      | Wild | LitRange(_) | Switch(_,_,_) | Ternary(_,_,_) -> raise(TransformedAway("These expressions should have been transformed away")) in
+      (* | unknown_expr -> print_endline (string_of_expr unknown_expr);raise NotImplemented in *)
     let (ret_value_p, final_builder) = build_expr builder_at_top formula_expr in
     let _ = Llvm.build_ret ret_value_p final_builder in
     form_decl in

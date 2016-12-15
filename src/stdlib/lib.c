@@ -246,3 +246,19 @@ value_p extend_current_hour() {
 	localtime_r(&ltime, &info);
 	return new_number((double) info.tm_hour);
 }
+
+value_p extend_isNaN(value_p val) {
+	if (!assertSingleNumber(val)) return new_val();
+	double d = val->numericVal;
+	return isnan(d) ? new_number(1.0) : new_number(0.0);
+}
+
+value_p extend_isInfinite(value_p val) {
+	if (!assertSingleNumber(val)) return new_val();
+	double d = val->numericVal;
+	if (isinf(d)) {
+			return d < 0 ? new_number(-1.0) : new_number(1.0);
+	} else {
+		return new_number(0.0);
+	}
+}

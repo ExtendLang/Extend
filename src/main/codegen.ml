@@ -236,6 +236,8 @@ let translate (globals, functions, externs) =
     let form_decl = Llvm.define_function ("formula_fn_" ^ varname ^ "_num_" ^ (string_of_int formula_idx)) base_types.formula_call_t base_module in
     let builder_at_top = Llvm.builder_at_end context (Llvm.entry_block form_decl) in
     let local_scope = Llvm.param form_decl 0 in
+    let cell_row = Llvm.param form_decl 1 in
+    let cell_col = Llvm.param form_decl 2 in
     let global_scope = Llvm.build_load global_scope_loc "global_scope" builder_at_top in
 
     (* Some repeated stuff to avoid cut & paste *)
@@ -311,6 +313,51 @@ let translate (globals, functions, externs) =
             (Llvm.build_call (Hashtbl.find runtime_functions "clone_value") [|param|] "function_param_ret_val" old_builder, old_builder)
           | ExtendFunction(i) -> raise(LogicError("Something went wrong with your semantic analyis - function " ^ name ^ " used as variable in RHS for " ^ varname))
         )
+      | ReducedTernary(cond_var, true_var, false_var) ->
+        let get_llvm_var name getvar_builder =
+          match (try StringMap.find name symbols with Not_found -> raise(LogicError("Something went wront with your transformation - Reduced Ternary name " ^ name ^ " not found"))) with
+            LocalVariable(i) -> Llvm.build_call getVar [|local_scope; Llvm.const_int base_types.int_t i|] "llvm_var" getvar_builder
+          | GlobalVariable(i) -> Llvm.build_call getVar [|global_scope; Llvm.const_int base_types.int_t i|] "llvm_var" getvar_builder
+          | _ -> raise(LogicError("Something went wront with your transformation - Reduced Ternary name " ^ name ^ " not a local or global variable")) in
+
+        let (empty_bb, empty_builder) = make_block "empty" in
+        let (not_empty_bb, not_empty_builder) = make_block "not_empty" in
+        let (truthy_bb, truthy_builder) = make_block "truthy" in
+        let (falsey_bb, falsey_builder) = make_block "falsey" in
+        let (merge_bb, merge_builder) = make_block "merge" in
+
+        let ret_val_addr = Llvm.build_alloca base_types.value_p "tern_ret_val_addr" old_builder in
+        let cond_llvm_var = get_llvm_var cond_var old_builder in
+        let cond_val = Llvm.build_call getVal [|cond_llvm_var; cell_row; cell_col|] "cond_val" old_builder in
+        let cond_val_type = (cond_val => (value_field_index Flags)) "cond_val_type" old_builder in
+        let is_empty = Llvm.build_icmp Llvm.Icmp.Eq empty_type cond_val_type "is_empty" old_builder in
+        let _ = Llvm.build_cond_br is_empty empty_bb not_empty_bb old_builder in
+
+        (* Empty basic block: *)
+        let ret_val_empty = Llvm.build_malloc base_types.value_t "tern_empty" empty_builder in
+        let _ = store_empty ret_val_empty empty_builder in
+        let _ = Llvm.build_store ret_val_empty ret_val_addr empty_builder in
+        let _ = Llvm.build_br merge_bb empty_builder in
+
+        (* Not empty basic block: *)
+        let the_number = (cond_val => (value_field_index Number)) "the_number" not_empty_builder in
+        let is_not_zero = Llvm.build_fcmp Llvm.Fcmp.One the_number (Llvm.const_float base_types.number_t 0.0) "is_not_zero" not_empty_builder in (* Fcmp.One = Not equal *)
+        let _ = Llvm.build_cond_br is_not_zero truthy_bb falsey_bb not_empty_builder in
+
+        (* Truthy basic block: *)
+        let truthy_llvm_var = get_llvm_var true_var truthy_builder in
+        let truthy_val = Llvm.build_call getVal [|truthy_llvm_var; cell_row; cell_col|] "truthy_val" truthy_builder in
+        let _ = Llvm.build_store truthy_val ret_val_addr truthy_builder in
+        let _ = Llvm.build_br merge_bb truthy_builder in
+
+        (* Falsey basic block: *)
+        let falsey_llvm_var = get_llvm_var false_var falsey_builder in
+        let falsey_val = Llvm.build_call getVal [|falsey_llvm_var; cell_row; cell_col|] "falsey_val" falsey_builder in
+        let _ = Llvm.build_store falsey_val ret_val_addr falsey_builder in
+        let _ = Llvm.build_br merge_bb falsey_builder in
+
+        let ret_val = Llvm.build_load ret_val_addr "tern_ret_val" merge_builder in
+        (ret_val, merge_builder)
       | Selection(expr, sel) ->
         let (expr_val, expr_builder) = build_expr old_builder expr in
         let build_rhs_index idx_builder = function
@@ -378,7 +425,7 @@ let translate (globals, functions, externs) =
           | (None, Some illegal_idx) -> print_endline (string_of_expr exp) ; raise (LogicError("This selection should not be grammatically possible")) in
         let (selection_ptr, builder_to_end_all_builders) = build_rhs_sel expr_builder sel in
         (* let _ = Llvm.build_call (Hashtbl.find runtime_functions "debug_print_selection") [|selection_ptr|] "" builder_to_end_all_builders in *)
-        let ret_val = Llvm.build_call (Hashtbl.find runtime_functions "extract_selection") [|expr_val; selection_ptr; Llvm.param form_decl 1; Llvm.param form_decl 2|] "ret_val" builder_to_end_all_builders in
+        let ret_val = Llvm.build_call (Hashtbl.find runtime_functions "extract_selection") [|expr_val; selection_ptr; cell_row; cell_col|] "ret_val" builder_to_end_all_builders in
         (* let _ = Llvm.build_call (Hashtbl.find runtime_functions "debug_print") [|ret_val; Llvm.const_pointer_null base_types.char_p|] "" builder_to_end_all_builders in *)
         (ret_val, builder_to_end_all_builders)
       | Precedence(a,b) -> let (_, new_builder) = build_expr old_builder a in build_expr new_builder b
@@ -928,57 +975,17 @@ let translate (globals, functions, externs) =
         let ret_val = Llvm.build_call (Hashtbl.find runtime_functions "clone_value") [|vp_to_clone|] "typeof_ret_val" expr_builder in
         (ret_val, expr_builder)
       | UnOp(Row, _) ->
-        let row_as_int = Llvm.param form_decl 1 in
+        let row_as_int = cell_row in
         let row_as_float = Llvm.build_sitofp row_as_int base_types.float_t "row_as_float" old_builder in
         let ret_val = Llvm.build_malloc base_types.value_t "ret_val" old_builder in
         let _ = store_number ret_val old_builder row_as_float in
         (ret_val, old_builder)
       | UnOp(Column, _) ->
-        let col_as_int = Llvm.param form_decl 2 in
+        let col_as_int = cell_col in
         let col_as_float = Llvm.build_sitofp col_as_int base_types.float_t "col_as_float" old_builder in
         let ret_val = Llvm.build_malloc base_types.value_t "ret_val" old_builder in
         let _ = store_number ret_val old_builder col_as_float in
         (ret_val, old_builder)
-      | ReducedTernary(cond_var, true_var, false_var) ->
-        let ret_val_addr = Llvm.build_alloca base_types.value_p "tern_ret_val_addr" old_builder in
-        let (cond_val, _) = build_expr old_builder (Id(cond_var)) in (* Relying here on the fact that Id() doesn't change the builder *)
-        let merge_bb = Llvm.append_block context "merge" form_decl in
-        let merge_builder = Llvm.builder_at_end context merge_bb in
-        let ret_val = Llvm.build_load ret_val_addr "tern_ret_val" merge_builder in
-
-        let truthy_bb = Llvm.append_block context "truthy" form_decl in
-        let truthy_builder = Llvm.builder_at_end context truthy_bb in
-        let (truthy_val, _) = build_expr truthy_builder (Id(true_var)) in (* Relying here on the fact that Id() doesn't change the builder *)
-        let _ = Llvm.build_store truthy_val ret_val_addr truthy_builder in
-        let _ = Llvm.build_br merge_bb truthy_builder in
-
-        let falsey_bb = Llvm.append_block context "falsey" form_decl in
-        let falsey_builder = Llvm.builder_at_end context falsey_bb in
-        let (falsey_val, _) = build_expr falsey_builder (Id(false_var)) in (* Relying here on the fact that Id() doesn't change the builder *)
-        let _ = Llvm.build_store falsey_val ret_val_addr falsey_builder in
-        let _ = Llvm.build_br merge_bb falsey_builder in
-
-        let empty_bb = Llvm.append_block context "empty" form_decl in
-        let empty_builder = Llvm.builder_at_end context empty_bb in
-        let ret_val_empty = Llvm.build_malloc base_types.value_t "tern_empty" empty_builder in
-        let _ = store_empty ret_val_empty empty_builder in
-        let _ = Llvm.build_store ret_val_empty ret_val_addr empty_builder in
-        let _ = Llvm.build_br merge_bb empty_builder in
-
-        let expr_flags = (cond_val => (value_field_index Flags)) "expr_flags" old_builder in
-        let is_empty_bool = (Llvm.build_icmp Llvm.Icmp.Eq expr_flags (Llvm.const_int base_types.flags_t (value_field_flags_index Empty)) "is_empty_bool" old_builder) in
-        let is_empty = Llvm.build_zext is_empty_bool base_types.char_t "is_empty" old_builder in
-        let is_empty_two = Llvm.build_shl is_empty (Llvm.const_int base_types.char_t 1) "is_empty_two" old_builder in
-        let is_number = Llvm.build_icmp Llvm.Icmp.Eq expr_flags (Llvm.const_int base_types.flags_t (value_field_flags_index Number)) "is_number" old_builder in
-        let the_number = (cond_val => (value_field_index Number)) "the_number" old_builder in
-        let is_zero = Llvm.build_fcmp Llvm.Fcmp.Oeq the_number (Llvm.const_float base_types.number_t 0.0) "is_zero" old_builder in
-        let is_numeric_zero_bool = Llvm.build_and is_zero is_number "is_numeric_zero_bool" old_builder in
-        let is_numeric_zero = Llvm.build_zext is_numeric_zero_bool base_types.char_t "is_numeric_zero" old_builder in
-        let switch_num = Llvm.build_add is_empty_two is_numeric_zero "switch_num" old_builder in
-        let switch_inst = Llvm.build_switch switch_num empty_bb 2 old_builder in
-        Llvm.add_case switch_inst (Llvm.const_int base_types.char_t 0) truthy_bb; (* empty << 1 + is_zero == 0 ===> truthy *)
-        Llvm.add_case switch_inst (Llvm.const_int base_types.char_t 1) falsey_bb; (* empty << 1 + is_zero == 1 ===> falsey *)
-        (ret_val, merge_builder)
       | Wild | LitRange(_) | Switch(_,_,_) | Ternary(_,_,_) -> raise(TransformedAway("These expressions should have been transformed away")) in
       (* | unknown_expr -> print_endline (string_of_expr unknown_expr);raise NotImplemented in *)
     let (ret_value_p, final_builder) = build_expr builder_at_top formula_expr in

@@ -1,4 +1,5 @@
 main(args) {
-  my_favorite_range_literal := {"Hello, world", "Goodbye, world"};
-  return print_endline(my_favorite_range_literal);
+  my1 := {"Hello, world", "Goodbye, world"};
+  my2 := {"Hello, world", "Goodbye, world"};
+  return print_endline(my1 == my2);
 }

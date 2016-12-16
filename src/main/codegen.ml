@@ -43,6 +43,7 @@ let create_runtime_functions ctx bt the_module =
   add_runtime_func "llvm.memcpy.p0i8.p0i8.i64" bt.void_t [|bt.char_p; bt.char_p; bt.long_t; bt.int_t; bt.bool_t|] ;
   add_runtime_func "incStack" bt.void_t [||] ;
   add_runtime_func "getVal" bt.value_p [|bt.var_instance_p; bt.int_t; bt.int_t|] ;
+  add_runtime_func "rg_eq" bt.int_t [|bt.value_p; bt.value_p|] ;
   add_runtime_func "clone_value" bt.value_p [|bt.value_p;|] ;
   (* add_runtime_func "freeMe" (Llvm.void_type ctx) [|bt.extend_scope_p;|] ; *)
   add_runtime_func "getSize" bt.value_p [|bt.var_instance_p;|] ;
@@ -905,7 +906,8 @@ let translate (globals, functions, externs) =
 
             let (rngrng_bb, rngrng_builder) = make_block "rngrng" in
             (* TODO: Make this case work *)
-            let _ = Llvm.build_br make_false_bb rngrng_builder in
+            let eqt = Llvm.build_is_not_null (Llvm.build_call (Hashtbl.find runtime_functions "rg_eq") [|val1; val2|] "" rngrng_builder) "" rngrng_builder in
+            let _ = Llvm.build_cond_br eqt make_true_bb make_false_bb rngrng_builder in
 
             let switch_inst = Llvm.build_switch combined_type make_false_bb 4 int_builder in (* Incompatible ===> default to false *)
             Llvm.add_case switch_inst number_number numnum_bb;

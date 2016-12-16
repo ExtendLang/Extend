@@ -213,18 +213,21 @@ let translate (globals, functions, externs) =
   let main_def = Llvm.define_function "main" (Llvm.function_type base_types.int_t [|base_types.int_t; base_types.char_p_p|]) base_module in
   let main_bod = Llvm.builder_at_end context (Llvm.entry_block main_def) in
 
-  let init_def = Llvm.define_function "initialize_all" (Llvm.function_type (Llvm.void_type context) [||]) base_module in
+  let init_def = Llvm.define_function "initialize_vardefns" (Llvm.function_type (Llvm.void_type context) [||]) base_module in
   let init_bod = Llvm.builder_at_end context (Llvm.entry_block init_def) in
+
+  let literal_def = Llvm.define_function "initialize_literals" (Llvm.function_type (Llvm.void_type context) [||]) base_module in
+  let literal_bod = Llvm.builder_at_end context (Llvm.entry_block literal_def) in
 
   (* Create the array of value_ps that will contain the responses to TypeOf(val) *)
   let null_val_ptr = Llvm.const_pointer_null base_types.value_p in
   let null_val_array = Array.make (Array.length int_to_type_array) null_val_ptr in
   let array_of_typeof_val_ptrs = Llvm.define_global "array_of_val_ptrs" (Llvm.const_array base_types.value_p null_val_array) base_module in
   let create_typeof_string i s =
-    let sp = Llvm.build_global_stringptr s "global_typeof_stringptr" init_bod in
-    let vp = Llvm.build_call (Hashtbl.find runtime_functions "new_string_go_all_the_way") [|sp|] "global_typeof_string" init_bod in
-    let vp_dst = Llvm.build_in_bounds_gep array_of_typeof_val_ptrs [|Llvm.const_int base_types.int_t 0; Llvm.const_int base_types.int_t i|] ("global_typeof_dst") init_bod in
-    let _ = Llvm.build_store vp vp_dst init_bod in
+    let sp = Llvm.build_global_stringptr s "global_typeof_stringptr" literal_bod in
+    let vp = Llvm.build_call (Hashtbl.find runtime_functions "new_string_go_all_the_way") [|sp|] "global_typeof_string" literal_bod in
+    let vp_dst = Llvm.build_in_bounds_gep array_of_typeof_val_ptrs [|Llvm.const_int base_types.int_t 0; Llvm.const_int base_types.int_t i|] ("global_typeof_dst") literal_bod in
+    let _ = Llvm.build_store vp vp_dst literal_bod in
     () in
   Array.iteri create_typeof_string int_to_type_array ;
 
@@ -285,6 +288,8 @@ let translate (globals, functions, externs) =
         let ret_val = Llvm.build_malloc base_types.value_t "flt_ret_val" old_builder in
         let _ = store_number ret_val old_builder vvv in
         (ret_val, old_builder)
+      | UnOp(Neg, LitInt(i)) -> build_expr old_builder (LitInt(-i))
+      | UnOp(Neg, LitFlt(f)) -> build_expr old_builder (LitFlt(-.f))
       | Empty ->
         let ret_val = Llvm.build_malloc base_types.value_t "empty_ret_val" old_builder in
         let _ = store_empty ret_val old_builder in
@@ -433,14 +438,65 @@ let translate (globals, functions, externs) =
         (ret_val, builder_to_end_all_builders)
       | Precedence(a,b) -> let (_, new_builder) = build_expr old_builder a in build_expr new_builder b
       | LitString(str) ->
-        let initbod_charptr = Llvm.build_global_stringptr str "initbod_charptr" init_bod in
-        let initbod_val_p = Llvm.build_call (Hashtbl.find runtime_functions "new_string_go_all_the_way") [|initbod_charptr|] "initbod_val_p" init_bod in
-        let global_val_p_p = Llvm.define_global "global_value_p" (Llvm.const_pointer_null base_types.value_p) base_module in
-        let _ = Llvm.build_store initbod_val_p global_val_p_p init_bod in
+        let initbod_charptr = Llvm.build_global_stringptr str "initbod_charptr" literal_bod in
+        let initbod_val_p = Llvm.build_call (Hashtbl.find runtime_functions "new_string_go_all_the_way") [|initbod_charptr|] "initbod_val_p" literal_bod in
+        let global_val_p_p = Llvm.define_global "global_litstring_p" (Llvm.const_pointer_null base_types.value_p) base_module in
+        let _ = Llvm.build_store initbod_val_p global_val_p_p literal_bod in
 
         let local_val_p = Llvm.build_load global_val_p_p "local_value_p" old_builder in
         let ret_val = Llvm.build_call (Hashtbl.find runtime_functions "clone_value") [|local_val_p|] "ret_val" old_builder in
         (ret_val, old_builder)
+      | LitRange(rl) ->
+        let num_rows = List.length rl in
+        let num_cols = List.fold_left max 0 (List.map List.length rl) in
+        if num_rows = 1 && num_cols = 1 then build_expr old_builder (List.hd (List.hd rl))
+        else
+          let global_val_p_p = Llvm.define_global "global_litrange_p" (Llvm.const_pointer_null base_types.value_p) base_module in
+          let initbod_val_p = Llvm.build_malloc base_types.value_t "initbod_val_p" literal_bod in
+          let _ = Llvm.build_store initbod_val_p global_val_p_p literal_bod in
+          let _ = (range_type $> (initbod_val_p, (value_field_index Flags))) literal_bod in
+          let anonymous_subrange_p = Llvm.build_malloc base_types.subrange_t "anonymous_subrange" literal_bod in
+          let _ = (anonymous_subrange_p $> (initbod_val_p, (value_field_index Subrange))) literal_bod in
+
+          let _ = ((Llvm.const_int base_types.int_t 0) $> (anonymous_subrange_p, (subrange_field_index BaseOffsetRow))) literal_bod in
+          let _ = ((Llvm.const_int base_types.int_t 0) $> (anonymous_subrange_p, (subrange_field_index BaseOffsetCol))) literal_bod in
+          let _ = ((Llvm.const_int base_types.int_t num_rows) $> (anonymous_subrange_p, (subrange_field_index SubrangeRows))) literal_bod in
+          let _ = ((Llvm.const_int base_types.int_t num_cols) $> (anonymous_subrange_p, (subrange_field_index SubrangeCols))) literal_bod in
+          let anonymous_var_inst_p = Llvm.build_malloc base_types.var_instance_t "anonymous_var_inst" literal_bod in
+          let _ = (anonymous_var_inst_p $> (anonymous_subrange_p, (subrange_field_index BaseRangePtr))) literal_bod in
+
+          let _ = ((Llvm.const_int base_types.int_t num_rows) $> (anonymous_var_inst_p, (var_instance_field_index Rows))) literal_bod in
+          let _ = ((Llvm.const_int base_types.int_t num_cols) $> (anonymous_var_inst_p, (var_instance_field_index Cols))) literal_bod in
+          let _ = ((Llvm.const_int base_types.int_t 0) $> (anonymous_var_inst_p, (var_instance_field_index NumFormulas))) literal_bod in
+          let _ = ((Llvm.const_pointer_null base_types.resolved_formula_p) $> (anonymous_var_inst_p, (var_instance_field_index Formulas))) literal_bod in
+          let _ = ((Llvm.const_pointer_null base_types.extend_scope_p) $> (anonymous_var_inst_p, (var_instance_field_index Closure))) literal_bod in
+          let vals_array = Llvm.build_array_malloc base_types.value_p (Llvm.const_int base_types.int_t (num_rows * num_cols)) "vals_array" literal_bod in
+          let _ = (vals_array $> (anonymous_var_inst_p, (var_instance_field_index Values))) literal_bod in
+          let status_array = Llvm.build_array_malloc base_types.char_t (Llvm.const_int base_types.int_t (num_rows * num_cols)) "status_array" literal_bod in
+          let _ = (status_array $> (anonymous_var_inst_p, (var_instance_field_index Status))) literal_bod in
+
+          let get_val_p e = let (vp, _) = build_expr literal_bod e in vp in
+          let val_p_list_list = List.map (fun x -> List.map get_val_p x) rl in
+          let cellnums = zero_until (num_rows * num_cols) in
+          let build_empty x =
+            let emptyval = Llvm.build_malloc base_types.value_p ("" ^ (string_of_int x)) literal_bod in
+            let _ = store_empty emptyval literal_bod in
+            let emptydst = Llvm.build_in_bounds_gep vals_array [|Llvm.const_int base_types.int_t x|] "" literal_bod in
+            let _ = Llvm.build_store emptyval emptydst literal_bod in
+            let statusdst = Llvm.build_in_bounds_gep vals_array [|Llvm.const_int base_types.int_t x|] "" literal_bod in
+            let _ = Llvm.build_store (Llvm.const_int base_types.char_t (var_instance_status_flags_index Calculated)) statusdst literal_bod in
+            () in
+          List.iter build_empty cellnums ;
+          let store_val r c realval =
+            let realdst = Llvm.build_in_bounds_gep vals_array [|Llvm.const_int base_types.int_t (r * num_cols + c)|] ("litrangeelemdst" ^ (string_of_int r) ^ "_" ^ (string_of_int c)) literal_bod in
+            let _ = Llvm.build_store realval realdst literal_bod in
+            () in
+          let store_row r cols = List.iteri (fun c v -> store_val r c v) cols in
+          List.iteri store_row val_p_list_list ;
+
+          let local_val_p = Llvm.build_load global_val_p_p "local_value_p" old_builder in
+          let ret_val = Llvm.build_call (Hashtbl.find runtime_functions "clone_value") [|local_val_p|] "ret_val" old_builder in
+          (ret_val, old_builder)
       | Call(fn,exl) -> (*TODO: Call needs to be reviewed. Possibly switch call arguments to value_p*)
         let build_one_expr (arg_list, intermediate_builder) e =
           let (arg_val, next_builder) = build_expr intermediate_builder e in
@@ -988,7 +1044,7 @@ let translate (globals, functions, externs) =
         let ret_val = Llvm.build_malloc base_types.value_t "ret_val" old_builder in
         let _ = store_number ret_val old_builder col_as_float in
         (ret_val, old_builder)
-      | Wild | LitRange(_) | Switch(_,_,_) | Ternary(_,_,_) -> raise(TransformedAway("These expressions should have been transformed away")) in
+      | Wild | Switch(_,_,_) | Ternary(_,_,_) -> raise(TransformedAway("These expressions should have been transformed away")) in
       (* | unknown_expr -> print_endline (string_of_expr unknown_expr);raise NotImplemented in *)
     let (ret_value_p, final_builder) = build_expr builder_at_top formula_expr in
     let _ = Llvm.build_ret ret_value_p final_builder in
@@ -1133,7 +1189,9 @@ let translate (globals, functions, externs) =
   (* Define the LLVM entry point for the program *)
   let extend_entry_point = StringMap.find "main" function_llvalues in
   let _ = Llvm.build_ret_void init_bod in
+  let _ = Llvm.build_ret_void literal_bod in
   let _ = Llvm.build_call init_def [||] "" main_bod in
+  let _ = Llvm.build_call literal_def [||] "" main_bod in
   let inp = Llvm.build_alloca base_types.value_t "input_arg" main_bod in
   let _ = Llvm.build_call extend_entry_point (Array.of_list [inp]) "" main_bod in
   let _ = Llvm.build_ret (Llvm.const_int base_types.int_t 0) main_bod in

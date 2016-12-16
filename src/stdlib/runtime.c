@@ -321,7 +321,7 @@ struct var_instance *instantiate_variable(struct ExtendScope *scope_ptr, struct 
 	inst->formulas = malloc(sizeof(struct ResolvedFormula) * inst->numFormulas);
 	//debug_print_vardefn(&def);
 	//debug_print_varinst(inst);
-	int i;
+	int i, j;
 	for(i = 0; i < inst->numFormulas; i++) {
 
 		// Set the formula function pointer to the pointer from the definition
@@ -350,6 +350,9 @@ struct var_instance *instantiate_variable(struct ExtendScope *scope_ptr, struct 
 				inst->formulas[i].rowEnd = inst->rows;
 			} else {
 				inst->formulas[i].rowEnd = getIntFromOneByOne(scope_ptr, def.formulas[i].rowEnd_varnum);
+				if (inst->formulas[i].rowEnd < 0) {
+					inst->formulas[i].rowEnd += inst->rows;
+				}
 			}
 			if(def.formulas[i].fromFirstCol) {
 				inst->formulas[i].colStart = 0;
@@ -368,6 +371,25 @@ struct var_instance *instantiate_variable(struct ExtendScope *scope_ptr, struct 
 				inst->formulas[i].colEnd = inst->cols;
 			} else {
 				inst->formulas[i].colEnd = getIntFromOneByOne(scope_ptr, def.formulas[i].colEnd_varnum);
+				if (inst->formulas[i].colEnd < 0) {
+					inst->formulas[i].colEnd += inst->cols;
+				}
+			}
+		}
+	}
+
+	for (i = 1; i < inst->numFormulas; i++) {
+		for (j = 0; j < i; j++) {
+			int intersectRowStart = (inst->formulas[i].rowStart > inst->formulas[j].rowStart) ? inst->formulas[i].rowStart : inst->formulas[j].rowStart;
+			int intersectColStart = (inst->formulas[i].colStart > inst->formulas[j].colStart) ? inst->formulas[i].colStart : inst->formulas[j].colStart;
+			int intersectRowEnd = (inst->formulas[i].rowEnd < inst->formulas[j].rowEnd) ? inst->formulas[i].rowEnd : inst->formulas[j].rowEnd;
+			int intersectColEnd = (inst->formulas[i].colEnd < inst->formulas[j].colEnd) ? inst->formulas[i].colEnd : inst->formulas[j].colEnd;
+			fprintf(stderr, "intersect %d/%d: %s[%d:%d,%d:%d].\n", i, j, inst->name,
+											intersectRowStart, intersectRowEnd, intersectColStart, intersectColEnd);
+			if (intersectRowEnd > intersectRowStart && intersectColEnd > intersectColStart) {
+				fprintf(stderr, "Runtime error: Multiple formulas were assigned to %s[%d:%d,%d:%d].\n", inst->name,
+												intersectRowStart, intersectRowEnd, intersectColStart, intersectColEnd);
+				exit(-1);
 			}
 		}
 	}

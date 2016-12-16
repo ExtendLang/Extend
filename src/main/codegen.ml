@@ -479,11 +479,11 @@ let translate (globals, functions, externs) =
           let val_p_list_list = List.map (fun x -> List.map get_val_p x) rl in
           let cellnums = zero_until (num_rows * num_cols) in
           let build_empty x =
-            let emptyval = Llvm.build_malloc base_types.value_p ("" ^ (string_of_int x)) literal_bod in
+            let emptyval = Llvm.build_malloc base_types.value_t ("" ^ (string_of_int x)) literal_bod in
             let _ = store_empty emptyval literal_bod in
             let emptydst = Llvm.build_in_bounds_gep vals_array [|Llvm.const_int base_types.int_t x|] "" literal_bod in
             let _ = Llvm.build_store emptyval emptydst literal_bod in
-            let statusdst = Llvm.build_in_bounds_gep vals_array [|Llvm.const_int base_types.int_t x|] "" literal_bod in
+            let statusdst = Llvm.build_in_bounds_gep status_array [|Llvm.const_int base_types.int_t x|] "" literal_bod in
             let _ = Llvm.build_store (Llvm.const_int base_types.char_t (var_instance_status_flags_index Calculated)) statusdst literal_bod in
             () in
           List.iter build_empty cellnums ;
@@ -496,6 +496,7 @@ let translate (globals, functions, externs) =
 
           let local_val_p = Llvm.build_load global_val_p_p "local_value_p" old_builder in
           let ret_val = Llvm.build_call (Hashtbl.find runtime_functions "clone_value") [|local_val_p|] "ret_val" old_builder in
+          let _ = Llvm.build_call (Hashtbl.find runtime_functions "debug_print") [|ret_val; Llvm.const_pointer_null base_types.char_p|] "" old_builder in
           (ret_val, old_builder)
       | Call(fn,exl) -> (*TODO: Call needs to be reviewed. Possibly switch call arguments to value_p*)
         let build_one_expr (arg_list, intermediate_builder) e =

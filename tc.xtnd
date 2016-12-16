@@ -1,4 +1,4 @@
 main(args) {
-  foo := printv(1,"Hello World\n") -> printv(1,"Hello again\n") -> printv(1,"goodbye World\n") -> 0;
-  return foo;
+  foo := {"Hello, world", "Goodbye, world"};
+  return debug(foo) -> print_endline(foo[0]);
 }

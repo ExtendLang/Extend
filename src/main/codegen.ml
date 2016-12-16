@@ -213,15 +213,18 @@ let translate (globals, functions, externs) =
   let main_def = Llvm.define_function "main" (Llvm.function_type base_types.int_t [|base_types.int_t; base_types.char_p_p|]) base_module in
   let main_bod = Llvm.builder_at_end context (Llvm.entry_block main_def) in
 
+  let init_def = Llvm.define_function "initialize_all" (Llvm.function_type (Llvm.void_type context) [||]) base_module in
+  let init_bod = Llvm.builder_at_end context (Llvm.entry_block init_def) in
+
   (* Create the array of value_ps that will contain the responses to TypeOf(val) *)
   let null_val_ptr = Llvm.const_pointer_null base_types.value_p in
   let null_val_array = Array.make (Array.length int_to_type_array) null_val_ptr in
   let array_of_typeof_val_ptrs = Llvm.define_global "array_of_val_ptrs" (Llvm.const_array base_types.value_p null_val_array) base_module in
   let create_typeof_string i s =
-    let sp = Llvm.build_global_stringptr s "global_typeof_stringptr" main_bod in
-    let vp = Llvm.build_call (Hashtbl.find runtime_functions "new_string_go_all_the_way") [|sp|] "global_typeof_string" main_bod in
-    let vp_dst = Llvm.build_in_bounds_gep array_of_typeof_val_ptrs [|Llvm.const_int base_types.int_t 0; Llvm.const_int base_types.int_t i|] ("global_typeof_dst") main_bod in
-    let _ = Llvm.build_store vp vp_dst main_bod in
+    let sp = Llvm.build_global_stringptr s "global_typeof_stringptr" init_bod in
+    let vp = Llvm.build_call (Hashtbl.find runtime_functions "new_string_go_all_the_way") [|sp|] "global_typeof_string" init_bod in
+    let vp_dst = Llvm.build_in_bounds_gep array_of_typeof_val_ptrs [|Llvm.const_int base_types.int_t 0; Llvm.const_int base_types.int_t i|] ("global_typeof_dst") init_bod in
+    let _ = Llvm.build_store vp vp_dst init_bod in
     () in
   Array.iteri create_typeof_string int_to_type_array ;
 
@@ -430,15 +433,14 @@ let translate (globals, functions, externs) =
         (ret_val, builder_to_end_all_builders)
       | Precedence(a,b) -> let (_, new_builder) = build_expr old_builder a in build_expr new_builder b
       | LitString(str) ->
-        let boxxx = Llvm.build_call
-            (Hashtbl.find helper_functions "new_string")
-            (Array.of_list [
-                Llvm.build_global_stringptr str "glob_str" old_builder
-              ]) "boxed_str" old_builder in
-        let boxx = Llvm.build_call
-            (Hashtbl.find helper_functions "box_value_string")
-            (Array.of_list [boxxx]) "box_value_str" old_builder
-        in (boxx, old_builder)
+        let initbod_charptr = Llvm.build_global_stringptr str "initbod_charptr" init_bod in
+        let initbod_val_p = Llvm.build_call (Hashtbl.find runtime_functions "new_string_go_all_the_way") [|initbod_charptr|] "initbod_val_p" init_bod in
+        let global_val_p_p = Llvm.define_global "global_value_p" (Llvm.const_pointer_null base_types.value_p) base_module in
+        let _ = Llvm.build_store initbod_val_p global_val_p_p init_bod in
+
+        let local_val_p = Llvm.build_load global_val_p_p "local_value_p" old_builder in
+        let ret_val = Llvm.build_call (Hashtbl.find runtime_functions "clone_value") [|local_val_p|] "ret_val" old_builder in
+        (ret_val, old_builder)
       | Call(fn,exl) -> (*TODO: Call needs to be reviewed. Possibly switch call arguments to value_p*)
         let build_one_expr (arg_list, intermediate_builder) e =
           let (arg_val, next_builder) = build_expr intermediate_builder e in
@@ -994,7 +996,7 @@ let translate (globals, functions, externs) =
 
   (*build formula creates a formula declaration in a separate method from the function it belongs to*)
   let build_formula (varname, idx) formula_array element symbols =
-    let storage_addr = Llvm.build_in_bounds_gep formula_array [|Llvm.const_int base_types.int_t idx|] "" main_bod in
+    let storage_addr = Llvm.build_in_bounds_gep formula_array [|Llvm.const_int base_types.int_t idx|] "" init_bod in
     let getStarts = function (* Not really just for starts *)
         Abs(LitInt(1)) | Abs(LitInt(0)) | DimensionStart | DimensionEnd -> (1, -1)
       | Abs(Id(s)) ->
@@ -1010,43 +1012,43 @@ let translate (globals, functions, externs) =
     let (toEndRow, rowEndVarnum, isSingleRow) = getEnds element.formula_row_end in
     let (toEndCol, colEndVarnum, isSingleCol) = getEnds element.formula_col_end in
 
-    let _ = Llvm.build_store (Llvm.const_int base_types.char_t fromStartRow) (Llvm.build_struct_gep storage_addr (formula_field_index FromFirstRow) "" main_bod) main_bod in
-    let _ = Llvm.build_store (Llvm.const_int base_types.int_t rowStartVarnum) (Llvm.build_struct_gep storage_addr (formula_field_index RowStartNum) "" main_bod) main_bod in
-    let _ = Llvm.build_store (Llvm.const_int base_types.char_t toEndRow) (Llvm.build_struct_gep storage_addr (formula_field_index ToLastRow) "" main_bod) main_bod in
-    let _ = Llvm.build_store (Llvm.const_int base_types.int_t rowEndVarnum) (Llvm.build_struct_gep storage_addr (formula_field_index RowEndNum) "" main_bod) main_bod in
-    let _ = Llvm.build_store (Llvm.const_int base_types.char_t isSingleRow) (Llvm.build_struct_gep storage_addr (formula_field_index IsSingleRow) "" main_bod) main_bod in
+    let _ = Llvm.build_store (Llvm.const_int base_types.char_t fromStartRow) (Llvm.build_struct_gep storage_addr (formula_field_index FromFirstRow) "" init_bod) init_bod in
+    let _ = Llvm.build_store (Llvm.const_int base_types.int_t rowStartVarnum) (Llvm.build_struct_gep storage_addr (formula_field_index RowStartNum) "" init_bod) init_bod in
+    let _ = Llvm.build_store (Llvm.const_int base_types.char_t toEndRow) (Llvm.build_struct_gep storage_addr (formula_field_index ToLastRow) "" init_bod) init_bod in
+    let _ = Llvm.build_store (Llvm.const_int base_types.int_t rowEndVarnum) (Llvm.build_struct_gep storage_addr (formula_field_index RowEndNum) "" init_bod) init_bod in
+    let _ = Llvm.build_store (Llvm.const_int base_types.char_t isSingleRow) (Llvm.build_struct_gep storage_addr (formula_field_index IsSingleRow) "" init_bod) init_bod in
 
-    let _ = Llvm.build_store (Llvm.const_int base_types.char_t fromStartCol) (Llvm.build_struct_gep storage_addr (formula_field_index FromFirstCols) "" main_bod) main_bod in
-    let _ = Llvm.build_store (Llvm.const_int base_types.int_t colStartVarnum) (Llvm.build_struct_gep storage_addr (formula_field_index ColStartNum) "" main_bod) main_bod in
-    let _ = Llvm.build_store (Llvm.const_int base_types.char_t toEndCol) (Llvm.build_struct_gep storage_addr (formula_field_index ToLastCol) "" main_bod) main_bod in
-    let _ = Llvm.build_store (Llvm.const_int base_types.int_t colEndVarnum) (Llvm.build_struct_gep storage_addr (formula_field_index ColEndNum) "" main_bod) main_bod in
-    let _ = Llvm.build_store (Llvm.const_int base_types.char_t isSingleCol) (Llvm.build_struct_gep storage_addr (formula_field_index IsSingleCol) "" main_bod) main_bod in
+    let _ = Llvm.build_store (Llvm.const_int base_types.char_t fromStartCol) (Llvm.build_struct_gep storage_addr (formula_field_index FromFirstCols) "" init_bod) init_bod in
+    let _ = Llvm.build_store (Llvm.const_int base_types.int_t colStartVarnum) (Llvm.build_struct_gep storage_addr (formula_field_index ColStartNum) "" init_bod) init_bod in
+    let _ = Llvm.build_store (Llvm.const_int base_types.char_t toEndCol) (Llvm.build_struct_gep storage_addr (formula_field_index ToLastCol) "" init_bod) init_bod in
+    let _ = Llvm.build_store (Llvm.const_int base_types.int_t colEndVarnum) (Llvm.build_struct_gep storage_addr (formula_field_index ColEndNum) "" init_bod) init_bod in
+    let _ = Llvm.build_store (Llvm.const_int base_types.char_t isSingleCol) (Llvm.build_struct_gep storage_addr (formula_field_index IsSingleCol) "" init_bod) init_bod in
 
     let form_decl = build_formula_function (varname, idx) symbols element.formula_expr in
-    let _ = Llvm.build_store form_decl (Llvm.build_struct_gep storage_addr (formula_field_index FormulaCall) "" main_bod) main_bod in
+    let _ = Llvm.build_store form_decl (Llvm.build_struct_gep storage_addr (formula_field_index FormulaCall) "" init_bod) init_bod in
     () in
 
   (* Builds a var_defn struct for each variable *)
   let build_var_defn defn varname va symbols =
     let numForm = List.length va.var_formulas in
-    let formulas = Llvm.build_array_malloc base_types.formula_t (Llvm.const_int base_types.int_t numForm) "" main_bod in
+    let formulas = Llvm.build_array_malloc base_types.formula_t (Llvm.const_int base_types.int_t numForm) "" init_bod in
     (*getDefn simply looks up the correct definition for a dimension declaration of a variable. Note that currently it is ambiguous whether it is a variable or a literal. TOOD: consider negative numbers*)
     let getDefn = function
         DimId(a) -> (match StringMap.find a symbols with LocalVariable(i) -> i | GlobalVariable(i) -> i | _ -> raise(TransformedAway("Error in " ^ varname ^ ": The LHS expresssions should always either have dimension length 1 or be the name of a variable in their own scope.")))
       | DimInt(1) -> 1
       | DimInt(_) -> print_endline "Non1Dim" ; raise(NotImplemented) in
     let _ = (match va.var_rows with
-          DimInt(1) -> Llvm.build_store (Llvm.const_int base_types.char_t 1) (Llvm.build_struct_gep defn (var_defn_field_index OneByOne) "" main_bod) main_bod
+          DimInt(1) -> Llvm.build_store (Llvm.const_int base_types.char_t 1) (Llvm.build_struct_gep defn (var_defn_field_index OneByOne) "" init_bod) init_bod
         | DimInt(_) -> print_endline "Non1Dim" ; raise(NotImplemented)
         | DimId(a) -> (
-            let _ = Llvm.build_store (Llvm.const_int base_types.char_t 0) (Llvm.build_struct_gep defn (var_defn_field_index OneByOne) "" main_bod) main_bod in ();
-            let _ = Llvm.build_store (Llvm.const_int base_types.int_t (getDefn va.var_rows)) (Llvm.build_struct_gep defn (var_defn_field_index Rows) "" main_bod) main_bod in ();
-            Llvm.build_store (Llvm.const_int base_types.int_t (getDefn va.var_cols)) (Llvm.build_struct_gep defn (var_defn_field_index Cols) "" main_bod) main_bod
+            let _ = Llvm.build_store (Llvm.const_int base_types.char_t 0) (Llvm.build_struct_gep defn (var_defn_field_index OneByOne) "" init_bod) init_bod in ();
+            let _ = Llvm.build_store (Llvm.const_int base_types.int_t (getDefn va.var_rows)) (Llvm.build_struct_gep defn (var_defn_field_index Rows) "" init_bod) init_bod in ();
+            Llvm.build_store (Llvm.const_int base_types.int_t (getDefn va.var_cols)) (Llvm.build_struct_gep defn (var_defn_field_index Cols) "" init_bod) init_bod
           )
       ) in
-    let _ = Llvm.build_store (Llvm.const_int base_types.int_t numForm) (Llvm.build_struct_gep defn (var_defn_field_index NumFormulas) "" main_bod) main_bod
-    and _ = Llvm.build_store formulas (Llvm.build_struct_gep defn (var_defn_field_index Formulas) "" main_bod) main_bod
-    and _ = Llvm.build_store (Llvm.build_global_stringptr varname "" main_bod) (Llvm.build_struct_gep defn (var_defn_field_index VarName) "" main_bod) main_bod in
+    let _ = Llvm.build_store (Llvm.const_int base_types.int_t numForm) (Llvm.build_struct_gep defn (var_defn_field_index NumFormulas) "" init_bod) init_bod
+    and _ = Llvm.build_store formulas (Llvm.build_struct_gep defn (var_defn_field_index Formulas) "" init_bod) init_bod
+    and _ = Llvm.build_store (Llvm.build_global_stringptr varname "" init_bod) (Llvm.build_struct_gep defn (var_defn_field_index VarName) "" init_bod) init_bod in
     List.iteri (fun idx elem -> build_formula (varname, idx) formulas elem symbols) va.var_formulas in
 
   (* Creates a scope object and inserts the necessary instructions into main to populate the var_defns, and
@@ -1062,11 +1064,11 @@ let translate (globals, functions, externs) =
     =
     let cardinal = Llvm.const_int base_types.int_t (StringMap.cardinal vars) in
     let build_var_defns =
-      let static_var_defns = Llvm.build_array_malloc base_types.var_defn_t cardinal (fname ^ "_static_var_defns") main_bod in
-      let _ = Llvm.build_store static_var_defns static_location_ptr main_bod in
+      let static_var_defns = Llvm.build_array_malloc base_types.var_defn_t cardinal (fname ^ "_static_var_defns") init_bod in
+      let _ = Llvm.build_store static_var_defns static_location_ptr init_bod in
       let add_variable varname va (sm, count) =
         let fullname = fname ^ "_" ^ varname in
-        let defn = (Llvm.build_in_bounds_gep static_var_defns [|Llvm.const_int base_types.int_t count|] (fullname ^ "_defn") main_bod) in
+        let defn = (Llvm.build_in_bounds_gep static_var_defns [|Llvm.const_int base_types.int_t count|] (fullname ^ "_defn") init_bod) in
         let _ = build_var_defn defn fullname va symbols in
         (StringMap.add varname count sm, count + 1) in
       ignore (StringMap.fold add_variable vars (StringMap.empty, 0)) in
@@ -1100,7 +1102,7 @@ let translate (globals, functions, externs) =
     let symbols = StringMap.fold StringMap.add local_indices params_and_globals in
     let fn_idx = match StringMap.find fname extend_fn_numbers with ExtendFunction(i) -> i | _ -> raise(LogicError(fname ^ " not in function table")) in
     let builder = Llvm.builder_at_end context (Llvm.entry_block fn_llvalue) in
-    let static_location_ptr = Llvm.build_in_bounds_gep array_of_vardefn_ptrs [|Llvm.const_int base_types.int_t 0; Llvm.const_int base_types.int_t fn_idx|] (fname ^ "_global_defn_ptr") main_bod in
+    let static_location_ptr = Llvm.build_in_bounds_gep array_of_vardefn_ptrs [|Llvm.const_int base_types.int_t 0; Llvm.const_int base_types.int_t fn_idx|] (fname ^ "_global_defn_ptr") init_bod in
     let var_defns_loc = Llvm.build_in_bounds_gep array_of_vardefn_ptrs [|Llvm.const_int base_types.int_t 0; Llvm.const_int base_types.int_t fn_idx|] (fname ^ "_local_defn_ptr") builder in
 
     let scope_obj = build_scope_obj fname symbols fn_def.func_body static_location_ptr var_defns_loc (List.length fn_def.func_params) builder in
@@ -1120,16 +1122,18 @@ let translate (globals, functions, externs) =
   (* End of build_function *)
 
   (* Build the global scope object *)
-  let vardefn_p_p = Llvm.build_alloca base_types.var_defn_p "v_p_p" main_bod in
-  let global_scope_obj = build_scope_obj "globals" global_symbols globals vardefn_p_p vardefn_p_p 0 main_bod in
-  let _ = Llvm.build_call (Hashtbl.find runtime_functions "incStack") [||] "" main_bod in
-  let _ = Llvm.build_store global_scope_obj global_scope_loc main_bod in
+  let vardefn_p_p = Llvm.build_alloca base_types.var_defn_p "v_p_p" init_bod in
+  let global_scope_obj = build_scope_obj "globals" global_symbols globals vardefn_p_p vardefn_p_p 0 init_bod in
+  let _ = Llvm.build_call (Hashtbl.find runtime_functions "incStack") [||] "" init_bod in
+  let _ = Llvm.build_store global_scope_obj global_scope_loc init_bod in
 
   (*iterates over function definitions*)
   StringMap.iter build_function extend_functions ;
 
   (* Define the LLVM entry point for the program *)
   let extend_entry_point = StringMap.find "main" function_llvalues in
+  let _ = Llvm.build_ret_void init_bod in
+  let _ = Llvm.build_call init_def [||] "" main_bod in
   let inp = Llvm.build_alloca base_types.value_t "input_arg" main_bod in
   let _ = Llvm.build_call extend_entry_point (Array.of_list [inp]) "" main_bod in
   let _ = Llvm.build_ret (Llvm.const_int base_types.int_t 0) main_bod in

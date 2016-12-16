@@ -289,34 +289,10 @@ let ternarize_exprs (globals, functions, externs) =
       (Precedence(new_e1, new_e2), new_e1_vars @ new_e2_vars)
     | Switch(cond, cases, dflt) ->
       ternarize_switch lhs_var cases dflt cond
-    | LitRange(rowlist) -> let (lhs_varname, _) = lhs_var in formulize_litrange lhs_varname rowlist
     | Debug(e) ->
       let (new_e, new_e_vars) = ternarize_expr lhs_var e in
       (Debug(new_e), new_e_vars)
     | e -> (e, [])
-  and formulize_litrange lhs_varname rowlist =
-    let new_range_id = idgen (lhs_varname ^ "_litrange") in
-    let num_rows = List.length rowlist in
-    let num_cols = List.fold_left max 0 (List.map List.length rowlist) in
-    let formulize_expr r c = function
-        LitRange(rl) -> formulize_litrange (new_range_id ^ "_" ^ string_of_int r ^ "_" ^ string_of_int c) rl
-      | e -> (e, []) in
-    let formulize_row rownum col_exprs =
-      let col_formulas_and_vars = List.mapi (fun c e -> formulize_expr rownum c e) col_exprs in
-      let create_formula colnum e = {
-        formula_row_start = Abs(LitInt(rownum)); formula_row_end = None;
-        formula_col_start = Abs(LitInt(colnum)); formula_col_end = None;
-        formula_expr = e;
-      } in
-      (List.mapi create_formula (List.map fst col_formulas_and_vars), List.concat (List.map snd col_formulas_and_vars)) in
-    let formulas_and_vars = List.mapi formulize_row rowlist in
-    let range_var = {
-      var_rows = DimInt(num_rows); var_cols = DimInt(num_cols);
-      var_formulas = List.concat (List.map fst formulas_and_vars);
-    } in
-    (Id(new_range_id),
-     (new_range_id, range_var) ::
-     List.concat (List.map snd formulas_and_vars))
   and ternarize_switch lhs_var cases dflt cond =
     let (new_cond_expr, new_cond_vars) = (match cond with
           Some cond_expr ->

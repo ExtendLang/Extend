@@ -384,8 +384,6 @@ struct var_instance *instantiate_variable(struct ExtendScope *scope_ptr, struct 
 			int intersectColStart = (inst->formulas[i].colStart > inst->formulas[j].colStart) ? inst->formulas[i].colStart : inst->formulas[j].colStart;
 			int intersectRowEnd = (inst->formulas[i].rowEnd < inst->formulas[j].rowEnd) ? inst->formulas[i].rowEnd : inst->formulas[j].rowEnd;
 			int intersectColEnd = (inst->formulas[i].colEnd < inst->formulas[j].colEnd) ? inst->formulas[i].colEnd : inst->formulas[j].colEnd;
-			fprintf(stderr, "intersect %d/%d: %s[%d:%d,%d:%d].\n", i, j, inst->name,
-											intersectRowStart, intersectRowEnd, intersectColStart, intersectColEnd);
 			if (intersectRowEnd > intersectRowStart && intersectColEnd > intersectColStart) {
 				fprintf(stderr, "Runtime error: Multiple formulas were assigned to %s[%d:%d,%d:%d].\n", inst->name,
 												intersectRowStart, intersectRowEnd, intersectColStart, intersectColEnd);

@@ -117,3 +117,29 @@ match([num_rows, 1] list, val) {
   final_index[1:,0] = final_index[[-1]] + amt_to_add[[-1]];
   return amt_to_add[-1] == 0 ? final_index[-1] : empty;
 }
+
+concatRow([1,n] cells, joiner) {
+  [1,n] accum;
+  accum[0,0] = #cells;
+  accum[0,1:] = accum[[-1]] + joiner + #cells;
+  return accum[-1];
+}
+
+toRangeLiteral([m,n] rng) {
+  [m,n] strings := toLiteral(#rng);
+  [m,1] rows := concatRow(strings[,:], ", ");
+  return "{" + concatRow(transpose(rows), ";\n") + "}";
+}
+
+toLiteral(arg) {
+  return switch(typeof(arg)) {
+    case "Number":
+      to_string(arg);
+    case "String":
+      "\"" + arg + "\"";
+    case "Empty":
+      "empty";
+    case "Range":
+      toRangeLiteral(arg);
+  };
+}

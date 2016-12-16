@@ -476,7 +476,9 @@ value_p clone_value(value_p old_value) {
 		case FLAG_SUBRANGE:
 			new_value->subrange = (subrange_p) malloc(sizeof(struct subrange_t));
 			memcpy(new_value->subrange, old_value->subrange, sizeof(struct subrange_t));
-			new_value->subrange->range->closure->refcount++; /* Not sure about this one */
+			if (new_value->subrange->range->closure != NULL) {
+				new_value->subrange->range->closure->refcount++; /* Not sure about this one */
+			}
 			break;
 		default:
 			fprintf(stderr, "clone_value(%p): Illegal value of flags: %c\n", old_value, new_value->flags);

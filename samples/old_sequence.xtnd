@@ -1,5 +1,3 @@
-import "./samples/stdlib.xtnd";
-
 main([1,n] args) {
 /*  seqFP := open(args[0]);
   seq1 := readline(seqFP)[:-2]; // discard newline
@@ -12,8 +10,8 @@ main([1,n] args) {
             write(alignment[:,1], STDOUT) ->
             close(seqFP); */
   return
-    printf(1, toString(alignment[:,0]) + "\n") ->
-    printf(1, toString(alignment[:,1]) + "\n") ->
+    print_endline(alignment[:,0]) ->
+    print_endline(alignment[:,1]) ->
     0;
 }
 
@@ -63,20 +61,20 @@ main([1,n] args) {
   results[:,1] = seq2[#seq2Loc];
 
   return
-    printf(1, "seq1:\n" + toString(seq1) + "\n\n") ->
-    printf(1, "seq2:\n" + toString(seq2) + "\n\n") ->
-    printf(1, "seq2T:\n" + toString(seq2T) + "\n\n") ->
-    printf(1, "scoreFromMatch:\n" + toString(scoreFromMatch) + "\n\n") ->
-    printf(1, "scoreFromLeft:\n" + toString(scoreFromLeft) + "\n\n") ->
-    printf(1, "scoreFromTop:\n" + toString(scoreFromTop) + "\n\n") ->
-    printf(1, "score:\n" + toString(score) + "\n\n") ->
-    printf(1, "step:\n" + toString(step) + "\n\n") ->
-    printf(1, "path:\n" + toString(path) + "\n\n") ->
-    printf(1, "pathLen:\n" + toString(pathLen) + "\n\n") ->
-    printf(1, "seq1Positions:\n" + toString(seq1Positions) + "\n\n") ->
-    printf(1, "seq2Positions:\n" + toString(seq2Positions) + "\n\n") ->
-    printf(1, "seq1Loc:\n" + toString(seq1Loc) + "\n\n") ->
-    printf(1, "seq2Loc:\n" + toString(seq2Loc) + "\n\n") ->
+    print_endline("seq1:") -> print_endline(seq1) -> print_endline("")->
+    print_endline("seq2:") -> print_endline(seq2) -> print_endline("")->
+    print_endline("seq2T:") -> print_endline(seq2T) -> print_endline("")->
+    print_endline("scoreFromMatch:") -> print_endline(scoreFromMatch) -> print_endline("")->
+    print_endline("scoreFromLeft:") -> print_endline(scoreFromLeft) -> print_endline("")->
+    print_endline("scoreFromTop:") -> print_endline(scoreFromTop) -> print_endline("")->
+    print_endline("score:") -> print_endline(score) -> print_endline("")->
+    print_endline("step:") -> print_endline(step) -> print_endline("")->
+    print_endline("path:") -> print_endline(path) -> print_endline("")->
+    print_endline("pathLen:") -> print_endline(pathLen) -> print_endline("")->
+    print_endline("seq1Positions:") -> print_endline(seq1Positions) -> print_endline("")->
+    print_endline("seq2Positions:") -> print_endline(seq2Positions) -> print_endline("")->
+    print_endline("seq1Loc:") -> print_endline(seq1Loc) -> print_endline("")->
+    print_endline("seq2Loc:") -> print_endline(seq2Loc) -> print_endline("")->
 
 
     results;

@@ -5,5 +5,11 @@ legal_ranges() {
   r4 := {"Hello";0,1,2,3,4}; // two rows, five columns
   r5 := {{{{{1}}}}}; // one row, one column
   r7 := {-1.5,-2.5,{-2,"nested"},-3.5}; // one row, four columns
-  return 0;
+  return
+    print_endline(r1) ->print_endline(r2) ->print_endline(r3) ->
+    print_endline(r4) -> print_endline(r5) -> print_endline(r7);
+}
+
+main(args) {
+  return legal_ranges();
 }

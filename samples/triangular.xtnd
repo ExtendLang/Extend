@@ -1,0 +1,9 @@
+main(args) {
+  [10,1] x;
+  x[0,0] = 1;
+  x[1:,0] = x[[-1]] + 1;
+
+  [10,10] lower_triangular := if(row()>column(),row()-column(),0);
+  [1,10] individual_column_max := max(lower_triangular[:,]);
+  return print_endline(sum(x)) -> print_endline(sum(lower_triangular)) -> print_endline(individual_column_max);
+}

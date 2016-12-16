@@ -493,10 +493,12 @@ let translate (globals, functions, externs) =
             () in
           let store_row r cols = List.iteri (fun c v -> store_val r c v) cols in
           List.iteri store_row val_p_list_list ;
+          (* let _ = Llvm.build_call (Hashtbl.find runtime_functions "debug_print") [|initbod_val_p; Llvm.const_pointer_null base_types.char_p|] "" literal_bod in *)
 
           let local_val_p = Llvm.build_load global_val_p_p "local_value_p" old_builder in
+          (* let _ = Llvm.build_call (Hashtbl.find runtime_functions "debug_print") [|local_val_p; Llvm.const_pointer_null base_types.char_p|] "" old_builder in *)
           let ret_val = Llvm.build_call (Hashtbl.find runtime_functions "clone_value") [|local_val_p|] "ret_val" old_builder in
-          let _ = Llvm.build_call (Hashtbl.find runtime_functions "debug_print") [|ret_val; Llvm.const_pointer_null base_types.char_p|] "" old_builder in
+          (* let _ = Llvm.build_call (Hashtbl.find runtime_functions "debug_print") [|ret_val; Llvm.const_pointer_null base_types.char_p|] "" old_builder in *)
           (ret_val, old_builder)
       | Call(fn,exl) -> (*TODO: Call needs to be reviewed. Possibly switch call arguments to value_p*)
         let build_one_expr (arg_list, intermediate_builder) e =

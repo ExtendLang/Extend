@@ -1,4 +1,4 @@
 main(args) {
-  foo := {"Hello, world", "Goodbye, world"};
-  return debug(foo) -> print_endline(foo[0]);
+  my_favorite_range_literal := {"Hello, world", "Goodbye, world"};
+  return print_endline(my_favorite_range_literal);
 }

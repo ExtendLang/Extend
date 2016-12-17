@@ -1,13 +1,7 @@
 open Ast
 open Lexing
 open Parsing
-
-exception IllegalExpression of string;;
-exception DuplicateDefinition of string;;
-exception UnknownVariable of string;;
-exception UnknownFunction of string;;
-exception WrongNumberArgs of string;;
-exception LogicError of string;;
+open Semant
 
 module StringSet = Set.Make (String);;
 let importSet = StringSet.empty;;
@@ -180,18 +174,6 @@ let expand_expressions (imports, globals, functions, externs) =
       ret_val = (fst f.ret_val, new_retval)
     } in
   (imports, expand_stmt_list "global" globals, List.map expand_function functions, externs);;
-
-let map_of_list list_of_tuples =
-  (*  map_of_list: Take a list of the form [("foo", 2); ("bar", 3)]
-      and create a StringMap using the first value of the tuple as
-      the key and the second value of the tuple as the value. Raises
-      an exception if the key appears more than once in the list. *)
-  let rec aux acc = function
-      [] -> acc
-    | t :: ts ->
-      if (StringMap.mem (fst t) acc) then raise(DuplicateDefinition(fst t))
-      else aux (StringMap.add (fst t) (snd t) acc) ts in
-  aux StringMap.empty list_of_tuples
 
 let create_maps (imports, globals, functions, externs) =
   let vd_of_vi = function
@@ -423,70 +405,6 @@ let reduce_ternaries (globals, functions, externs) =
     map_of_list (List.rev (fst combined_list) @ List.concat (snd combined_list)) in
   let reduce_function fn_name fn_def = {fn_def with func_body = reduce_variables fn_name fn_def.func_body} in
   (reduce_variables "global" globals, StringMap.mapi reduce_function functions, externs)
-
-let check_semantics (globals, functions, externs) =
-  let fn_signatures = map_of_list
-      ((StringMap.fold (fun s f l -> (s, List.length f.func_params) :: l) functions []) @
-       (StringMap.fold (fun s f l -> (s, List.length f.extern_fn_params) :: l) externs [])) in
-  let check_function fname f =
-    if StringMap.mem fname externs then raise(DuplicateDefinition(fname ^ "() is defined as both an external and local function")) else ();
-    let locals = f.func_body in
-    let params = List.map snd f.func_params in
-    List.iter
-      (fun param ->
-         if StringMap.mem param locals then raise(DuplicateDefinition(param ^ " is defined multiple times in " ^ fname ^ "()"))
-         else ())
-      params ;
-    let check_call called_fname num_args =
-      if (not (StringMap.mem called_fname fn_signatures)) then raise(UnknownFunction(called_fname))
-      else let signature_args = StringMap.find called_fname fn_signatures in
-        if num_args != signature_args then raise(WrongNumberArgs(
-            "In " ^ fname ^ "(), the function " ^ called_fname ^ "() was called with " ^ string_of_int num_args ^ " arguments " ^
-            "but the signature specifies " ^ string_of_int signature_args
-          ))
-        else () in
-    let rec check_expr = function
-        BinOp(e1,_,e2) -> check_expr e1 ; check_expr e2
-      | UnOp(_, e) -> check_expr e
-      | Ternary(cond, e1, e2) -> check_expr cond ; check_expr e1 ; check_expr e2
-      | ReducedTernary(s1, s2, s3) -> check_expr (Id(s1)) ; check_expr (Id(s2)) ; check_expr (Id(s3))
-      | Id(s) -> if (List.mem s params || StringMap.mem s locals || StringMap.mem s globals) then () else raise(UnknownVariable(fname ^ "(): " ^ s))
-      | Switch(Some e, cases, dflt) -> check_expr e ; List.iter check_case cases ; check_expr dflt
-      | Switch(None, cases, dflt) -> List.iter check_case cases ; check_expr dflt
-      | Call(called_fname, args) ->
-        check_call called_fname (List.length args) ;
-        List.iter check_expr args
-      | Selection(e, (sl1, sl2)) -> check_expr e ; check_slice sl1 ; check_slice sl2
-      | Precedence(e1, e2) -> check_expr e1 ; check_expr e2
-      | Debug(e) -> check_expr e;
-      | LitInt(_) | LitFlt(_) | LitRange(_) | LitString(_) | Empty | Wild -> ()
-    and check_case (conds, e) = List.iter check_expr conds ; check_expr e
-    and check_slice = function
-        None -> ()
-      | Some (i1, i2) -> check_index i1 ; check_index i2
-    and check_index = function
-        Some Abs(e) -> check_expr e
-      | Some Rel(e) -> check_expr e
-      | _ -> () in
-    let check_formula f =
-      check_index (Some f.formula_row_start) ;
-      check_index f.formula_row_end ;
-      check_index (Some f.formula_col_start) ;
-      check_index f.formula_col_end ;
-      check_expr f.formula_expr in
-    let check_dim = function
-        DimInt(1) -> ()
-      | DimInt(i) -> raise(IllegalExpression("This is not going to work right"))
-      | DimId(s) -> check_expr (Id(s)) in
-    let check_variable v =
-      check_dim v.var_rows ;
-      check_dim v.var_cols ;
-      List.iter check_formula v.var_formulas in
-
-    StringMap.iter (fun _ v -> check_variable v) f.func_body ;
-    check_expr (snd f.func_ret_val)
-
-  in StringMap.iter check_function functions
 
 let create_ast filename =
   let ast_imp_res = expand_file true filename in

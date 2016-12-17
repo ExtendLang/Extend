@@ -62,18 +62,6 @@ let create_helper_functions ctx bt the_module =
     let fn_bod = Llvm.builder_at_end ctx (Llvm.entry_block fn_def) in
     (fn_def, fn_bod) in
 
-  (* let create_is_subrange_1x1 fname =
-    let is_index_one fn builder idx =
-      let the_value = ((Llvm.param fn 0) => (subrange_field_index idx)) "the_value" builder in
-      let the_bool = Llvm.build_icmp Llvm.Icmp.Eq the_value (Llvm.const_int bt.int_t 1) "the_bool" builder in
-      the_bool in
-    let (fn_def, fn_bod) = create_def_bod fname bt.bool_t [bt.subrange_p] in
-    let one_row = is_index_one fn_def fn_bod SubrangeRows in
-    let one_col = is_index_one fn_def fn_bod SubrangeCols in
-    let one_by_one = Llvm.build_and one_row one_col "one_by_one" fn_bod in
-    let _ = Llvm.build_ret one_by_one fn_bod in
-    Hashtbl.add helper_functions fname fn_def in
- *)
   let create_new_string fname =
     let (fn_def, fn_bod) = create_def_bod fname bt.string_p [bt.char_p] in
     let the_string_ptr = Llvm.build_malloc bt.string_t "the_string_ptr" fn_bod in
@@ -93,35 +81,6 @@ let create_helper_functions ctx bt the_module =
     let _ = Llvm.build_ret the_string_ptr fn_bod in
     Hashtbl.add helper_functions fname fn_def in
 
-  (* let create_box_native_string_list fname =
-    let (fn_def, fn_bod) = create_def_bod fname bt.string_p_p [bt.int_t; bt.char_p_p] in
-    let argc = Llvm.param fn_def 0 in
-    let argv = Llvm.param fn_def 1 in
-    let ret_val = Llvm.build_array_malloc bt.string_p argc "ret_val" fn_bod in
-    let i_ptr = Llvm.build_alloca bt.int_t "i_ptr" fn_bod in
-    let _ = Llvm.build_store (Llvm.const_int bt.int_t 0) i_ptr fn_bod in (* i = 0; *)
-    let pred_bb = Llvm.append_block ctx "while_pred" fn_def in
-    let body_bb = Llvm.append_block ctx "while_body" fn_def in
-    let merge_bb = Llvm.append_block ctx "merge" fn_def in
-    let _ = Llvm.build_br pred_bb fn_bod in
-    let pred_builder = Llvm.builder_at_end ctx pred_bb in
-    let i_val = Llvm.build_load i_ptr "i" pred_builder in
-    let pred_bool = Llvm.build_icmp Llvm.Icmp.Slt i_val argc "i_lt_argc" pred_builder in (* i < argc *)
-    let _ = Llvm.build_cond_br pred_bool body_bb merge_bb pred_builder in
-    let body_builder = Llvm.builder_at_end ctx body_bb in
-    let i_val = Llvm.build_load i_ptr "i" body_builder in
-    let argv_i_addr = Llvm.build_in_bounds_gep argv [|i_val|] "argv_i_addr" body_builder in
-    let argv_i = Llvm.build_load argv_i_addr "argv_i" body_builder in
-    let ns_ptr = Llvm.build_call (Hashtbl.find helper_functions "new_string") [|argv_i|] "ns_ptr" body_builder in
-    let dst = Llvm.build_in_bounds_gep ret_val [|i_val|] "dst" body_builder in
-    let _ = Llvm.build_store ns_ptr dst body_builder in
-    let i_plus_1 = Llvm.build_add i_val (Llvm.const_int bt.int_t 1) "i_plus_1" body_builder in
-    let _ = Llvm.build_store i_plus_1 i_ptr body_builder in
-    let _ = Llvm.build_br pred_bb body_builder in
-    let merge_builder = Llvm.builder_at_end ctx merge_bb in
-    let _ = Llvm.build_ret ret_val merge_builder in
-    Hashtbl.add helper_functions fname fn_def in *)
-
   let create_box_value_string fname =
     let (fn_def, fn_bod) = create_def_bod fname bt.value_p [bt.string_p] in
     let str = Llvm.param fn_def 0 in
@@ -132,43 +91,8 @@ let create_helper_functions ctx bt the_module =
     let _ = Llvm.build_ret ret_val fn_bod in
     Hashtbl.add helper_functions fname fn_def in
 
-  (* let create_box_value_float fname =
-    let (fn_def, fn_bod) = create_def_bod fname bt.value_p [bt.float_t] in
-    let str = Llvm.param fn_def 0 in
-    let ret_val = Llvm.build_malloc bt.value_t "" fn_bod in
-    let sp = Llvm.build_struct_gep ret_val (value_field_index Number) "num_pointer" fn_bod in
-    let _ = Llvm.build_store (Llvm.const_int bt.char_t (value_field_flags_index Number)) (Llvm.build_struct_gep ret_val (value_field_index Flags) "" fn_bod) fn_bod in
-    let _ = Llvm.build_store str sp fn_bod in
-    let _ = Llvm.build_ret ret_val fn_bod in
-    Hashtbl.add helper_functions fname fn_def in *)
-
-
-  (* let create_box_single_value fname =
-    let (fn_def, fn_bod) = create_def_bod fname bt.subrange_p [bt.value_p] in
-    let value = Llvm.param fn_def 0 in
-    let subrange = Llvm.build_malloc bt.subrange_t "" fn_bod in
-    let var_instance = Llvm.build_malloc bt.var_instance_t "" fn_bod in
-    let rp = Llvm.build_struct_gep subrange (subrange_field_index BaseRangePtr) "range_p" fn_bod in
-    let vp = Llvm.build_struct_gep var_instance (var_instance_field_index Values) "value_p" fn_bod in
-    let _ = Llvm.build_store value vp fn_bod in
-    let _ = Llvm.build_store var_instance rp fn_bod in
-    let _ = Llvm.build_store (Llvm.const_int bt.int_t 0) (Llvm.build_struct_gep subrange (subrange_field_index BaseOffsetCol) "" fn_bod) fn_bod in
-    let _ = Llvm.build_store (Llvm.const_int bt.int_t 0) (Llvm.build_struct_gep subrange (subrange_field_index BaseOffsetRow) "" fn_bod) fn_bod in
-    let _ = Llvm.build_store (Llvm.const_int bt.int_t 1) (Llvm.build_struct_gep subrange (subrange_field_index SubrangeRows) "" fn_bod) fn_bod in
-    let _ = Llvm.build_store (Llvm.const_int bt.int_t 1) (Llvm.build_struct_gep subrange (subrange_field_index SubrangeCols) "" fn_bod) fn_bod in
-    let _ = Llvm.build_store (Llvm.const_int bt.int_t 1) (Llvm.build_struct_gep var_instance (var_instance_field_index Rows) "" fn_bod) fn_bod in
-    let _ = Llvm.build_store (Llvm.const_int bt.int_t 1) (Llvm.build_struct_gep var_instance (var_instance_field_index Cols) "" fn_bod) fn_bod in
-    let _ = Llvm.build_ret subrange fn_bod in
-    Hashtbl.add helper_functions fname fn_def in *)
-
-    (* create_is_subrange_1x1 "is_subrange_1x1"; *)
-    (*create_get_val "get_val";
-    create_deref_subrange "deref_subrange";*)
     create_new_string "new_string";
-    (* create_box_native_string_list "box_native_string_list"; *)
     create_box_value_string "box_value_string";
-    (* create_box_single_value "box_single_value"; *)
-    (* create_box_value_float "box_value_float";  *)
     ()
 
 let translate (globals, functions, externs) =

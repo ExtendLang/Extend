@@ -1,4 +1,5 @@
+import "src/stdlib/complete-stdlib.xtnd";
+
 main(args) {
-  my_favorite_range_literal := {"Hello, world", "Goodbye, world"};
-  return print_endline(my_favorite_range_literal);
+  return print_endline(toLower(right("HELLOWORLD",3)));
 }

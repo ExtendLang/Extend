@@ -1,0 +1,10 @@
+breakpoint() {
+  return 3;
+}
+
+main(args) {
+  [4,4] foo;
+  foo[:breakpoint(),:3] = "topleft";
+  foo[breakpoint()-1:,2:] = "bottomright";
+  return print_endline(foo);
+}

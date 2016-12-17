@@ -19,3 +19,9 @@ num_cells_if_same_size([m,n] arg1, [m,n] arg2) {
   // If arguments are the same size, return # of cells, otherwise runtime error
   return m*n;
 }
+
+main(args) {
+  [3,4] foo;
+  [3,5] bar;
+  return print_endline(num_cells_if_same_size(foo,bar));
+}

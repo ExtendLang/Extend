@@ -491,7 +491,9 @@ void delete_string_p(string_p old_string) {
 }
 
 void delete_subrange_p(subrange_p old_subrange) {
-	old_subrange->range->closure->refcount--;
+	if (old_subrange->range->closure != NULL) {
+		old_subrange->range->closure->refcount--;
+	}
 	free(old_subrange);
 }
 
@@ -528,9 +530,51 @@ value_p deref_subrange_p(subrange_p subrng) {
 		new_value->str = NULL;
 		new_value->subrange = (subrange_p) malloc (sizeof(struct subrange_t));
 		memcpy(new_value->subrange, subrng, sizeof(struct subrange_t));
-		new_value->subrange->range->closure->refcount++;
+		if (new_value->subrange->range->closure != NULL) {
+			new_value->subrange->range->closure->refcount++;
+		}
 		return new_value;
 	}
+}
+
+value_p new_subrange(int num_rows, int num_cols, value_p *vals) {
+	/* This function does not check its arguments; if you supply fewer
+	 * than num_rows * num_cols elements in vals, it will crash.
+	 * Only use this function if you know what you're doing. */
+	 struct subrange_t sr;
+	 sr.range = (struct var_instance *) malloc (sizeof(struct var_instance));
+	 sr.base_var_offset_row = 0;
+	 sr.base_var_offset_col = 0;
+	 sr.subrange_num_rows = num_rows;
+	 sr.subrange_num_cols = num_cols;
+	 sr.range->rows = num_rows;
+	 sr.range->cols = num_cols;
+	 sr.range->numFormulas = 0;
+	 sr.range->formulas = NULL;
+	 sr.range->closure = NULL;
+	 sr.range->values = (value_p *) malloc(num_rows * num_cols * sizeof(value_p));
+	 sr.range->status = (char *) malloc (num_rows * num_cols * sizeof(char));
+	 sr.range->name = NULL;
+	 int i;
+	 for (i = 0; i < num_rows * num_cols; i++) {
+		 sr.range->values[i] = clone_value(vals[i]);
+		 sr.range->status[i] = CALCULATED;
+	 }
+	 return deref_subrange_p(&sr);
+}
+
+value_p box_command_line_args(int argc, char **argv) {
+	value_p *vals = (value_p *) malloc (argc * sizeof(value_p));
+	int i;
+	for (i = 0; i < argc; i++) {
+		vals[i] = new_string(argv[i]);
+	}
+	value_p ret = new_subrange(1, argc, vals);
+	for (i = 0; i < argc; i++) {
+		free(vals[i]);
+	}
+	free(vals);
+	return ret;
 }
 
 char resolve_rhs_index(struct rhs_index *index, int dimension_len, int dimension_cell_num, int *result_ptr) {

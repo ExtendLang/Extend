@@ -96,23 +96,23 @@ value_p extend_to_string(value_p val) {
 		return new_val();
 }
 
-#define FUNC(name) value_p extend_##name(value_p a){if(!assertSingleNumber(a)) return new_val();double val = name(a->numericVal);return new_number(val);}
-FUNC(sin)
-FUNC(cos)
-FUNC(tan)
-FUNC(acos)
-FUNC(asin)
-FUNC(atan)
-FUNC(sinh)
-FUNC(cosh)
-FUNC(tanh)
-FUNC(exp)
-FUNC(log)
-FUNC(log10)
-FUNC(sqrt)
-FUNC(ceil)
-FUNC(fabs)
-FUNC(floor)
+#define EXPOSE_MATH_FUNC(name) value_p extend_##name(value_p a){if(!assertSingleNumber(a)) return new_val();double val = name(a->numericVal);return new_number(val);}
+EXPOSE_MATH_FUNC(sin)
+EXPOSE_MATH_FUNC(cos)
+EXPOSE_MATH_FUNC(tan)
+EXPOSE_MATH_FUNC(acos)
+EXPOSE_MATH_FUNC(asin)
+EXPOSE_MATH_FUNC(atan)
+EXPOSE_MATH_FUNC(sinh)
+EXPOSE_MATH_FUNC(cosh)
+EXPOSE_MATH_FUNC(tanh)
+EXPOSE_MATH_FUNC(exp)
+EXPOSE_MATH_FUNC(log)
+EXPOSE_MATH_FUNC(log10)
+EXPOSE_MATH_FUNC(sqrt)
+EXPOSE_MATH_FUNC(ceil)
+EXPOSE_MATH_FUNC(fabs)
+EXPOSE_MATH_FUNC(floor)
 
 value_p extend_get_stdin() {
 	if (open_num_files + 1 > MAX_FILES) {

@@ -943,7 +943,26 @@ let translate (globals, functions, externs) =
 
         let _ = Llvm.build_cond_br is_number number_bb finish_bb expr_builder in
         (ret_val, finish_builder)
-      | UnOp(BitNot, expr) -> print_endline "Unsupported Unop" ; print_endline (Ast.string_of_expr exp); raise NotImplemented
+      | UnOp(BitNot, expr) ->
+        let ret_val = Llvm.build_malloc base_types.value_t "unop_truthy_ret_val" old_builder in
+        let (expr_val, expr_builder) = build_expr old_builder expr in
+
+        let (numnum_bb, numnum_builder) = make_block "numnum" in
+        let (make_empty_bb, make_empty_builder) = make_block ("" ^ "_empty") in
+        let (finish_bb, finish_builder) = make_block "finish" in
+
+        let _ = store_empty ret_val make_empty_builder  in
+        let _ = Llvm.build_br finish_bb make_empty_builder in
+
+        let expr_type = (expr_val => (value_field_index Flags)) "expr_type" expr_builder in
+        let is_number = Llvm.build_icmp Llvm.Icmp.Eq expr_type number_type "is_number" expr_builder in
+        let _ = Llvm.build_cond_br is_number numnum_bb make_empty_bb expr_builder in
+
+        let expr_num = Llvm.build_call (Hashtbl.find runtime_functions "lrint") [|((expr_val => (value_field_index Number)) "expr_type" numnum_builder)|] "" numnum_builder in
+        let _ = store_number ret_val numnum_builder (Llvm.build_sitofp (Llvm.build_not expr_num "" numnum_builder) base_types.float_t "" numnum_builder) in
+        let _ = Llvm.build_br finish_bb numnum_builder in
+
+        (ret_val, finish_builder)
       | UnOp(TypeOf, expr) ->
         let (expr_val, expr_builder) = build_expr old_builder expr in
         let expr_type = (expr_val => (value_field_index Flags)) "expr_type" expr_builder in

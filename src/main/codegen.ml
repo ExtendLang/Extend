@@ -5,7 +5,6 @@ open Semant
 open CodeGenTypes
 exception NotImplemented
 
-let helper_functions = Hashtbl.create 10
 let runtime_functions = Hashtbl.create 20
 
 let (=>) struct_ptr elem = (fun val_name builder ->
@@ -40,50 +39,11 @@ let create_runtime_functions ctx bt the_module =
   add_runtime_func "get_variable" bt.var_instance_p [|bt.extend_scope_p; bt.int_t|] ;
   add_runtime_func "null_init" (Llvm.void_type ctx) [|bt.extend_scope_p|] ;
   add_runtime_func "debug_print" (Llvm.void_type ctx) [|bt.value_p ; bt.char_p|] ;
-  add_runtime_func "new_string_go_all_the_way" bt.value_p [|bt.char_p|] ;
+  add_runtime_func "new_string" bt.value_p [|bt.char_p|] ;
   add_runtime_func "deref_subrange_p" bt.value_p [|bt.subrange_p|];
   add_runtime_func "debug_print_selection" (Llvm.void_type ctx) [|bt.rhs_selection_p|];
   add_runtime_func "extract_selection" bt.value_p [|bt.value_p; bt.rhs_selection_p; bt.int_t; bt.int_t|];
   ()
-
-let create_helper_functions ctx bt the_module =
-  let create_def_bod fname rtype argtypes =
-    let fn_def = Llvm.define_function fname (Llvm.function_type rtype (Array.of_list argtypes)) the_module in
-    let fn_bod = Llvm.builder_at_end ctx (Llvm.entry_block fn_def) in
-    (fn_def, fn_bod) in
-
-  let create_new_string fname =
-    let (fn_def, fn_bod) = create_def_bod fname bt.string_p [bt.char_p] in
-    let the_string_ptr = Llvm.build_malloc bt.string_t "the_string_ptr" fn_bod in
-    let src_char_ptr = Llvm.param fn_def 0 in
-    let dst_char_ptr_ptr = Llvm.build_struct_gep the_string_ptr (string_field_index StringCharPtr) "dst_char_ptr_ptr" fn_bod in
-    let string_len = Llvm.build_call (Hashtbl.find runtime_functions "strlen") [|src_char_ptr|] "string_len" fn_bod in
-    let extra_byte = Llvm.build_add string_len (Llvm.const_int bt.long_t 1) "extra_byte" fn_bod in
-    let strlen_ptr = Llvm.build_struct_gep the_string_ptr (string_field_index StringLen) "strlen_ptr" fn_bod in
-    let refcount_ptr = Llvm.build_struct_gep the_string_ptr (string_field_index StringRefCount) "refcount" fn_bod in
-    let dst_char_ptr = Llvm.build_array_malloc bt.char_t extra_byte "dst_char_ptr" fn_bod in
-    let _ = Llvm.build_store dst_char_ptr dst_char_ptr_ptr fn_bod in
-    let _ = Llvm.build_call (Hashtbl.find runtime_functions "llvm.memcpy.p0i8.p0i8.i64")
-        [| dst_char_ptr ; src_char_ptr ; extra_byte ; (Llvm.const_int bt.int_t 0) ; (Llvm.const_int bt.bool_t 0) |]
-        "" fn_bod in
-    let _ = Llvm.build_store string_len strlen_ptr fn_bod in
-    let _ = Llvm.build_store (Llvm.const_int bt.int_t 1) refcount_ptr fn_bod in
-    let _ = Llvm.build_ret the_string_ptr fn_bod in
-    Hashtbl.add helper_functions fname fn_def in
-
-  let create_box_value_string fname =
-    let (fn_def, fn_bod) = create_def_bod fname bt.value_p [bt.string_p] in
-    let str = Llvm.param fn_def 0 in
-    let ret_val = Llvm.build_malloc bt.value_t "" fn_bod in
-    let sp = Llvm.build_struct_gep ret_val (value_field_index String) "str_pointer" fn_bod in
-    let _ = Llvm.build_store (Llvm.const_int bt.char_t (value_field_flags_index String)) (Llvm.build_struct_gep ret_val (value_field_index Flags) "" fn_bod) fn_bod in
-    let _ = Llvm.build_store str sp fn_bod in
-    let _ = Llvm.build_ret ret_val fn_bod in
-    Hashtbl.add helper_functions fname fn_def in
-
-    create_new_string "new_string";
-    create_box_value_string "box_value_string";
-    ()
 
 let translate (globals, functions, externs) =
 
@@ -94,7 +54,6 @@ let translate (globals, functions, externs) =
 
   (* Declare the runtime functions that we need to call *)
   create_runtime_functions context base_types base_module ;
-  create_helper_functions context base_types base_module ;
 
   (* Build function_llvalues, which is a StringMap from function name to llvalue.
    * It includes both functions from external libraries, such as the standard library,
@@ -140,7 +99,7 @@ let translate (globals, functions, externs) =
   let array_of_typeof_val_ptrs = Llvm.define_global "array_of_val_ptrs" (Llvm.const_array base_types.value_p null_val_array) base_module in
   let create_typeof_string i s =
     let sp = Llvm.build_global_stringptr s "global_typeof_stringptr" literal_bod in
-    let vp = Llvm.build_call (Hashtbl.find runtime_functions "new_string_go_all_the_way") [|sp|] "global_typeof_string" literal_bod in
+    let vp = Llvm.build_call (Hashtbl.find runtime_functions "new_string") [|sp|] "global_typeof_string" literal_bod in
     let vp_dst = Llvm.build_in_bounds_gep array_of_typeof_val_ptrs [|Llvm.const_int base_types.int_t 0; Llvm.const_int base_types.int_t i|] ("global_typeof_dst") literal_bod in
     let _ = Llvm.build_store vp vp_dst literal_bod in
     () in
@@ -354,7 +313,7 @@ let translate (globals, functions, externs) =
       | Precedence(a,b) -> let (_, new_builder) = build_expr old_builder a in build_expr new_builder b
       | LitString(str) ->
         let initbod_charptr = Llvm.build_global_stringptr str "initbod_charptr" literal_bod in
-        let initbod_val_p = Llvm.build_call (Hashtbl.find runtime_functions "new_string_go_all_the_way") [|initbod_charptr|] "initbod_val_p" literal_bod in
+        let initbod_val_p = Llvm.build_call (Hashtbl.find runtime_functions "new_string") [|initbod_charptr|] "initbod_val_p" literal_bod in
         let global_val_p_p = Llvm.define_global "global_litstring_p" (Llvm.const_pointer_null base_types.value_p) base_module in
         let _ = Llvm.build_store initbod_val_p global_val_p_p literal_bod in
 

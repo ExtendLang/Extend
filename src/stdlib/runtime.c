@@ -287,7 +287,7 @@ value_p new_number(double val) {
 	return new_v;
 }
 
-value_p new_string_go_all_the_way(char *s) {
+value_p new_string(char *s) {
 	if (s == NULL) return new_val();
 	value_p new_v = malloc(sizeof(struct value_t));
 	setFlag(new_v, FLAG_STRING);

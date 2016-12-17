@@ -43,7 +43,7 @@ value_p extend_to_string(value_p val) {
 				converted_str = malloc(size + 1);
 				sprintf(converted_str, "%f", possible_num);
 			}
-			value_p result = box_value_string(new_string(converted_str));
+			value_p result = new_string(converted_str);
 			return result;
 		}
 		else if(assertSingleString(val)) return val;
@@ -193,7 +193,7 @@ value_p extend_read(value_p file_handle, value_p num_bytes){
 	char *buf = malloc(sizeof(char) * (max_bytes + 1));
 	int bytes_read = fread(buf, sizeof(char), max_bytes, f);
 	buf[bytes_read] = 0;
-	value_p result = box_value_string(new_string(buf));
+	value_p result = new_string(buf);
 	free(buf);
 	return result;
 	//edge case: how to return the entire contents of the file if n == empty?
@@ -220,7 +220,7 @@ value_p extend_readline(value_p file_handle) {
 		}
 	}
 	buf[i] = '\0';
-	value_p result = box_value_string(new_string(buf));
+	value_p result = new_string(buf);
 	free(buf);
 	return result;
 }

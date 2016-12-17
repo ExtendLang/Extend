@@ -1,6 +1,6 @@
 main([1,n] args) {
   return print(1,to_string( foo("string"))+"\n") -> 0;
 }
-[1,1] foo([1,1] arg) {
+foo([1,1] arg) {
   return arg;
 }

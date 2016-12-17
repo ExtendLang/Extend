@@ -5,6 +5,6 @@ bar() {
 
 global foo := printv(1,"Hello Globals!\n") -> 0;
 
-[1,1] main(args) {
+main(args) {
   return foo;
 }

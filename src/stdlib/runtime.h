@@ -127,8 +127,7 @@ struct rhs_selection {
 	struct rhs_slice *slice2;
 };
 
-string_p new_string(char *str);
-value_p box_value_string(string_p);
+value_p new_string(char *s);
 value_p getVal(struct var_instance *inst, int x, int y);
 double setNumeric(value_p result, double val);
 char* setString(value_p result, char *str, int length);

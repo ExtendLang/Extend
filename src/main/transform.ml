@@ -59,7 +59,6 @@ let expand_expressions (imports, globals, functions, externs) =
     (* Create a new variable for all expressions on the LHS to hold the result;
        return the new expression and whatever new statements are necessary to create the new variable *)
       Empty     -> raise (IllegalExpression("Empty not allowed in " ^ expr_loc))
-    | Wild      -> raise (IllegalExpression("wild - this shouldn't be possible"))
     | LitString(s) -> raise (IllegalExpression("String literal " ^ quote_string s ^ " not allowed in " ^ expr_loc))
     | LitRange(rl) -> raise (IllegalExpression("Range literal " ^ string_of_list (Rows rl) ^ " not allowed in " ^ expr_loc))
     | e         -> let new_id = idgen expr_loc in (
@@ -181,11 +180,11 @@ let create_maps (imports, globals, functions, externs) =
         and return a (string, variable) pair    *)
       Varinit((Some r, Some c), [(v, None)]) -> (v, {
         var_rows = (match r with
-              LitInt(i) -> DimInt(i)
+              LitInt(1) -> DimOneByOne
             | Id(s) -> DimId(s)
             | _ -> raise (LogicError("Unrecognized expression for rows of " ^ v)));
         var_cols = (match c with
-              LitInt(i) -> DimInt(i)
+              LitInt(1) -> DimOneByOne
             | Id(s) -> DimId(s)
             | _ -> raise (LogicError("Unrecognized expression for rows of " ^ v)));
         var_formulas = [];

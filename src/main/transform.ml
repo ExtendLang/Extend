@@ -438,15 +438,13 @@ let check_semantics (globals, functions, externs) =
          else ())
       params ;
     let check_call called_fname num_args =
-      match called_fname with
-          "printf" -> ()
-        | _ -> if (not (StringMap.mem called_fname fn_signatures)) then raise(UnknownFunction(called_fname))
-            else let signature_args = StringMap.find called_fname fn_signatures in
-            if num_args != signature_args then raise(WrongNumberArgs(
-                "In " ^ fname ^ "(), the function " ^ called_fname ^ "() was called with " ^ string_of_int num_args ^ " arguments " ^
-                "but the signature specifies " ^ string_of_int signature_args
-              ))
-            else () in
+      if (not (StringMap.mem called_fname fn_signatures)) then raise(UnknownFunction(called_fname))
+      else let signature_args = StringMap.find called_fname fn_signatures in
+        if num_args != signature_args then raise(WrongNumberArgs(
+            "In " ^ fname ^ "(), the function " ^ called_fname ^ "() was called with " ^ string_of_int num_args ^ " arguments " ^
+            "but the signature specifies " ^ string_of_int signature_args
+          ))
+        else () in
     let rec check_expr = function
         BinOp(e1,_,e2) -> check_expr e1 ; check_expr e2
       | UnOp(_, e) -> check_expr e

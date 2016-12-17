@@ -1044,7 +1044,7 @@ let translate (globals, functions, externs) =
         let is_number = Llvm.build_icmp Llvm.Icmp.Eq expr_type number_type "is_number" expr_builder in
         let _ = Llvm.build_cond_br is_number numnum_bb make_empty_bb expr_builder in
 
-        let expr_num = Llvm.build_fptosi ((expr_val => (value_field_index Number)) "expr_type" numnum_builder) base_types.int_t "" numnum_builder in
+        let expr_num = Llvm.build_call (Hashtbl.find runtime_functions "lrint") [|((expr_val => (value_field_index Number)) "expr_type" numnum_builder)|] "" numnum_builder in
         let _ = store_number ret_val numnum_builder (Llvm.build_sitofp (Llvm.build_not expr_num "" numnum_builder) base_types.float_t "" numnum_builder) in
         let _ = Llvm.build_br finish_bb numnum_builder in
 

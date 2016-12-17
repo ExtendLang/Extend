@@ -533,218 +533,29 @@ let translate (globals, functions, externs) =
               and bnumorstrorother = Llvm.builder_at_end context numorstrorother
               and bstrorother = Llvm.builder_at_end context strorother
               and bbailout = Llvm.builder_at_end context bailout
-              and _ = Llvm.build_store
-                  (
-                    Llvm.const_int
-                    base_types.char_t
-                    (value_field_flags_index Empty)
-                  ) (
-                    Llvm.build_struct_gep
-                    result
-                    (value_field_index Flags)
-                    ""
-                    int_builder
-                  )
-                  int_builder
+              and _ = Llvm.build_store (Llvm.const_int base_types.char_t (value_field_flags_index Empty)) (Llvm.build_struct_gep result (value_field_index Flags) "" int_builder) int_builder
               in
-              (*let _ = Llvm.build_cond_br pred_bool body_bb merge_bb pred_builder in*)
-              let isnumber = Llvm.build_icmp
-                  Llvm.Icmp.Eq
-                  (
-                    Llvm.build_load
-                    (
-                      Llvm.build_struct_gep
-                      val1
-                      (value_field_index Flags)
-                      ""
-                      bnumorstrorother
-                    ) "" bnumorstrorother
-                  ) (
-                    Llvm.const_int
-                    base_types.char_t
-                    (value_field_flags_index Number)
-                  )
-                  ""
-                  bnumorstrorother
-              and isstring = Llvm.build_icmp
-                  Llvm.Icmp.Eq
-                  (
-                    Llvm.build_load
-                    (
-                      Llvm.build_struct_gep
-                      val1
-                      (value_field_index Flags)
-                      ""
-                      bstrorother
-                    )
-                    ""
-                    bstrorother
-                  ) (
-                    Llvm.const_int
-                    base_types.char_t
-                    (value_field_flags_index String)
-                  )
-                  ""
-                  bstrorother
-              and isnumorstring = Llvm.build_icmp
-                  Llvm.Icmp.Eq
-                  (
-                    Llvm.build_load
-                    (
-                      Llvm.build_struct_gep
-                      val1
-                      (value_field_index Flags)
-                      ""
-                      int_builder
-                    )
-                    ""
-                    int_builder
-                  ) (
-                    Llvm.build_load
-                    (
-                      Llvm.build_struct_gep
-                      val2
-                      (value_field_index Flags)
-                      ""
-                      int_builder
-                    )
-                    ""
-                    int_builder
-                  )
-                  ""
-                  int_builder
-              and _ = Llvm.build_store (
-                  Llvm.build_fadd
-                  (
-                    Llvm.build_load
-                    (
-                      Llvm.build_struct_gep
-                      val1
-                      (value_field_index Number)
-                      ""
-                      bnumadd
-                    )
-                    ""
-                    bnumadd
-                  ) (
-                    Llvm.build_load
-                    (
-                      Llvm.build_struct_gep
-                      val2
-                      (value_field_index Number)
-                      ""
-                      bnumadd
-                    )
-                    ""
-                    bnumadd
-                  )
-                  ""
-                  bnumadd
-                ) (
-                  Llvm.build_struct_gep
-                  result
-                  (value_field_index Number)
-                  ""
-                  bnumadd
-                )
-                bnumadd
-              and _ = Llvm.build_store (
-                  Llvm.const_int base_types.char_t (value_field_flags_index Number)
-                ) (
-                  Llvm.build_struct_gep
-                  result
-                  (value_field_index Flags)
-                  ""
-                  bnumadd
-                )
-                bnumadd
-              and str1 = Llvm.build_load
-              (
-                Llvm.build_struct_gep
-                val1
-                (value_field_index String)
-                ""
-                bstradd
-              ) "" bstradd
-              and str2 = Llvm.build_load
-              (
-                Llvm.build_struct_gep
-                val2
-                (value_field_index String)
-                ""
-                bstradd
-              ) "" bstradd
-              and newstr =
-              (
-                Llvm.build_malloc base_types.string_t "" bstradd
-              )
-              in
-              let len1 = Llvm.build_load (
-                Llvm.build_struct_gep
-                str1
-                (string_field_index StringLen)
-                ""
-                bstradd
-              ) "" bstradd
-              and len2 = Llvm.build_load (
-                Llvm.build_struct_gep
-                str2
-                (string_field_index StringLen)
-                ""
-                bstradd
-              ) "" bstradd
-              and p1 = Llvm.build_load (
-                Llvm.build_struct_gep
-                str1
-                (string_field_index StringCharPtr)
-                ""
-                bstradd
-              ) "" bstradd
-              and p2 = Llvm.build_load (
-                Llvm.build_struct_gep
-                str2
-                (string_field_index StringCharPtr)
-                ""
-                bstradd
-              ) "" bstradd
-              and dst_char_ptr_ptr = (
-                Llvm.build_struct_gep
-                newstr
-                (string_field_index StringCharPtr)
-                ""
-                bstradd
-              )
-              and _ = Llvm.build_store (
-                Llvm.const_int base_types.char_t (value_field_flags_index String)
-              ) (
-                Llvm.build_struct_gep
-                result
-                (value_field_index Flags)
-                ""
-                bstradd
-              ) bstradd
-              and _ = Llvm.build_store newstr (
-                Llvm.build_struct_gep
-                result
-                (value_field_index String)
-                ""
-                bstradd
-              )
-              bstradd in
+              let isnumber = Llvm.build_icmp Llvm.Icmp.Eq (Llvm.build_load (Llvm.build_struct_gep val1 (value_field_index Flags) "" bnumorstrorother) "" bnumorstrorother) (Llvm.const_int base_types.char_t (value_field_flags_index Number)) "" bnumorstrorother
+              and isstring = Llvm.build_icmp Llvm.Icmp.Eq (Llvm.build_load (Llvm.build_struct_gep val1 (value_field_index Flags) "" bstrorother) "" bstrorother) (Llvm.const_int base_types.char_t (value_field_flags_index String)) "" bstrorother
+              and isnumorstring = Llvm.build_icmp Llvm.Icmp.Eq (Llvm.build_load (Llvm.build_struct_gep val1 (value_field_index Flags) "" int_builder) "" int_builder) (Llvm.build_load (Llvm.build_struct_gep val2 (value_field_index Flags) "" int_builder) "" int_builder) "" int_builder
+              and _ = Llvm.build_store (Llvm.build_fadd (Llvm.build_load (Llvm.build_struct_gep val1 (value_field_index Number) "" bnumadd) "" bnumadd) (Llvm.build_load (Llvm.build_struct_gep val2 (value_field_index Number) "" bnumadd) "" bnumadd) "" bnumadd) (Llvm.build_struct_gep result (value_field_index Number) "" bnumadd) bnumadd
+              and _ = Llvm.build_store (Llvm.const_int base_types.char_t (value_field_flags_index Number)) (Llvm.build_struct_gep result (value_field_index Flags) "" bnumadd) bnumadd
+              and str1 = Llvm.build_load (Llvm.build_struct_gep val1 (value_field_index String) "" bstradd) "" bstradd
+              and str2 = Llvm.build_load (Llvm.build_struct_gep val2 (value_field_index String) "" bstradd) "" bstradd
+              and newstr = (Llvm.build_malloc base_types.string_t "" bstradd) in
+              let len1 = Llvm.build_load (Llvm.build_struct_gep str1 (string_field_index StringLen) "" bstradd) "" bstradd
+              and len2 = Llvm.build_load (Llvm.build_struct_gep str2 (string_field_index StringLen) "" bstradd) "" bstradd
+              and p1 = Llvm.build_load (Llvm.build_struct_gep str1 (string_field_index StringCharPtr) "" bstradd) "" bstradd
+              and p2 = Llvm.build_load (Llvm.build_struct_gep str2 (string_field_index StringCharPtr) "" bstradd) "" bstradd
+              and dst_char_ptr_ptr = (Llvm.build_struct_gep newstr (string_field_index StringCharPtr) "" bstradd)
+              and _ = Llvm.build_store (Llvm.const_int base_types.char_t (value_field_flags_index String)) (Llvm.build_struct_gep result (value_field_index Flags) "" bstradd) bstradd
+              and _ = Llvm.build_store newstr (Llvm.build_struct_gep result (value_field_index String) "" bstradd) bstradd in
               let fullLen = Llvm.build_nsw_add (Llvm.build_nsw_add len1 len2 "" bstradd) (Llvm.const_int base_types.long_t 1) "" bstradd
               and extra_byte2 = (Llvm.build_add len2 (Llvm.const_int base_types.long_t 1) "" bstradd) in
               let dst_char = Llvm.build_array_malloc base_types.char_t (Llvm.build_trunc fullLen base_types.int_t "" bstradd) "" bstradd in
               let dst_char2 = Llvm.build_in_bounds_gep dst_char [|len1|] "" bstradd in
-              let _ = Llvm.build_call
-                (Hashtbl.find runtime_functions "llvm.memcpy.p0i8.p0i8.i64")
-                [|dst_char; p1; len1; (Llvm.const_int base_types.int_t 0); (Llvm.const_int base_types.bool_t 0)|]
-                ""
-                bstradd
-              and _ = Llvm.build_call
-                (Hashtbl.find runtime_functions "llvm.memcpy.p0i8.p0i8.i64")
-                [|dst_char2; p2; extra_byte2; (Llvm.const_int base_types.int_t 0); (Llvm.const_int base_types.bool_t 0)|]
-                ""
-                bstradd
+              let _ = Llvm.build_call (Hashtbl.find runtime_functions "llvm.memcpy.p0i8.p0i8.i64") [|dst_char; p1; len1; (Llvm.const_int base_types.int_t 0); (Llvm.const_int base_types.bool_t 0)|] "" bstradd
+              and _ = Llvm.build_call (Hashtbl.find runtime_functions "llvm.memcpy.p0i8.p0i8.i64") [|dst_char2; p2; extra_byte2; (Llvm.const_int base_types.int_t 0); (Llvm.const_int base_types.bool_t 0)|] "" bstradd
               and _ = Llvm.build_store dst_char dst_char_ptr_ptr bstradd
               in
               let _ = Llvm.build_store (Llvm.build_nsw_add fullLen (Llvm.const_int base_types.long_t (-1)) "" bstradd) (Llvm.build_struct_gep newstr (string_field_index StringLen) "" bstradd) bstradd

@@ -90,6 +90,10 @@ right(str, num_chars) {
   return fromASCII(toASCII(str)[-num_chars:]);
 }
 
+substring(str, start, length) {
+  return fromASCII(toASCII(str)[start:start+length]);
+}
+
 concatRow([1,n] cells, joiner) {
   [1,n] accum;
   accum[0,0] = #cells;
@@ -104,6 +108,19 @@ toRangeLiteral([m,n] rng) {
 }
 
 toLiteral(arg) {
+  return switch(typeof(arg)) {
+    case "Number":
+      to_string(arg);
+    case "String":
+      "\"" + arg + "\"";
+    case "Empty":
+      "empty";
+    case "Range":
+      toRangeLiteral(arg);
+  };
+}
+
+toString(arg) {
   return switch(typeof(arg)) {
     case "Number":
       to_string(arg);

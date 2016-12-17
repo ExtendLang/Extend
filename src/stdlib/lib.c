@@ -114,6 +114,12 @@ EXPOSE_MATH_FUNC(ceil)
 EXPOSE_MATH_FUNC(fabs)
 EXPOSE_MATH_FUNC(floor)
 
+value_p extend_round(value_p num, value_p number_of_digits) {
+	if (!assertSingleNumber(num) || !assertSingleNumber(number_of_digits)) return new_val();
+	double factor_of_10 = pow(10,number_of_digits->numericVal);
+	return new_number(rint(num->numericVal * factor_of_10) / factor_of_10);
+}
+
 value_p extend_get_stdin() {
 	if (open_num_files + 1 > MAX_FILES) {
 		return new_val();

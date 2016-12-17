@@ -5,7 +5,7 @@ open Ast
 %}
 
 %token LSQBRACK RSQBRACK LPAREN RPAREN LBRACE RBRACE HASH
-%token COLON COMMA QUESTION IF GETS ASN SEMI PRECEDES UNDERSCORE
+%token COLON COMMA QUESTION IF GETS ASN SEMI PRECEDES
 %token SWITCH CASE DEFAULT SIZE TYPEOF ROW COLUMN
 %token PLUS MINUS TIMES DIVIDE MOD POWER LSHIFT RSHIFT
 %token EQ NOTEQ GT LT GTEQ LTEQ
@@ -70,13 +70,6 @@ extern_fn:
       extern_fn_libname = "";
       extern_ret_val = (None, None);
     } }
-  | ret_dim ID LPAREN func_param_list RPAREN SEMI
-    { {
-      extern_fn_name = $2;
-      extern_fn_params = $4;
-      extern_fn_libname = "";
-      extern_ret_val = $1;
-    } }
 
 func_decl:
     ID LPAREN func_param_list RPAREN LBRACE opt_stmt_list ret_stmt RBRACE
@@ -86,14 +79,6 @@ func_decl:
       body = $6;
       raw_asserts = [];
       ret_val = ((None, None), $7)
-    } }
-  | ret_dim ID LPAREN func_param_list RPAREN LBRACE opt_stmt_list ret_stmt RBRACE
-    { {
-      name = $2;
-      params = $4;
-      body = $7;
-      raw_asserts = [];
-      ret_val = ($1, $8);
     } }
 
 opt_stmt_list:
@@ -269,11 +254,3 @@ func_sin_param:
 dim:
     LSQBRACK expr RSQBRACK { (Some $2, None) }
   | LSQBRACK expr COMMA expr RSQBRACK { (Some $2, Some $4) }
-
-ret_dim:
-    LSQBRACK ret_sin RSQBRACK { ($2, None) }
-  | LSQBRACK ret_sin COMMA ret_sin RSQBRACK { ($2,$4) }
-
-ret_sin:
-    expr { Some $1 }
-  | UNDERSCORE { Some Wild }

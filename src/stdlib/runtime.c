@@ -731,6 +731,13 @@ value_p getValSR(struct subrange_t *sr, int r, int c) {
 	return getVal(sr->range, r + sr->base_var_offset_row, c + sr->base_var_offset_col);
 }
 
+void verify_assert(value_p val, char *fname) {
+	if ((!assertSingleNumber(val)) || val->numericVal != 1.0) {
+		fprintf(stderr, "EXITING - The function %s was called with arguments of the wrong dimensions.\n", fname);
+		exit(-1);
+	}
+}
+
 value_p getVal(struct var_instance *inst, int r, int c) {
 	/* If we're going to return new_val() then we have to
 	 * do clone_value(). Otherwise the receiver won't know

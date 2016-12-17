@@ -44,6 +44,7 @@ let create_runtime_functions ctx bt the_module =
   add_runtime_func "debug_print_selection" (Llvm.void_type ctx) [|bt.rhs_selection_p|];
   add_runtime_func "extract_selection" bt.value_p [|bt.value_p; bt.rhs_selection_p; bt.int_t; bt.int_t|];
   add_runtime_func "box_command_line_args" bt.value_p [|bt.int_t; bt.char_p_p|];
+  add_runtime_func "verify_assert" (Llvm.void_type ctx) [|bt.value_p; bt.char_p|];
   ()
 
 let translate (globals, functions, externs) =
@@ -862,7 +863,6 @@ let translate (globals, functions, externs) =
     let builder = Llvm.builder_at_end context (Llvm.entry_block fn_llvalue) in
     let static_location_ptr = Llvm.build_in_bounds_gep array_of_vardefn_ptrs [|Llvm.const_int base_types.int_t 0; Llvm.const_int base_types.int_t fn_idx|] (fname ^ "_global_defn_ptr") init_bod in
     let var_defns_loc = Llvm.build_in_bounds_gep array_of_vardefn_ptrs [|Llvm.const_int base_types.int_t 0; Llvm.const_int base_types.int_t fn_idx|] (fname ^ "_local_defn_ptr") builder in
-
     let scope_obj = build_scope_obj fname symbols fn_def.func_body static_location_ptr var_defns_loc (List.length fn_def.func_params) builder in
     let get_special_val special_name = function
         Id(s) -> (match (try StringMap.find s symbols with Not_found -> raise(LogicError("Something went wrong with your semantic analysis - " ^ s ^ " not found"))) with
@@ -871,8 +871,8 @@ let translate (globals, functions, externs) =
             Llvm.build_call getVal [|llvm_var; Llvm.const_int base_types.int_t 0; Llvm.const_int base_types.int_t 0|] (special_name ^ "_val") builder
           | _ -> raise(TransformedAway("Error in " ^ fname ^ ": The " ^ special_name ^ " value should always have been transformed into a local variable")))
       | _ -> raise(TransformedAway("Error in " ^ fname ^ ": The " ^ special_name ^ " value should always have been transformed into a local variable")) in
-
     let assert_val = get_special_val "assert" (List.hd fn_def.func_asserts) in
+    let _ = Llvm.build_call (Hashtbl.find runtime_functions "verify_assert") [|assert_val; Llvm.build_global_stringptr fname "" builder|] "" builder in
     let ret_val = get_special_val "return" (snd fn_def.func_ret_val) in
     let _ = Llvm.build_ret ret_val builder in () in
   (* End of build_function *)

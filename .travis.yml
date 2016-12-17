@@ -1,5 +1,5 @@
 language: cpp
-sudo: false
+sudo: true
 branches:
   only:
     - master
@@ -16,7 +16,9 @@ addons:
     - opam
     - clang-3.8
     - llvm-3.8
-    - libgd-devel
+
+before_script:
+  - sudo apt-get install libgd-dev -y
 
 script: bash -ex .travis-ci.sh
 

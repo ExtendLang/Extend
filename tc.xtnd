@@ -11,7 +11,7 @@ main(args) {
     print_endline(toString(3/0)) ->
     print_endline(toString("Hello")) ->
     print_endline(toString(empty)) ->
-    print_endline(toString({"hello";"goodbye"})) ->
+    print_endline(toString({"hello";"goodbye";1,{3,4,{"hello again","goodbye"}},3})) ->
 
     0;
 }

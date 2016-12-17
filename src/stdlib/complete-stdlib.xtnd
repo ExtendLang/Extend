@@ -113,7 +113,7 @@ toRangeLiteral([m,n] rng) {
 toLiteral(arg) {
   return switch(typeof(arg)) {
     case "Number":
-      to_string(arg);
+      toString(arg);
     case "String":
       "\"" + arg + "\"";
     case "Empty":

@@ -1,0 +1,117 @@
+transpose([m,n] rng) {
+  [n,m] ret := rng[column(),row()];
+  return ret;
+}
+
+isNumber(x) {
+  return typeof(x) == "Number";
+}
+
+isEmpty(x) {
+  return typeof(x) == "Empty";
+}
+
+sum_column([m,1] rng) {
+  [m,1] running_sum;
+  running_sum[0,0] = #rng;
+  running_sum[1:,0] = running_sum[[-1]] + #rng;
+  return running_sum[-1];
+}
+
+sum([m,n] rng) {
+  /* Returns the sum of the values in the range, skipping any values that are non-numeric */
+  [m,n] numbers := isNumber(#rng) ? #rng : 0;
+  [1,n] column_sums := sum_column(numbers[:,]);
+  return sum_column(transpose(column_sums));
+}
+
+nmax(n1, n2) {
+  return switch {
+    case isNumber(n1) && isNumber(n2):
+      n1 > n2 ? n1 : n2;
+    case isNumber(n1):
+      n1;
+    case isNumber(n2):
+      n2;
+    default:
+      empty;
+  };
+}
+
+max_column([m,1] rng) {
+  [m,1] running_max;
+  running_max[0,0] = #rng;
+  running_max[1:,0] = nmax(running_max[[-1]], #rng);
+  return running_max[-1];
+}
+
+max([m,n] rng) {
+  /* Returns the sum of the values in the range, skipping any values that are non-numeric */
+  [m,n] numbers := isNumber(#rng) ? #rng : empty;
+  [1,n] column_maxs := max_column(rng[:,]);
+  return max_column(transpose(column_maxs));
+}
+
+colRange(start, end) {
+  [end-start, 1] ret;
+  ret[0,0] = start;
+  ret[1:,0] = ret[[-1]] + 1;
+  return ret;
+}
+
+match([num_rows, 1] list, val) {
+  [num_rows, 1] amt_to_add, final_index;
+  amt_to_add[0,0] = val == #list ? 0 : 1;
+  amt_to_add[1:,0] = (amt_to_add[[-1]] == 0 || val == #list) ? 0 : 1;
+  final_index[0,0] = 0;
+  final_index[1:,0] = final_index[[-1]] + amt_to_add[[-1]];
+  return amt_to_add[-1] == 0 ? final_index[-1] : empty;
+}
+
+toUpper(text) {
+  val := toASCII(text);
+  val_s := size(val);
+  [val_s[0],val_s[1]] result := #val >= 97 && #val <= 122 ? #val - 32 : #val;
+  return fromASCII(result);
+}
+
+toLower(text) {
+  val := toASCII(text);
+  val_s := size(val);
+  [val_s[0],val_s[1]] result := #val >= 65 && #val <= 90 ? #val + 32 : #val;
+  return fromASCII(result);
+}
+
+left(str, num_chars) {
+  return fromASCII(toASCII(str)[:num_chars]);
+}
+
+right(str, num_chars) {
+  return fromASCII(toASCII(str)[-num_chars:]);
+}
+
+concatRow([1,n] cells, joiner) {
+  [1,n] accum;
+  accum[0,0] = #cells;
+  accum[0,1:] = accum[[-1]] + joiner + #cells;
+  return accum[-1];
+}
+
+toRangeLiteral([m,n] rng) {
+  [m,n] strings := toLiteral(#rng);
+  [m,1] rows := concatRow(strings[,:], ", ");
+  return "{" + concatRow(transpose(rows), ";\n") + "}";
+}
+
+toLiteral(arg) {
+  return switch(typeof(arg)) {
+    case "Number":
+      to_string(arg);
+    case "String":
+      "\"" + arg + "\"";
+    case "Empty":
+      "empty";
+    case "Range":
+      toRangeLiteral(arg);
+  };
+}

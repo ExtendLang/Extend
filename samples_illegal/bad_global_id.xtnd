@@ -1,0 +1,12 @@
+global pi := 3.14159265359;
+global num_points := 240;
+global [num_points,1]
+  circle_x_vals := cos(2 * pi * row() / num_points),
+  circle_y_vals := sin(2 * pi * row() / num_points);
+global foo := 3 + nonexistant_function();
+
+main(args) {
+  [num_points,2] circle_points := column() ? #circle_y_vals : #circle_x_vals;
+  [num_points,1] circle_pairs := circle_points[,:];
+  return print_endline(circle_pairs);
+}

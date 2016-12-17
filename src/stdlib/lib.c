@@ -43,7 +43,7 @@ value_p extend_to_string(value_p val) {
 				converted_str = malloc(size + 1);
 				sprintf(converted_str, "%f", possible_num);
 			}
-			value_p result = box_value_string(new_string(converted_str));
+			value_p result = new_string(converted_str);
 			return result;
 		}
 		else if(assertSingleString(val)) return val;
@@ -96,23 +96,23 @@ value_p extend_to_string(value_p val) {
 		return new_val();
 }
 
-#define FUNC(name) value_p extend_##name(value_p a){if(!assertSingleNumber(a)) return new_val();double val = name(a->numericVal);return new_number(val);}
-FUNC(sin)
-FUNC(cos)
-FUNC(tan)
-FUNC(acos)
-FUNC(asin)
-FUNC(atan)
-FUNC(sinh)
-FUNC(cosh)
-FUNC(tanh)
-FUNC(exp)
-FUNC(log)
-FUNC(log10)
-FUNC(sqrt)
-FUNC(ceil)
-FUNC(fabs)
-FUNC(floor)
+#define EXPOSE_MATH_FUNC(name) value_p extend_##name(value_p a){if(!assertSingleNumber(a)) return new_val();double val = name(a->numericVal);return new_number(val);}
+EXPOSE_MATH_FUNC(sin)
+EXPOSE_MATH_FUNC(cos)
+EXPOSE_MATH_FUNC(tan)
+EXPOSE_MATH_FUNC(acos)
+EXPOSE_MATH_FUNC(asin)
+EXPOSE_MATH_FUNC(atan)
+EXPOSE_MATH_FUNC(sinh)
+EXPOSE_MATH_FUNC(cosh)
+EXPOSE_MATH_FUNC(tanh)
+EXPOSE_MATH_FUNC(exp)
+EXPOSE_MATH_FUNC(log)
+EXPOSE_MATH_FUNC(log10)
+EXPOSE_MATH_FUNC(sqrt)
+EXPOSE_MATH_FUNC(ceil)
+EXPOSE_MATH_FUNC(fabs)
+EXPOSE_MATH_FUNC(floor)
 
 value_p extend_get_stdin() {
 	if (open_num_files + 1 > MAX_FILES) {
@@ -193,7 +193,7 @@ value_p extend_read(value_p file_handle, value_p num_bytes){
 	char *buf = malloc(sizeof(char) * (max_bytes + 1));
 	int bytes_read = fread(buf, sizeof(char), max_bytes, f);
 	buf[bytes_read] = 0;
-	value_p result = box_value_string(new_string(buf));
+	value_p result = new_string(buf);
 	free(buf);
 	return result;
 	//edge case: how to return the entire contents of the file if n == empty?
@@ -220,7 +220,7 @@ value_p extend_readline(value_p file_handle) {
 		}
 	}
 	buf[i] = '\0';
-	value_p result = box_value_string(new_string(buf));
+	value_p result = new_string(buf);
 	free(buf);
 	return result;
 }
@@ -261,4 +261,46 @@ value_p extend_isInfinite(value_p val) {
 	} else {
 		return new_number(0.0);
 	}
+}
+
+value_p extend_toASCII(value_p val) {
+	if (!assertSingleString(val)) return new_val();
+	value_p *val_arr = malloc(sizeof(value_p) * val->str->length);
+	int i;
+	for(i = 0; i < val->str->length; i++) {
+		value_p my_val = malloc(sizeof(struct value_t));
+		my_val->flags = FLAG_NUMBER;
+		my_val->numericVal = (double)val->str->text[i];
+		val_arr[i] = my_val;
+	}
+	value_p _new = new_subrange(1,val->str->length, val_arr);
+	return _new;
+}
+
+value_p extend_fromASCII(value_p val) {
+	value_p result = new_val();
+	if(val->flags == FLAG_NUMBER) {
+		char xxx = ((char)lrint(val->numericVal));
+		setString(result, &xxx, 1);
+	}
+	else if(val->flags == FLAG_SUBRANGE) {
+		int rows, cols, len;
+		rows = val->subrange->subrange_num_rows;
+		cols = val->subrange->subrange_num_cols;
+		if(rows > 1 && cols > 1) return result;
+		else len = rows == 1 ? cols : rows;
+		char *text = malloc(sizeof(char) * len);
+		for(rows = 0; rows < val->subrange->subrange_num_rows; rows++) {
+			for(cols = 0; cols < val->subrange->subrange_num_cols; cols++) {
+				value_p single = getValSR(val->subrange, rows, cols);
+				if(single->flags != FLAG_NUMBER) {
+					free(text);
+					return result;
+				}
+				text[rows + cols] = (char)lrint(single->numericVal);
+			}
+		}
+		setString(result, text, len);
+	}
+	return result;
 }

@@ -190,6 +190,34 @@ void debug_print_selection(struct rhs_selection *sel) {
 	fprintf(stderr, "-------That's all I've got about that selection------\n\n");
 }
 
+int rg_eq(value_p val1, value_p val2) {
+	int res = 1;
+	if(val1->flags != val2->flags) res = 0;
+	else if(val1->flags == FLAG_EMPTY) ;
+	else if(val1->flags == FLAG_NUMBER && val1->numericVal != val2->numericVal) res = 0;
+	else if(val1->flags == FLAG_STRING && strcmp(val1->str->text, val2->str->text)) res = 0;
+	else if(val1->flags == FLAG_SUBRANGE) {
+		subrange_p sr1 = val1->subrange;
+		subrange_p sr2 = val2->subrange;
+		if(sr1->subrange_num_cols != sr2->subrange_num_cols || sr1->subrange_num_rows != sr2->subrange_num_rows) {
+			return 0;
+		} else {
+			int i, j;
+			value_p v1, v2;
+			for(i = 0; i < sr1->subrange_num_rows; i++) {
+				for(j = 0; j < sr1->subrange_num_cols; j++) {
+					v1 = getValSR(sr1, i, j);
+					v2 = getValSR(sr2, i, j);
+					if(rg_eq(v1, v2) == 0) {
+						return 0;
+					}
+				}
+			}
+		}
+	}
+	return res;
+}
+
 void incStack() {
 	const rlim_t kStackSize = 64L * 1024L * 1024L;
 	struct rlimit rl;
@@ -259,7 +287,7 @@ value_p new_number(double val) {
 	return new_v;
 }
 
-value_p new_string_go_all_the_way(char *s) {
+value_p new_string(char *s) {
 	if (s == NULL) return new_val();
 	value_p new_v = malloc(sizeof(struct value_t));
 	setFlag(new_v, FLAG_STRING);
@@ -321,7 +349,7 @@ struct var_instance *instantiate_variable(struct ExtendScope *scope_ptr, struct 
 	inst->formulas = malloc(sizeof(struct ResolvedFormula) * inst->numFormulas);
 	//debug_print_vardefn(&def);
 	//debug_print_varinst(inst);
-	int i;
+	int i, j;
 	for(i = 0; i < inst->numFormulas; i++) {
 
 		// Set the formula function pointer to the pointer from the definition
@@ -350,6 +378,9 @@ struct var_instance *instantiate_variable(struct ExtendScope *scope_ptr, struct 
 				inst->formulas[i].rowEnd = inst->rows;
 			} else {
 				inst->formulas[i].rowEnd = getIntFromOneByOne(scope_ptr, def.formulas[i].rowEnd_varnum);
+				if (inst->formulas[i].rowEnd < 0) {
+					inst->formulas[i].rowEnd += inst->rows;
+				}
 			}
 			if(def.formulas[i].fromFirstCol) {
 				inst->formulas[i].colStart = 0;
@@ -368,6 +399,23 @@ struct var_instance *instantiate_variable(struct ExtendScope *scope_ptr, struct 
 				inst->formulas[i].colEnd = inst->cols;
 			} else {
 				inst->formulas[i].colEnd = getIntFromOneByOne(scope_ptr, def.formulas[i].colEnd_varnum);
+				if (inst->formulas[i].colEnd < 0) {
+					inst->formulas[i].colEnd += inst->cols;
+				}
+			}
+		}
+	}
+
+	for (i = 1; i < inst->numFormulas; i++) {
+		for (j = 0; j < i; j++) {
+			int intersectRowStart = (inst->formulas[i].rowStart > inst->formulas[j].rowStart) ? inst->formulas[i].rowStart : inst->formulas[j].rowStart;
+			int intersectColStart = (inst->formulas[i].colStart > inst->formulas[j].colStart) ? inst->formulas[i].colStart : inst->formulas[j].colStart;
+			int intersectRowEnd = (inst->formulas[i].rowEnd < inst->formulas[j].rowEnd) ? inst->formulas[i].rowEnd : inst->formulas[j].rowEnd;
+			int intersectColEnd = (inst->formulas[i].colEnd < inst->formulas[j].colEnd) ? inst->formulas[i].colEnd : inst->formulas[j].colEnd;
+			if (intersectRowEnd > intersectRowStart && intersectColEnd > intersectColStart) {
+				fprintf(stderr, "Runtime error: Multiple formulas were assigned to %s[%d:%d,%d:%d].\n", inst->name,
+												intersectRowStart, intersectRowEnd, intersectColStart, intersectColEnd);
+				exit(-1);
 			}
 		}
 	}
@@ -407,59 +455,6 @@ value_p calcVal(struct var_instance *inst, int r, int c) {
 	return new_val();
 }
 
-/* void setRange(value_p val, struct var_instance *inst) {
-	subrange_p sr = malloc(sizeof(struct subrange_t));
-	sr->offsetCol = 0;
-	sr->offsetRow = 0;
-	sr->subrangeCol = inst->cols;
-	sr->subrangeRow = inst->rows;
-	sr->range = inst;
-	val->subrange = sr;
-	val->flags = FLAG_SUBRANGE;
-}
-
-value_p getSize(struct var_instance *inst) {
-	value_p res = malloc(sizeof(struct value_t));
-	setNumeric(res, 1); //
-	return res;
-} */
-
-/* value_p deepCopy(value_p value) {
-	value_p _new = new_val();
-	if(value->flags == FLAG_EMPTY) {}
-	else if(value->flags == FLAG_STRING) {
-		_new->flags = FLAG_STRING;
-		_new->str = malloc(sizeof(struct string_t));
-		memcpy(_new->str->text, value->str->text, value->str->length);
-		_new->str->length = value->str->length;
-	}
-	else if(value->flags == FLAG_NUMBER) {
-		_new->flags = FLAG_NUMBER;
-		_new->numericVal = value->numericVal;
-	}
-	else if(value->flags == FLAG_SUBRANGE) {
-		struct var_instance *v = malloc(sizeof(struct subrange_t));
-		int cols = value->subrange->subrangeCol;
-		int rows = value->subrange->subrangeRow;
-		v->name = "COPYCAT";
-		v->formulas = NULL;
-		v->status = malloc(sizeof(char *) * rows * cols);
-		v->values = malloc(sizeof(value_p) * rows * cols);
-		v->closure = NULL;
-		int i,j;
-		for(i = 0; i < rows; i++) {
-			for(j = 0; j < cols; j++) {
-				int offset = i * rows + j;
-				*(v->status + offset) = CALCULATED;
-				// TODO: eval lazzzy
-				*(v->values + offset) = getVal(value->subrange->range, i + value->subrange->offsetRow, j + value->subrange->offsetCol);
-			}
-		}
-		setRange(_new, v);
-	}
-	return _new;
-} */
-
 value_p clone_value(value_p old_value) {
 	value_p new_value = (value_p) malloc(sizeof(struct value_t));
 	new_value->flags = old_value->flags;
@@ -496,7 +491,9 @@ void delete_string_p(string_p old_string) {
 }
 
 void delete_subrange_p(subrange_p old_subrange) {
-	old_subrange->range->closure->refcount--;
+	if (old_subrange->range->closure != NULL) {
+		old_subrange->range->closure->refcount--;
+	}
 	free(old_subrange);
 }
 
@@ -533,9 +530,51 @@ value_p deref_subrange_p(subrange_p subrng) {
 		new_value->str = NULL;
 		new_value->subrange = (subrange_p) malloc (sizeof(struct subrange_t));
 		memcpy(new_value->subrange, subrng, sizeof(struct subrange_t));
-		new_value->subrange->range->closure->refcount++;
+		if (new_value->subrange->range->closure != NULL) {
+			new_value->subrange->range->closure->refcount++;
+		}
 		return new_value;
 	}
+}
+
+value_p new_subrange(int num_rows, int num_cols, value_p *vals) {
+	/* This function does not check its arguments; if you supply fewer
+	 * than num_rows * num_cols elements in vals, it will crash.
+	 * Only use this function if you know what you're doing. */
+	 struct subrange_t sr;
+	 sr.range = (struct var_instance *) malloc (sizeof(struct var_instance));
+	 sr.base_var_offset_row = 0;
+	 sr.base_var_offset_col = 0;
+	 sr.subrange_num_rows = num_rows;
+	 sr.subrange_num_cols = num_cols;
+	 sr.range->rows = num_rows;
+	 sr.range->cols = num_cols;
+	 sr.range->numFormulas = 0;
+	 sr.range->formulas = NULL;
+	 sr.range->closure = NULL;
+	 sr.range->values = (value_p *) malloc(num_rows * num_cols * sizeof(value_p));
+	 sr.range->status = (char *) malloc (num_rows * num_cols * sizeof(char));
+	 sr.range->name = NULL;
+	 int i;
+	 for (i = 0; i < num_rows * num_cols; i++) {
+		 sr.range->values[i] = clone_value(vals[i]);
+		 sr.range->status[i] = CALCULATED;
+	 }
+	 return deref_subrange_p(&sr);
+}
+
+value_p box_command_line_args(int argc, char **argv) {
+	value_p *vals = (value_p *) malloc (argc * sizeof(value_p));
+	int i;
+	for (i = 0; i < argc; i++) {
+		vals[i] = new_string(argv[i]);
+	}
+	value_p ret = new_subrange(1, argc, vals);
+	for (i = 0; i < argc; i++) {
+		free(vals[i]);
+	}
+	free(vals);
+	return ret;
 }
 
 char resolve_rhs_index(struct rhs_index *index, int dimension_len, int dimension_cell_num, int *result_ptr) {
@@ -687,10 +726,16 @@ value_p extract_selection(value_p expr, struct rhs_selection *sel, int r, int c)
 }
 
 value_p getValSR(struct subrange_t *sr, int r, int c) {
-	if(sr->base_var_offset_row + sr->subrange_num_rows <= r
-		|| sr->base_var_offset_col + sr->subrange_num_cols <= c)
+	if(sr->subrange_num_rows <= r || sr->subrange_num_cols <= c || r < 0 || c < 0)
 		return new_val();
 	return getVal(sr->range, r + sr->base_var_offset_row, c + sr->base_var_offset_col);
+}
+
+void verify_assert(value_p val, char *fname) {
+	if ((!assertSingleNumber(val)) || val->numericVal != 1.0) {
+		fprintf(stderr, "EXITING - The function %s was called with arguments of the wrong dimensions.\n", fname);
+		exit(-1);
+	}
 }
 
 value_p getVal(struct var_instance *inst, int r, int c) {
@@ -734,22 +779,4 @@ value_p getVal(struct var_instance *inst, int r, int c) {
 			break;
 	}
 	return inst->values[cell_number];
-// 	char *status = inst->status + offset;
-// 	value_p return_val;
-// 	if(*status & IN_PROGRESS) {
-// 		/* TODO: Circular dependency. Possibly throw? */
-// 		return_val = new_val();
-// 	} else if ((~(*status)) & CALCULATED) { /* value not calculated */
-// 		value_p val = calcVal(inst, x, y);
-// 		inst->values[offset] = val;
-// 		*status = (*status && !IN_PROGRESS) | CALCULATED;
-// 		return_val = val;
-// 	} else {
-// 		return_val = inst->values[offset];
-// 	}
-// 	while(return_val->flags == FLAG_SUBRANGE && return_val->subrange->subrangeRow == 1 && return_val->subrange->subrangeCol == 1) {
-// 		return_val = getVal(return_val->subrange->range, return_val->subrange->offsetRow, return_val->subrange->offsetCol);
-// 	}
-// //	debug_print_varinst(inst);
-// 	return return_val;
 }

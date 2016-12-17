@@ -6,6 +6,15 @@
 #include<stdbool.h>
 #include "runtime.h"
 
+struct value_t zero_val = {FLAG_NUMBER, 0.0, NULL, NULL};
+struct value_t one_val = {FLAG_NUMBER, 1.0, NULL, NULL};
+struct rhs_index absolute_zero = {&zero_val, RHS_IDX_ABSOLUTE};
+struct rhs_index absolute_one = {&one_val, RHS_IDX_ABSOLUTE};
+struct rhs_slice zero_to_one = {&absolute_zero, &absolute_one};
+struct rhs_slice corresponding_cell = {NULL, NULL};
+
+void debug_print_subrange(subrange_p subrng);
+
 void debug_print(value_p val, char *which_value) {
 	char *flag_meanings[4] = {"Empty", "Number", "String", "Subrange"};
 	fprintf(stderr, "------Everything you ever wanted to know about %s:------\n", which_value == NULL ? "some anonymous variable" : which_value);
@@ -29,6 +38,10 @@ void debug_print(value_p val, char *which_value) {
 		}
 	}
 	fprintf(stderr, "Subrange contents: Probably safer not to check that pointer (%p) blindly either\n", val->subrange);
+	if (val->flags == FLAG_SUBRANGE && val->subrange != NULL) {
+		fprintf(stderr, "It says it's a subrange and it's not a NULL pointer though, so here you go:\n");
+		debug_print_subrange(val->subrange);
+	}
 	fprintf(stderr, "------That's all I've got to say about %s:------\n", which_value == NULL ? "some anonymous variable" : which_value);
 }
 
@@ -69,6 +82,7 @@ void debug_print_varinst(struct var_instance *inst) {
 	}
 	fprintf(stderr, "**** End of Formulas *** \n");
 	fprintf(stderr, "~~~~~~~~Cells:~~~~~~~\n");
+	fprintf(stderr, "Status memory address: %p\n", inst->status);
 	for (i = 0; i < inst->rows * inst->cols; i++) {
 		printf("%s[%d,%d]: Status=%d\n", inst->name, i / inst->cols, i % inst->cols, inst->status[i]);
 		if (inst->status[i] == CALCULATED) {
@@ -85,6 +99,123 @@ void debug_print_subrange(subrange_p subrng) {
 	fprintf(stderr, "Dimensions: [%d,%d]\n", subrng->subrange_num_rows, subrng->subrange_num_cols);
 	fprintf(stderr, "Subrange of: \n");
 	debug_print_varinst(subrng->range);
+}
+
+void debug_print_index(struct rhs_index *idx) {
+	if (idx == NULL) {
+		fprintf(stderr, "I'd rather not try to print out the contents of a NULL index.\n");
+		exit(-1);
+	}
+	fprintf(stderr, "Index type: ");
+	switch(idx->rhs_index_type) {
+		case RHS_IDX_ABSOLUTE:
+			fprintf(stderr, "Absolute\n");
+			if (idx->val_of_expr == NULL) {
+				fprintf(stderr, "I wasn't expecting this, but the value pointer is NULL. Maybe there's a good reason for it, so I'll keep going...\n");
+			} else {
+				debug_print(idx->val_of_expr, "an absolute index");
+			}
+			break;
+		case RHS_IDX_RELATIVE:
+			fprintf(stderr, "Relative\n");
+			if (idx->val_of_expr == NULL) {
+				fprintf(stderr, "I wasn't expecting this, but the value pointer is NULL. Maybe there's a good reason for it, so I'll keep going...\n");
+			} else {
+				debug_print(idx->val_of_expr, "a relative index");
+			}
+			break;
+		case RHS_IDX_DIM_START:
+			fprintf(stderr, "DimensionStart\n");
+			if (idx->val_of_expr != NULL) {
+				fprintf(stderr, "This definitely isn't supposed to happen - the value pointer isn't NULL. You should look into that.\n");
+				exit(-1);
+			}
+			break;
+		case RHS_IDX_DIM_END:
+			fprintf(stderr, "DimensionEnd\n");
+			if (idx->val_of_expr != NULL) {
+				fprintf(stderr, "This definitely isn't supposed to happen - the value pointer isn't NULL. You should look into that.\n");
+				exit(-1);
+			}
+			break;
+	}
+}
+
+void debug_print_slice(struct rhs_slice *sl) {
+	if (sl == NULL) {
+		fprintf(stderr, "I'd rather not try to print out the contents of a NULL slice.\n");
+		exit(-1);
+	}
+	fprintf(stderr, "-------Everything about this slice------\n");
+	fprintf(stderr, "Start and end index memory addresses: %p and %p\n", sl->slice_start_index, sl->slice_end_index);
+	if (sl->slice_start_index != NULL) {
+		fprintf(stderr, "Start index info:\n");
+		debug_print_index(sl->slice_start_index);
+		if (sl->slice_end_index != NULL) {
+			fprintf(stderr, "End index info:\n");
+			debug_print_index(sl->slice_end_index);
+		}
+	}	else {
+		if (sl->slice_end_index != NULL) {
+			fprintf(stderr, "Start index is NULL but end index is not NULL. That should never happen.\n");
+			fprintf(stderr, "Attempting to print contents anyway:\n");
+			fflush(stderr);
+			debug_print_index(sl->slice_end_index);
+		}
+	}
+}
+
+void debug_print_selection(struct rhs_selection *sel) {
+	if (sel == NULL) {
+		fprintf(stderr, "I'd rather not try to print out the contents of a NULL selection.\n");
+		exit(-1);
+	}
+	fprintf(stderr, "-------Everything about this selection------\n");
+	fprintf(stderr, "Slice memory addresses: %p and %p\n", sel->slice1, sel->slice2);
+	if (sel->slice1 != NULL) {
+		fprintf(stderr, "Slice 1 info:\n");
+		debug_print_slice(sel->slice1);
+		if (sel->slice2 != NULL) {
+			fprintf(stderr, "Slice 2 info:\n");
+			debug_print_slice(sel->slice2);
+		}
+	}	else {
+		if (sel->slice2 != NULL) {
+			fprintf(stderr, "Slice 1 is NULL but slice 2 is not NULL. That should never happen.\n");
+			fprintf(stderr, "Attempting to print contents anyway:\n");
+			fflush(stderr);
+			debug_print_slice(sel->slice2);
+		}
+	}
+	fprintf(stderr, "-------That's all I've got about that selection------\n\n");
+}
+
+int rg_eq(value_p val1, value_p val2) {
+	int res = 1;
+	if(val1->flags != val2->flags) res = 0;
+	else if(val1->flags == FLAG_EMPTY) ;
+	else if(val1->flags == FLAG_NUMBER && val1->numericVal != val2->numericVal) res = 0;
+	else if(val1->flags == FLAG_STRING && strcmp(val1->str->text, val2->str->text)) res = 0;
+	else if(val1->flags == FLAG_SUBRANGE) {
+		subrange_p sr1 = val1->subrange;
+		subrange_p sr2 = val2->subrange;
+		if(sr1->subrange_num_cols != sr2->subrange_num_cols || sr1->subrange_num_rows != sr2->subrange_num_rows) {
+			return 0;
+		} else {
+			int i, j;
+			value_p v1, v2;
+			for(i = 0; i < sr1->subrange_num_rows; i++) {
+				for(j = 0; j < sr1->subrange_num_cols; j++) {
+					v1 = getValSR(sr1, i, j);
+					v2 = getValSR(sr2, i, j);
+					if(rg_eq(v1, v2) == 0) {
+						return 0;
+					}
+				}
+			}
+		}
+	}
+	return res;
 }
 
 void incStack() {
@@ -179,6 +310,9 @@ void null_init(struct ExtendScope *scope_ptr) {
 }
 
 int getIntFromOneByOne(struct ExtendScope *scope_ptr, int varnum) {
+	if (!scope_ptr->defns[varnum].isOneByOne) {
+		fprintf(stderr, "The variable you claimed (%s) was one by one is not defined that way.\n", scope_ptr->defns[varnum].name);
+	}
 	struct var_instance *inst = get_variable(scope_ptr, varnum);
 	if (inst->rows != 1 || inst->cols != 1) {
 		fprintf(stderr, "The variable you claimed (%s) was one by one is actually %d by %d.\n", inst->name, inst->rows, inst->cols);
@@ -215,7 +349,7 @@ struct var_instance *instantiate_variable(struct ExtendScope *scope_ptr, struct 
 	inst->formulas = malloc(sizeof(struct ResolvedFormula) * inst->numFormulas);
 	//debug_print_vardefn(&def);
 	//debug_print_varinst(inst);
-	int i;
+	int i, j;
 	for(i = 0; i < inst->numFormulas; i++) {
 
 		// Set the formula function pointer to the pointer from the definition
@@ -244,6 +378,9 @@ struct var_instance *instantiate_variable(struct ExtendScope *scope_ptr, struct 
 				inst->formulas[i].rowEnd = inst->rows;
 			} else {
 				inst->formulas[i].rowEnd = getIntFromOneByOne(scope_ptr, def.formulas[i].rowEnd_varnum);
+				if (inst->formulas[i].rowEnd < 0) {
+					inst->formulas[i].rowEnd += inst->rows;
+				}
 			}
 			if(def.formulas[i].fromFirstCol) {
 				inst->formulas[i].colStart = 0;
@@ -262,6 +399,23 @@ struct var_instance *instantiate_variable(struct ExtendScope *scope_ptr, struct 
 				inst->formulas[i].colEnd = inst->cols;
 			} else {
 				inst->formulas[i].colEnd = getIntFromOneByOne(scope_ptr, def.formulas[i].colEnd_varnum);
+				if (inst->formulas[i].colEnd < 0) {
+					inst->formulas[i].colEnd += inst->cols;
+				}
+			}
+		}
+	}
+
+	for (i = 1; i < inst->numFormulas; i++) {
+		for (j = 0; j < i; j++) {
+			int intersectRowStart = (inst->formulas[i].rowStart > inst->formulas[j].rowStart) ? inst->formulas[i].rowStart : inst->formulas[j].rowStart;
+			int intersectColStart = (inst->formulas[i].colStart > inst->formulas[j].colStart) ? inst->formulas[i].colStart : inst->formulas[j].colStart;
+			int intersectRowEnd = (inst->formulas[i].rowEnd < inst->formulas[j].rowEnd) ? inst->formulas[i].rowEnd : inst->formulas[j].rowEnd;
+			int intersectColEnd = (inst->formulas[i].colEnd < inst->formulas[j].colEnd) ? inst->formulas[i].colEnd : inst->formulas[j].colEnd;
+			if (intersectRowEnd > intersectRowStart && intersectColEnd > intersectColStart) {
+				fprintf(stderr, "Runtime error: Multiple formulas were assigned to %s[%d:%d,%d:%d].\n", inst->name,
+												intersectRowStart, intersectRowEnd, intersectColStart, intersectColEnd);
+				exit(-1);
 			}
 		}
 	}
@@ -370,7 +524,9 @@ value_p clone_value(value_p old_value) {
 		case FLAG_SUBRANGE:
 			new_value->subrange = (subrange_p) malloc(sizeof(struct subrange_t));
 			memcpy(new_value->subrange, old_value->subrange, sizeof(struct subrange_t));
-			new_value->subrange->range->closure->refcount++; /* Not sure about this one */
+			if (new_value->subrange->range->closure != NULL) {
+				new_value->subrange->range->closure->refcount++; /* Not sure about this one */
+			}
 			break;
 		default:
 			fprintf(stderr, "clone_value(%p): Illegal value of flags: %c\n", old_value, new_value->flags);
@@ -425,8 +581,163 @@ value_p deref_subrange_p(subrange_p subrng) {
 		new_value->str = NULL;
 		new_value->subrange = (subrange_p) malloc (sizeof(struct subrange_t));
 		memcpy(new_value->subrange, subrng, sizeof(struct subrange_t));
+		new_value->subrange->range->closure->refcount++;
 		return new_value;
 	}
+}
+
+char resolve_rhs_index(struct rhs_index *index, int dimension_len, int dimension_cell_num, int *result_ptr) {
+	if (index == NULL) {
+		fprintf(stderr, "Exiting - asked to dereference a NULL index\n");
+		exit(-1);
+	}
+	int i;
+	switch(index->rhs_index_type) {
+		case RHS_IDX_ABSOLUTE:
+			if (!assertSingleNumber(index->val_of_expr)) return false;
+			i = (int) lrint(index->val_of_expr->numericVal);
+			if (i >= 0) {
+				*result_ptr = i;
+			} else {
+				*result_ptr = i + dimension_len;
+			}
+			return true;
+			break;
+		case RHS_IDX_RELATIVE:
+			if (!assertSingleNumber(index->val_of_expr)) return false;
+			*result_ptr = dimension_cell_num + (int) lrint(index->val_of_expr->numericVal);
+			return true;
+			break;
+		case RHS_IDX_DIM_START:
+			*result_ptr = 0;
+			return true;
+			break;
+		case RHS_IDX_DIM_END:
+			*result_ptr = dimension_len;
+			return true;
+			break;
+		default:
+			fprintf(stderr, "Exiting - illegal index type\n");
+			exit(-1);
+			break;
+	}
+}
+
+char resolve_rhs_slice(struct rhs_slice *slice, int dimension_len, int dimension_cell_num, int *start_ptr, int *end_ptr) {
+	char start_success, end_success;
+	if (slice == NULL) {
+		fprintf(stderr, "Exiting - asked to dereference a NULL slice\n");
+		exit(-1);
+	}
+	if (slice->slice_start_index == NULL) {
+		if (slice->slice_end_index != NULL) {
+			fprintf(stderr, "Exiting - illegal slice\n");
+			exit(-1);
+		}
+		if (dimension_len == 1) {
+			*start_ptr = 0;
+			*end_ptr = 1;
+			return true;
+		} else {
+			*start_ptr = dimension_cell_num;
+			*end_ptr = dimension_cell_num + 1;
+			return true;
+		}
+	} else {
+		start_success = resolve_rhs_index(slice->slice_start_index, dimension_len, dimension_cell_num, start_ptr);
+		if (!start_success) return false;
+		if (slice->slice_end_index == NULL) {
+			*end_ptr = *start_ptr + 1;
+			return true;
+		} else {
+			end_success = resolve_rhs_index(slice->slice_end_index, dimension_len, dimension_cell_num, end_ptr);
+			return end_success;
+		}
+	}
+}
+
+value_p extract_selection(value_p expr, struct rhs_selection *sel, int r, int c) {
+	int expr_rows, expr_cols;
+	struct subrange_t subrange;
+	struct rhs_slice *row_slice_p, *col_slice_p;
+	int row_start, row_end, col_start, col_end;
+	char row_slice_success, col_slice_success;
+
+	if (expr == NULL || sel == NULL) {
+		fprintf(stderr, "Exiting - asked to extract a selection using a NULL pointer.\n");
+		exit(-1);
+	}
+	switch(expr->flags) {
+		case FLAG_EMPTY:
+			return new_val();
+			break;
+		case FLAG_NUMBER: case FLAG_STRING:
+			expr_rows = 1;
+			expr_cols = 1;
+			break;
+		case FLAG_SUBRANGE:
+			expr_rows = expr->subrange->subrange_num_rows;
+			expr_cols = expr->subrange->subrange_num_cols;
+			break;
+		default:
+			fprintf(stderr, "Exiting - invalid value type\n");
+			exit(-1);
+			break;
+	}
+	if (sel->slice1 == NULL) {
+		if (sel->slice2 != NULL) {
+			fprintf(stderr, "Exiting - illegal selection\n");
+			exit(-1);
+		}
+		row_slice_p = &corresponding_cell;
+		col_slice_p = &corresponding_cell;
+	} else {
+		if (sel->slice2 == NULL) {
+			if (expr_rows == 1) {
+				row_slice_p = &zero_to_one;
+				col_slice_p = sel->slice1;
+			} else if (expr_cols == 1) {
+				row_slice_p = sel->slice1;
+				col_slice_p = &zero_to_one;
+			} else {
+				return new_val();
+/*			Alternately:
+				fprintf(stderr, "Runtime error: Only given one slice for a value with multiple rows and multiple columns\n");
+				debug_print(expr);
+				exit(-1); */
+			}
+		} else {
+			row_slice_p = sel->slice1;
+			col_slice_p = sel->slice2;
+		}
+	}
+	row_slice_success = resolve_rhs_slice(row_slice_p, expr_rows, r, &row_start, &row_end);
+	col_slice_success = resolve_rhs_slice(col_slice_p, expr_cols, c, &col_start, &col_end);
+	if (!row_slice_success || !col_slice_success) return new_val();
+	if (row_start < 0) row_start = 0;
+	if (col_start < 0) col_start = 0;
+	if (row_end > expr_rows) row_end = expr_rows;
+	if (col_end > expr_cols)  col_end = expr_cols;
+	if (row_end <= row_start || col_end <= col_start) return new_val();
+	if (expr->flags == FLAG_NUMBER || expr->flags == FLAG_STRING) {
+		/* You would have thought we could figure this out a lot further up
+		 * in the code, but had to be sure that (row_start, row_end, col_start, col_end)
+		 * actually ended up as (0, 1, 0, 1) */
+		return clone_value(expr);
+	} else {
+		subrange.range = expr->subrange->range;
+		subrange.base_var_offset_row = expr->subrange->base_var_offset_row + row_start;
+		subrange.base_var_offset_col = expr->subrange->base_var_offset_col + col_start;
+		subrange.subrange_num_rows = row_end - row_start;
+		subrange.subrange_num_cols = col_end - col_start;
+		return deref_subrange_p(&subrange);
+	}
+}
+
+value_p getValSR(struct subrange_t *sr, int r, int c) {
+	if(sr->subrange_num_rows <= r || sr->subrange_num_cols <= c || r < 0 || c < 0)
+		return new_val();
+	return getVal(sr->range, r + sr->base_var_offset_row, c + sr->base_var_offset_col);
 }
 
 value_p getVal(struct var_instance *inst, int r, int c) {
@@ -456,7 +767,7 @@ value_p getVal(struct var_instance *inst, int r, int c) {
 			if (inst->values[cell_number] == NULL) {
 				fprintf(stderr, "Supposedly, %s[%d,%d] was already calculated, but there is a null pointer there.\n", inst->name, r, c);
 				fprintf(stderr, "Attempting to print contents of the variable instance where this occurred:\n");
-				fflush(stdout);
+				fflush(stderr);
 				debug_print_varinst(inst);
 				exit(-1);
 			}
@@ -464,7 +775,7 @@ value_p getVal(struct var_instance *inst, int r, int c) {
 		default:
 			fprintf(stderr, "Unrecognized cell status %d (row %d, col %d)!\n", cell_status, r, c);
 			fprintf(stderr, "Attempting to print contents of the variable instance where this occurred:\n");
-			fflush(stdout);
+			fflush(stderr);
 			debug_print_varinst(inst);
 			exit(-1);
 			break;

@@ -20,6 +20,8 @@ extern "stdlib.o" {
   ceil(val);
   fabs(val);
   floor(val);
+  isNaN(val);
+  isInfinite(val);
   get_stdin();
   get_stdout();
   get_stderr();
@@ -33,3 +35,85 @@ extern "stdlib.o" {
 global STDIN := get_stdin();
 global STDOUT := get_stdout();
 global STDERR := get_stderr();
+
+print_endline(val) {
+  return write(STDOUT, to_string(val) + "\n");
+}
+
+transpose([m,n] rng) {
+  [n,m] ret := rng[column(),row()];
+  return ret;
+}
+
+isNumber(x) {
+  return typeof(x) == "Number";
+}
+
+isEmpty(x) {
+  return typeof(x) == "Empty";
+}
+
+sum_column([m,1] rng) {
+  [m,1] running_sum;
+  running_sum[0,0] = #rng;
+  running_sum[1:,0] = running_sum[[-1]] + #rng;
+  return running_sum[-1];
+}
+
+sum_row([1,n] rng) {
+  return sum_column(transpose(rng));
+}
+
+sum([m,n] rng) {
+  /* Returns the sum of the values in the range, skipping any values that are non-numeric */
+  [m,n] numbers := isNumber(#rng) ? #rng : 0;
+  [1,n] column_sums := sum_column(numbers[:,]);
+  return sum_row(column_sums);
+}
+
+nmax(n1, n2) {
+  return switch {
+    case isNumber(n1) && isNumber(n2):
+      n1 > n2 ? n1 : n2;
+    case isNumber(n1):
+      n1;
+    case isNumber(n2):
+      n2;
+    default:
+      empty;
+  };
+}
+
+max_column([m,1] rng) {
+  [m,1] running_max;
+  running_max[0,0] = #rng;
+  running_max[1:,0] = nmax(running_max[[-1]], #rng);
+  return running_max[-1];
+}
+
+max_row(rng) {
+  return max_column(transpose(rng));
+}
+
+max([m,n] rng) {
+  /* Returns the sum of the values in the range, skipping any values that are non-numeric */
+  [m,n] numbers := isNumber(#rng) ? #rng : empty;
+  [1,n] column_maxs := max_column(rng[:,]);
+  return max_row(column_maxs);
+}
+
+colRange(start, end) {
+  [end-start, 1] ret;
+  ret[0,0] = start;
+  ret[1:,0] = ret[[-1]] + 1;
+  return ret;
+}
+
+match([num_rows, 1] list, val) {
+  [num_rows, 1] amt_to_add, final_index;
+  amt_to_add[0,0] = val == #list ? 0 : 1;
+  amt_to_add[1:,0] = (amt_to_add[[-1]] == 0 || val == #list) ? 0 : 1;
+  final_index[0,0] = 0;
+  final_index[1:,0] = final_index[[-1]] + amt_to_add[[-1]];
+  return amt_to_add[-1] == 0 ? final_index[-1] : empty;
+}

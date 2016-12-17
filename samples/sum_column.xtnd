@@ -1,5 +1,5 @@
 isNumber(x) {
-  return type(x) == "Number";
+  return typeof(x) == "Number";
 }
 
 sum_column([m,1] rng) {

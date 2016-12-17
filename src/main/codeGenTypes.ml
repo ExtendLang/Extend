@@ -2,7 +2,6 @@ type something = {
   var_instance_t : Llvm.lltype;
   subrange_t : Llvm.lltype;
   resolved_formula_t : Llvm.lltype;
-  status_t : Llvm.lltype;
   value_t : Llvm.lltype;
   dimensions_t : Llvm.lltype;
   var_defn_t : Llvm.lltype;
@@ -17,7 +16,6 @@ type something = {
   var_instance_p : Llvm.lltype;
   subrange_p : Llvm.lltype;
   resolved_formula_p : Llvm.lltype;
-  status_p : Llvm.lltype;
   value_p : Llvm.lltype;
   extend_scope_p : Llvm.lltype;
   string_p : Llvm.lltype;
@@ -33,6 +31,12 @@ type something = {
   char_p_p : Llvm.lltype;
   (*void_p : Llvm.lltype;*)
   float_t : Llvm.lltype;
+  rhs_index_t : Llvm.lltype;
+  rhs_slice_t : Llvm.lltype;
+  rhs_selection_t : Llvm.lltype;
+  rhs_index_p : Llvm.lltype;
+  rhs_slice_p : Llvm.lltype;
+  rhs_selection_p : Llvm.lltype;
 };;
 
 type scope_field_type = VarDefn | VarInst | VarNum | ScopeRefCount | FunctionParams
@@ -91,6 +95,12 @@ let var_instance_field_index = function
   | Values -> 5
   | Status -> 6
 
+type var_instance_status_flags = NeverExamined | Calculated | InProgress
+let var_instance_status_flags_index = function
+    NeverExamined -> 0
+  | Calculated -> 2
+  | InProgress -> 4
+
 type subrange_field = BaseRangePtr | BaseOffsetRow | BaseOffsetCol | SubrangeRows | SubrangeCols
 let subrange_field_index = function
     BaseRangePtr -> 0
@@ -110,6 +120,28 @@ let string_field_index = function
   | StringLen -> 1
   | StringRefCount -> 2
 
+type rhs_index_field = RhsExprVal | RhsIndexType
+let rhs_index_field_index = function
+    RhsExprVal -> 0
+  | RhsIndexType -> 1
+
+type rhs_index_type_flags = RhsIdxAbs | RhsIdxRel | RhsIdxDimStart | RhsIdxDimEnd
+let rhs_index_type_flags_const = function
+    RhsIdxAbs -> 0
+  | RhsIdxRel -> 1
+  | RhsIdxDimStart -> 2
+  | RhsIdxDimEnd -> 4 (* No 3 *)
+
+type rhs_slice_field = RhsSliceStartIdx | RhsSliceEndIdx
+let rhs_slice_field_index = function
+    RhsSliceStartIdx -> 0
+  | RhsSliceEndIdx -> 1
+
+type rhs_selection_field = RhsSelSlice1 | RhsSelSlice2
+let rhs_selection_field_index = function
+    RhsSelSlice1 -> 0
+  | RhsSelSlice2 -> 1
+
 let setup_types ctx =
   let var_instance_t = Llvm.named_struct_type ctx "var_instance" (*Range struct is a 2D Matrix of values*)
   and subrange_t = Llvm.named_struct_type ctx "subrange" (*Subrange is a wrapper around a range to cut cells*)
@@ -122,7 +154,6 @@ let setup_types ctx =
   and void_t = Llvm.void_type ctx (**)
   and value_t = Llvm.named_struct_type ctx "value" (*Value encapsulates the content of a cell*)
   and dimensions_t = Llvm.named_struct_type ctx "dimensions" (**)
-  and status_t = Llvm.named_struct_type ctx "status" (*Status indicates how a cell must be treated*)
   and resolved_formula_t = Llvm.named_struct_type ctx "resolved_formula"
   and extend_scope_t = Llvm.named_struct_type ctx "extend_scope"
   and var_defn_t = Llvm.named_struct_type ctx "var_def"
@@ -133,26 +164,44 @@ let setup_types ctx =
   and resolved_formula_p = (Llvm.pointer_type resolved_formula_t)
   and subrange_p = (Llvm.pointer_type subrange_t)
   and value_p = (Llvm.pointer_type value_t)
-  and status_p = (Llvm.pointer_type status_t)
+  and value_p_p = (Llvm.pointer_type (Llvm.pointer_type value_t))
   and extend_scope_p = (Llvm.pointer_type extend_scope_t)
   and char_p = (Llvm.pointer_type char_t)
   and string_p = (Llvm.pointer_type string_t)
   and char_p_p = (Llvm.pointer_type (Llvm.pointer_type char_t))
   and string_p_p = (Llvm.pointer_type (Llvm.pointer_type string_t))
   and number_t = float_t
-  and formula_p = (Llvm.pointer_type formula_t)
+  and formula_p = (Llvm.pointer_type formula_t) in
+  let rhs_index_t = Llvm.named_struct_type ctx "rhs_index"
+  and rhs_slice_t = Llvm.named_struct_type ctx "rhs_slice"
+  and rhs_selection_t = Llvm.named_struct_type ctx "rhs_selection" in
+  let rhs_index_p = Llvm.pointer_type rhs_index_t
+  and rhs_slice_p = Llvm.pointer_type rhs_slice_t
+  and rhs_selection_p = Llvm.pointer_type rhs_selection_t
   (*and void_p = (Llvm.pointer_type void_t)*) in
   let var_instance_p_p = (Llvm.pointer_type var_instance_p)
   and formula_call_t = (Llvm.function_type value_p [|extend_scope_p(*scope*); int_t(*row*); int_t(*col*)|]) in
   let formula_call_p = Llvm.pointer_type formula_call_t in
+  let _ = Llvm.struct_set_body rhs_index_t (Array.of_list [
+      value_p (*val_of_expr*);
+      char_t (*rhs_index_type*);
+    ]) false in
+  let _ = Llvm.struct_set_body rhs_slice_t (Array.of_list [
+      rhs_index_p (*slice start index*);
+      rhs_index_p (*slice end index*);
+    ]) false in
+  let _ = Llvm.struct_set_body rhs_selection_t (Array.of_list [
+      rhs_slice_p (*first slice*);
+      rhs_slice_p (*second slice*);
+    ]) false in
   let _ = Llvm.struct_set_body var_instance_t (Array.of_list [
       int_t(*rows*);
       int_t(*columns*);
       int_t(*numFormulas*);
       resolved_formula_p(*formula with resolved dimensions*);
       extend_scope_p(*scope that contains all variables of a function*);
-      value_p(*2D array of cell values*);
-      status_p(*2D array of calculation status for each cell*);
+      value_p_p(*2D array of cell values*);
+      char_p(*2D array of calculation status for each cell*);
       char_p(*Name*);
     ]) false
   and _ = Llvm.struct_set_body var_defn_t (Array.of_list [
@@ -206,7 +255,6 @@ let setup_types ctx =
   {
     var_instance_t = var_instance_t;
     value_t = value_t;
-    status_t = status_t;
     subrange_t = subrange_t;
     resolved_formula_t = resolved_formula_t;
     dimensions_t = dimensions_t;
@@ -221,7 +269,6 @@ let setup_types ctx =
     var_instance_p = var_instance_p;
     subrange_p = subrange_p;
     value_p = value_p;
-    status_p = status_p;
     resolved_formula_p = resolved_formula_p;
     string_p = string_p;
     char_p = char_p;
@@ -240,5 +287,12 @@ let setup_types ctx =
     void_t = void_t;
     char_p_p = char_p_p;
     string_p_p = string_p_p;
+
+    rhs_index_t = rhs_index_t;
+    rhs_slice_t = rhs_slice_t;
+    rhs_selection_t = rhs_selection_t;
+    rhs_index_p = rhs_index_p;
+    rhs_slice_p = rhs_slice_p;
+    rhs_selection_p = rhs_selection_p;
     (*void_p = void_p;*)
   }

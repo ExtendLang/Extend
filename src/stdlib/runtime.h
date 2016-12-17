@@ -107,6 +107,25 @@ struct subrange_t {
 
 typedef struct subrange_t* subrange_p;
 
+#define RHS_IDX_ABSOLUTE 0
+#define RHS_IDX_RELATIVE 1
+#define RHS_IDX_DIM_START 2
+#define RHS_IDX_DIM_END 4
+
+struct rhs_index {
+	value_p val_of_expr;
+	char rhs_index_type;
+};
+
+struct rhs_slice {
+	struct rhs_index *slice_start_index;
+	struct rhs_index *slice_end_index;
+};
+
+struct rhs_selection {
+	struct rhs_slice *slice1;
+	struct rhs_slice *slice2;
+};
 
 string_p new_string(char *str);
 value_p box_value_string(string_p);
@@ -136,4 +155,5 @@ value_p clone_value(value_p old_value);
 void delete_string_p(string_p old_string);
 void delete_subrange_p(subrange_p old_subrange);
 void delete_value(value_p old_value);
+value_p getValSR(struct subrange_t *sr, int r, int c);
 value_p getVal(struct var_instance *inst, int x, int y);

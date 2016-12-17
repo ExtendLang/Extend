@@ -24,6 +24,10 @@ General header common to chart (xy[z]) and pie
 #define FALSE	0
 #endif
 
+#ifndef MAXFLOAT
+#define MAXFLOAT (9.999999999999999e999)
+#endif
+
 #define GDC_NOVALUE			-MAXFLOAT
 #define GDC_NULL			GDC_NOVALUE
 

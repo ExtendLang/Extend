@@ -1,4 +1,4 @@
-[1,1] main(args){
+main(args){
   foo := 5/5;
   bar := "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n"$5;
   return foo;

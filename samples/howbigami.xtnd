@@ -1,0 +1,4 @@
+main(args) {
+  [10] x;
+  return print_endline(size(x));
+}

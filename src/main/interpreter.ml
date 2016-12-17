@@ -372,37 +372,21 @@ and evaluate scope cell e =
 
 (*  LitRange of (expr list) list *)
   | Ternary(cond, true_exp, false_exp) -> raise(TransformedAway("Ternaries shouldn't be possible!"))
-      (* (match (evaluate scope cell cond) with
-        EmptyValue -> EmptyValue
-      | ExtendNumber(0) -> (evaluate scope cell false_exp)
-      | _ -> (evaluate scope cell true_exp)) *)
   | Switch(eo, cases, dflt) -> raise(TransformedAway("Switches shouldn't be possible!"))
-    (* let match_val = (match eo with
-       Some e -> (evaluate scope cell e)
-       | None -> ExtendNumber(1)) in
-       let is_expr_match e = (ExtendNumber(1) = (eval_binop Eq (match_val, (evaluate scope cell e)))) in
-       let is_match (exprs, _) = List.exists is_expr_match exprs in
-       (try
-       let matching_case = List.find is_match cases in
-       (evaluate scope cell (snd matching_case))
-       with Not_found -> (evaluate scope cell dflt)) *)
   | LitRange(_) -> raise(TransformedAway("Literal ranges shouldn't be possible!"))
   | Wild -> raise(TransformedAway("Wild shouldn't be possible!")))
 
 and get_val rg cell =
   match rg with
     InterpreterVariable(v) -> (
-      (* print_endline ("Looking for " ^ (*v.interpreter_variable_name ^ *) index_of_cell cell) ; *)
       let (value, color) = check_val v cell in match color with
         White ->
         v.values := CellMap.add cell (Uncalculated, Grey) !(v.values) ;
         let new_value = (evaluate v.interpreter_variable_scope cell (get_formula v cell)) in
-        (* print_endline ("Finished calculating " ^ v.interpreter_variable_name ^ index_of_cell cell) ; *)
         v.values := CellMap.add cell (new_value, Black) !(v.values) ; new_value
       | Grey -> let Cell(r, c) = cell in
         raise (Cyclic("[" ^ string_of_int r ^ "," ^ string_of_int c ^ "]"))
       | Black ->
-        (* print_endline ("Found " ^ v.interpreter_variable_name ^ index_of_cell cell) ;  *)
         value)
   | Subrange(sr) ->
     let Cell(cell_r, cell_c) = cell in

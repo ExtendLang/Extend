@@ -6,12 +6,49 @@ transpose([m,n] rng) {
   return ret;
 }
 
+flatten([m,n] rng) {
+  [1,m*n] ret := rng[floor(column()/n), column()%n];
+  return ret;
+}
+
 isNumber(x) {
   return typeof(x) == "Number";
 }
 
 isEmpty(x) {
   return typeof(x) == "Empty";
+}
+
+colRange(start, end) {
+  [end-start, 1] ret;
+  ret[0,0] = start;
+  ret[1:,0] = ret[[-1]] + 1;
+  return ret;
+}
+
+rowRange(start, end) {
+  return transpose(colRange(start,end));
+}
+
+match([num_rows, 1] list, val) {
+  [num_rows, 1] amt_to_add, final_index;
+  amt_to_add[0,0] = val == #list ? 0 : 1;
+  amt_to_add[1:,0] = (amt_to_add[[-1]] == 0 || val == #list) ? 0 : 1;
+  final_index[0,0] = 0;
+  final_index[1:,0] = final_index[[-1]] + amt_to_add[[-1]];
+  return amt_to_add[-1] == 0 ? final_index[-1] : empty;
+}
+
+bsearch([num_rows, 1] list, val) {
+  mid := (num_rows - 1) / 2;
+  return switch {
+    case list[mid] == val:
+      mid;
+    case list[mid] > val:
+      mid > 0 ? bsearch(list[:mid], val) : empty;
+    case list[mid] < val:
+      num_rows > 1 ? mid + 1 + bsearch(list[mid+1:], val) : empty;
+  };
 }
 
 sum_column([m,1] rng) {
@@ -29,46 +66,96 @@ sum([m,n] rng) {
 }
 
 nmax(n1, n2) {
-  return switch {
-    case isNumber(n1) && isNumber(n2):
-      n1 > n2 ? n1 : n2;
-    case isNumber(n1):
-      n1;
-    case isNumber(n2):
-      n2;
-    default:
-      empty;
-  };
+  return n1 > n2 ? n1 : n2;
 }
 
 max_column([m,1] rng) {
   [m,1] running_max;
   running_max[0,0] = #rng;
-  running_max[1:,0] = nmax(running_max[[-1]], #rng);
+  running_max[1:,0] = running_max[[-1]] > #rng ? running_max[[-1]] : #rng;
   return running_max[-1];
 }
 
 max([m,n] rng) {
-  /* Returns the sum of the values in the range, skipping any values that are non-numeric */
+  /* Returns the max of the values in the range, skipping any values that are non-numeric */
   [m,n] numbers := isNumber(#rng) ? #rng : empty;
   [1,n] column_maxs := max_column(rng[:,]);
   return max_column(transpose(column_maxs));
 }
 
-colRange(start, end) {
-  [end-start, 1] ret;
-  ret[0,0] = start;
-  ret[1:,0] = ret[[-1]] + 1;
-  return ret;
+nmin(n1, n2) {
+  return n1 < n2 ? n1 : n2;
 }
 
-match([num_rows, 1] list, val) {
-  [num_rows, 1] amt_to_add, final_index;
-  amt_to_add[0,0] = val == #list ? 0 : 1;
-  amt_to_add[1:,0] = (amt_to_add[[-1]] == 0 || val == #list) ? 0 : 1;
-  final_index[0,0] = 0;
-  final_index[1:,0] = final_index[[-1]] + amt_to_add[[-1]];
-  return amt_to_add[-1] == 0 ? final_index[-1] : empty;
+min_column([m,1] rng) {
+  [m,1] running_min;
+  running_min[0,0] = #rng;
+  running_min[1:,0] = running_min[[-1]] > #rng ? running_min[[-1]] : #rng;
+  return running_min[-1];
+}
+
+min([m,n] rng) {
+  /* Returns the min of the values in the range, skipping any values that are non-numeric */
+  [m,n] numbers := isNumber(#rng) ? #rng : empty;
+  [1,n] column_mins := min_column(rng[:,]);
+  return min_column(transpose(column_mins));
+}
+
+sign(arg) {
+  return switch {
+    case arg > 0: 1;
+    case arg < 0: -1;
+    case arg == 0: 0;
+  };
+}
+
+gcd(m, n) {
+  return (n == 0) ? m : gcd(n, m % n);
+}
+
+lcm(m, n) {
+  return m * n / gcd(m, n);
+}
+
+sumsq([m,n] rng) {
+  [m,n] squares := #rng * #rng;
+  return sum(squares);
+}
+
+sumproduct([m,n] rng1, [m,n] rng2) {
+  [m,n] products := #rng1 * #rng2;
+  return sum(products);
+}
+
+sumxmy2([m,n] rng1, [m,n] rng2) {
+  [m,n] diffs := #rng1 - #rng2;
+  return sumsq(diffs);
+}
+
+mmult([m,n] rng1, [n,p] rng2) {
+  [m,p] result := sumproduct(rng1[,:],transpose(rng2[:,]));
+  return result;
+}
+
+linest([p,q] known_ys, [p,q] known_xs) {
+  flat_ys := flatten(known_ys);
+  flat_xs := flatten(known_xs);
+
+  n := p * q;
+  S_x := sum(flat_xs);
+  S_y := sum(flat_ys);
+  S_xx := sumsq(flat_xs);
+  S_yy := sumsq(flat_ys);
+  S_xy := sumproduct(flat_xs, flat_ys);
+
+  beta1_hat := (n * S_xy - S_x*S_y)/(n*S_xx - S_x*S_x);
+  beta0_hat := S_y / n - beta1_hat * S_x / n;
+  [2,2] ret;
+  ret[0,0] = "Intercept estimate";
+  ret[0,1] = "Slope estimate";
+  ret[1,0] = beta0_hat;
+  ret[1,1] = beta1_hat;
+  return ret;
 }
 
 toUpper(text) {
@@ -120,14 +207,6 @@ toLiteral(arg) {
       "empty";
     case "Range":
       toRangeLiteral(arg);
-  };
-}
-
-sign(arg) {
-  return switch {
-    case arg > 0: 1;
-    case arg < 0: -1;
-    case arg == 0: 0;
   };
 }
 

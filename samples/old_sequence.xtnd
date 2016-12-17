@@ -15,7 +15,7 @@ main([1,n] args) {
     0;
 }
 
-[_,2] computeSequenceAlignment([m,1] seq1, [n,1] seq2,
+computeSequenceAlignment([m,1] seq1, [n,1] seq2,
   matchReward, mismatchPenalty, gapPenalty) {
 
   [m, n] scoreFromMatch, scoreFromLeft, scoreFromTop;

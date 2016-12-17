@@ -45,7 +45,6 @@ rule token = parse
 | '&'             { BITAND }
 | '|'             { BITOR }
 | '^'             { BITXOR }
-| '_'             { UNDERSCORE }
 | '+'             { PLUS }
 | '-'             { MINUS }
 | '*'             { TIMES }

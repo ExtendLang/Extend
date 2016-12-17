@@ -1,0 +1,14 @@
+foo(x) {
+  return 4;
+}
+
+global bar := foo(22,34);
+
+main(args) {
+  return switch {
+    case 3 == 4:
+      foo(3);
+    default:
+      17;
+  };
+}

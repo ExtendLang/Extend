@@ -294,5 +294,4 @@ let setup_types ctx =
     rhs_index_p = rhs_index_p;
     rhs_slice_p = rhs_slice_p;
     rhs_selection_p = rhs_selection_p;
-    (*void_p = void_p;*)
   }

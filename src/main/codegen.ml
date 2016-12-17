@@ -170,10 +170,10 @@ let translate (globals, functions, externs) =
         let ret_val = Llvm.build_malloc base_types.value_t "empty_ret_val" old_builder in
         let _ = store_empty ret_val old_builder in
         (ret_val, old_builder)
-      | Debug(e) ->
+      (* | Debug(e) ->
         let (ret_val, new_builder) = build_expr old_builder e in
         let _ = Llvm.build_call (Hashtbl.find runtime_functions "debug_print") [|ret_val; Llvm.const_pointer_null base_types.char_p|] "" new_builder in
-        (ret_val, new_builder)
+        (ret_val, new_builder) *)
       | Id(name) ->
         let create_and_deref_subrange appropriate_scope i =
           let llvm_var = Llvm.build_call getVar [|appropriate_scope; Llvm.const_int base_types.int_t i|] "llvm_var" old_builder in

@@ -68,7 +68,7 @@ let check_semantics (globals, functions, externs) =
       List.iter (fun a -> check_expr fname symbols a) args
     | Selection(e, (sl1, sl2)) -> check_expr fname symbols e ; check_slice fname symbols sl1 ; check_slice fname symbols sl2
     | Precedence(e1, e2) -> check_expr fname symbols e1 ; check_expr fname symbols e2
-    | Debug(e) -> check_expr fname symbols e;
+    (* | Debug(e) -> check_expr fname symbols e; *)
     | LitInt(_) | LitFlt(_) | LitRange(_) | LitString(_) | Empty -> ()
   and check_case fname symbols (conds, e) = List.iter (fun c -> check_expr fname symbols c) conds ; check_expr fname symbols e
   and check_slice fname symbols = function

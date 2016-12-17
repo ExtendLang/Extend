@@ -165,11 +165,16 @@ let expand_expressions (imports, globals, functions, externs) =
     let new_retval = Id(new_retval_id) in
     let retval_inits = [Varinit (one_by_one, [(new_retval_id, None)]);
                         Assign (new_retval_id, zero_comma_zero, Some (snd f.ret_val))] in
+    let new_assert_id = idgen (f.name ^ "_assert") in
+    let add_assert al a = BinOp(al, LogAnd, a) in
+    let new_assert_expr = List.fold_left add_assert (LitInt(1)) assertions in
+    let assert_inits = [Varinit (one_by_one, [(new_assert_id, None)]);
+                        Assign (new_assert_id, zero_comma_zero, Some new_assert_expr)] in
     {
       name = f.name;
       params = f.params;
-      raw_asserts = assertions;
-      body = new_sizevars @ size_inits @ retval_inits @ expand_stmt_list f.name f.body;
+      raw_asserts = [new_assert_expr];
+      body = new_sizevars @ size_inits @ retval_inits @ assert_inits @ expand_stmt_list f.name f.body;
       ret_val = (fst f.ret_val, new_retval)
     } in
   (imports, expand_stmt_list "global" globals, List.map expand_function functions, externs);;

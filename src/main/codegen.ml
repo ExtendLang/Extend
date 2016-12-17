@@ -43,6 +43,7 @@ let create_runtime_functions ctx bt the_module =
   add_runtime_func "deref_subrange_p" bt.value_p [|bt.subrange_p|];
   add_runtime_func "debug_print_selection" (Llvm.void_type ctx) [|bt.rhs_selection_p|];
   add_runtime_func "extract_selection" bt.value_p [|bt.value_p; bt.rhs_selection_p; bt.int_t; bt.int_t|];
+  add_runtime_func "box_command_line_args" bt.value_p [|bt.int_t; bt.char_p_p|];
   ()
 
 let translate (globals, functions, externs) =
@@ -1082,8 +1083,8 @@ let translate (globals, functions, externs) =
   let _ = Llvm.build_ret_void literal_bod in
   let _ = Llvm.build_call init_def [||] "" main_bod in
   let _ = Llvm.build_call literal_def [||] "" main_bod in
-  let inp = Llvm.build_alloca base_types.value_t "input_arg" main_bod in
-  let _ = Llvm.build_call extend_entry_point (Array.of_list [inp]) "" main_bod in
+  let cmd_line_args = Llvm.build_call (Hashtbl.find runtime_functions "box_command_line_args") [|Llvm.param main_def 0; Llvm.param main_def 1|] "cmd_line_args" main_bod in
+  let _ = Llvm.build_call extend_entry_point [|cmd_line_args|] "" main_bod in
   let _ = Llvm.build_ret (Llvm.const_int base_types.int_t 0) main_bod in
 
   base_module

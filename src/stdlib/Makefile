@@ -1,7 +1,7 @@
 GD_PLOT	= ../../lib/gdchart0.94b
 CC	= clang
 
-all: ../../stdlib.o ../../runtime.o
+all: ../../stdlib.o ../../runtime.o $(GD_PLOT)/plot.a
 
 ../../stdlib.o:
 	$(CC) -o stdlib.o -c lib.c
@@ -9,8 +9,8 @@ all: ../../stdlib.o ../../runtime.o
 ../../runtime.o:
 	$(CC) -o runtime.o -c runtime.c
 
-$(GD_LIB)/plot.a:
-	cd $(GD_LIB); make
+$(GD_PLOT)/plot.a:
+	cd $(GD_PLOT); make all
 
 clean:
 	rm -f ../../*.o

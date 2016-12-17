@@ -1,11 +1,5 @@
-extern "lib/gdchart0.94b/gdc.o" {
-  xxx1();
-}
-extern "lib/gdchart0.94b/gdchart.o" {
-  xxx2();
-}
-extern "lib/gdchart0.94b/price_conv.o" {
-  xxx3();
+extern "lib/gdchart0.94b/plotter.a" {
+  xx();
 }
 extern "stdlib.o" {
   plot(a);

@@ -4,7 +4,8 @@ GD_LIB   = gd1.3
 
 CC=gcc
 
-all: gdc_samp1 gdc_samp2 gdc_pie_samp
+all: price_conv.o gdc.o gdc_pie.o gdchart.o $(GD_LIB)/libgd.a plotter.a
+#all: gdc_samp1 gdc_samp2 gdc_pie_samp
 
 # compile the samples
 #gdc_samp1: gdc.o gdchart.o price_conv.o gdc_samp1.o $(GD_LIB)/libgd.a
@@ -40,6 +41,9 @@ gdchart.o: $(GDC_INCL)/gdc.h $(GDC_INCL)/gdchart.h gdchart.c
 
 $(GD_LIB)/libgd.a:
 	cd $(GD_LIB) ; make -f Makefile libgd.a
+
+plotter.a: price_conv.o gdc.o gdc_pie.o gdchart.o
+	ar rc plotter.a price_conv.o gdc.o gdc_pie.o gdchart.o 
 
 # --- clean ---
 clean:

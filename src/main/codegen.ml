@@ -1,22 +1,12 @@
 (* Extend code generator *)
 
 open Ast
+open Semant
 open CodeGenTypes
 exception NotImplemented
-exception LogicError of string
-
-type symbol = LocalVariable of int | GlobalVariable of int | FunctionParameter of int | ExtendFunction of int
-and  symbolTable = symbol StringMap.t
-and  symbolTableType = Locals | Globals | ExtendFunctions
 
 let helper_functions = Hashtbl.create 10
 let runtime_functions = Hashtbl.create 20
-
-let index_map table_type m =
-  let add_item key _ (accum_map, accum_idx) =
-    let index_val = match table_type with Locals -> LocalVariable(accum_idx) | Globals -> GlobalVariable(accum_idx) | ExtendFunctions -> ExtendFunction(accum_idx) in
-    (StringMap.add key index_val accum_map, accum_idx + 1) in
-  StringMap.fold add_item m (StringMap.empty, 0)
 
 let (=>) struct_ptr elem = (fun val_name builder ->
     let the_pointer = Llvm.build_struct_gep struct_ptr elem "the_pointer" builder in
@@ -1079,12 +1069,7 @@ let translate (globals, functions, externs) =
 
   let build_function fname (fn_def, fn_llvalue) =
     (* Build the symbol table for this function *)
-    let (local_indices, num_locals) = index_map Locals fn_def.func_body in
-    let add_param (st, idx) param_name =
-      let new_st = StringMap.add param_name (FunctionParameter(idx)) st in
-      (new_st, idx + 1) in
-    let (params_and_globals, _) = List.fold_left add_param (global_symbols, 0) (List.map snd fn_def.func_params) in
-    let symbols = StringMap.fold StringMap.add local_indices params_and_globals in
+    let symbols = create_symbol_table global_symbols fn_def in
     let fn_idx = match StringMap.find fname extend_fn_numbers with ExtendFunction(i) -> i | _ -> raise(LogicError(fname ^ " not in function table")) in
     let builder = Llvm.builder_at_end context (Llvm.entry_block fn_llvalue) in
     let static_location_ptr = Llvm.build_in_bounds_gep array_of_vardefn_ptrs [|Llvm.const_int base_types.int_t 0; Llvm.const_int base_types.int_t fn_idx|] (fname ^ "_global_defn_ptr") init_bod in

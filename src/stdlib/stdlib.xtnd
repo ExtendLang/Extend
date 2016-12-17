@@ -30,6 +30,8 @@ extern "stdlib.o" {
   read(file_handle, num_bytes);
   readline(file_handle);
   write(file_handle, buffer);
+  toASCII(val);
+  fromASCII(val);
 }
 
 global STDIN := get_stdin();

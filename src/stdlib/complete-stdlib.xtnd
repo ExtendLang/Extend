@@ -1,3 +1,6 @@
+global rounding_cutoff := 1e-7;
+global digits_after_decimal := 6;
+
 transpose([m,n] rng) {
   [n,m] ret := rng[column(),row()];
   return ret;
@@ -18,15 +21,11 @@ sum_column([m,1] rng) {
   return running_sum[-1];
 }
 
-sum_row([1,n] rng) {
-  return sum_column(transpose(rng));
-}
-
 sum([m,n] rng) {
   /* Returns the sum of the values in the range, skipping any values that are non-numeric */
   [m,n] numbers := isNumber(#rng) ? #rng : 0;
   [1,n] column_sums := sum_column(numbers[:,]);
-  return sum_row(column_sums);
+  return sum_column(transpose(column_sums));
 }
 
 nmax(n1, n2) {
@@ -49,15 +48,11 @@ max_column([m,1] rng) {
   return running_max[-1];
 }
 
-max_row(rng) {
-  return max_column(transpose(rng));
-}
-
 max([m,n] rng) {
   /* Returns the sum of the values in the range, skipping any values that are non-numeric */
   [m,n] numbers := isNumber(#rng) ? #rng : empty;
   [1,n] column_maxs := max_column(rng[:,]);
-  return max_row(column_maxs);
+  return max_column(transpose(column_maxs));
 }
 
 colRange(start, end) {
@@ -96,4 +91,94 @@ left(str, num_chars) {
 
 right(str, num_chars) {
   return fromASCII(toASCII(str)[-num_chars:]);
+}
+
+substring(str, start, length) {
+  return fromASCII(toASCII(str)[start:start+length]);
+}
+
+concatRow([1,n] cells, joiner) {
+  [1,n] accum;
+  accum[0,0] = #cells;
+  accum[0,1:] = accum[[-1]] + joiner + #cells;
+  return accum[-1];
+}
+
+toRangeLiteral([m,n] rng) {
+  [m,n] strings := toLiteral(#rng);
+  [m,1] rows := concatRow(strings[,:], ", ");
+  return "{" + concatRow(transpose(rows), ";\n") + "}";
+}
+
+toLiteral(arg) {
+  return switch(typeof(arg)) {
+    case "Number":
+      toString(arg);
+    case "String":
+      "\"" + arg + "\"";
+    case "Empty":
+      "empty";
+    case "Range":
+      toRangeLiteral(arg);
+  };
+}
+
+sign(arg) {
+  return switch {
+    case arg > 0: 1;
+    case arg < 0: -1;
+    case arg == 0: 0;
+  };
+}
+
+repeat(str, num) {
+  [1,num] copies := str;
+  return concatRow(copies,"");
+}
+
+stringOfPositiveInteger(arg) {
+  num_digits := 1 + floor(log10(arg));
+  [1,num_digits] digits := floor(arg/10**(num_digits-1-column())) % 10;
+  [1,num_digits] ascii_digits := 48 + #digits;
+  return fromASCII(ascii_digits);
+}
+
+padLeft(str, pad_char, total_length) {
+  existing_length := len(str);
+  padding := repeat(pad_char, total_length - len(str));
+  return existing_length < total_length ? (padding + str) : str;
+}
+
+toString(arg) {
+  positive_arg := fabs(arg);
+  integer_part := round(positive_arg, 0);
+  is_integral_enough := fabs(arg-integer_part) < rounding_cutoff;
+  floating_part := round(10 ** digits_after_decimal * (positive_arg - floor(positive_arg)),0);
+  positive_part := stringOfPositiveInteger(positive_arg) + (is_integral_enough ? "" : "." + padLeft(stringOfPositiveInteger(floating_part), "0", digits_after_decimal));
+
+  return switch(typeof(arg)) {
+    case "Number":
+      switch {
+        case isNaN(arg):
+          "NaN";
+        case isInfinite(arg) == -1:
+          "-Inf";
+        case isInfinite(arg) == 1:
+          "Inf";
+        case sign(arg) == 0:
+          "0";
+        case sign(arg) == 1:
+            positive_part;
+        case sign(arg) == -1:
+          "-" + positive_part;
+        default:
+          "Encountered a number that is neither NaN, +Inf, -Inf, 0, positive or negative";
+      };
+    case "String":
+      arg;
+    case "Empty":
+      "empty";
+    case "Range":
+      toRangeLiteral(arg);
+  };
 }

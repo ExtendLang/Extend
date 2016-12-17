@@ -190,6 +190,34 @@ void debug_print_selection(struct rhs_selection *sel) {
 	fprintf(stderr, "-------That's all I've got about that selection------\n\n");
 }
 
+int rg_eq(value_p val1, value_p val2) {
+	int res = 1;
+	if(val1->flags != val2->flags) res = 0;
+	else if(val1->flags == FLAG_EMPTY) ;
+	else if(val1->flags == FLAG_NUMBER && val1->numericVal != val2->numericVal) res = 0;
+	else if(val1->flags == FLAG_STRING && strcmp(val1->str->text, val2->str->text)) res = 0;
+	else if(val1->flags == FLAG_SUBRANGE) {
+		subrange_p sr1 = val1->subrange;
+		subrange_p sr2 = val2->subrange;
+		if(sr1->subrange_num_cols != sr2->subrange_num_cols || sr1->subrange_num_rows != sr2->subrange_num_rows) {
+			return 0;
+		} else {
+			int i, j;
+			value_p v1, v2;
+			for(i = 0; i < sr1->subrange_num_rows; i++) {
+				for(j = 0; j < sr1->subrange_num_cols; j++) {
+					v1 = getValSR(sr1, i, j);
+					v2 = getValSR(sr2, i, j);
+					if(rg_eq(v1, v2) == 0) {
+						return 0;
+					}
+				}
+			}
+		}
+	}
+	return res;
+}
+
 void incStack() {
 	const rlim_t kStackSize = 64L * 1024L * 1024L;
 	struct rlimit rl;

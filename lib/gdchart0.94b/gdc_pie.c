@@ -1,7 +1,6 @@
 /* GDCHART 0.94b  GDC_PIE.C  12 Nov 1998 */
 
 #include <stdio.h>
-#include <values.h>
 #include <math.h>
 
 #define GDC_INCL

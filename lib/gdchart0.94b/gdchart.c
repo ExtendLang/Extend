@@ -3,7 +3,6 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <values.h>
 #include <math.h>
 #include <string.h>
 #include <stdarg.h>
@@ -18,7 +17,8 @@
 #define HIGHSET		0
 #define LOWSET		1
 #define CLOSESET	2
-
+#define MAXSHORT	32767
+#define MAXINT		2147483647
 // scaled translation onto graph
 #define PX( x )		(int)( xorig + (setno*xdepth_3D) + (x)*xscl )
 #define PY( y )		(int)( yorig - (setno*ydepth_3D) + (y)*yscl )

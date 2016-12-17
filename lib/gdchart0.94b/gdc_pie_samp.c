@@ -4,7 +4,6 @@
 /*  vi: :set tabstop=4 */
 
 #include <stdio.h>
-#include <values.h>
 #include <math.h>
 
 #include "gdc.h"

@@ -3,7 +3,6 @@
 #include<math.h>
 #include<string.h>
 #include<stdbool.h>
-#include <values.h>
 #include "../../lib/gdchart0.94b/gdc.h"
 #include "../../lib/gdchart0.94b/gdchart.h"
 /* #include <sys/time.h> */

@@ -13,7 +13,6 @@
 */
 
 #include <stdio.h>
-#include <values.h>
 
 #include "gdc.h"
 #include "gdchart.h"

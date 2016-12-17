@@ -133,3 +133,11 @@ toLower(text) {
   [val_s[0],val_s[1]] result := #val >= 65 && #val <= 90 ? #val + 32 : #val;
   return fromASCII(result);
 }
+
+left(str, num_chars) {
+  return fromASCII(toASCII(str)[:num_chars]);
+}
+
+right(str, num_chars) {
+  return fromASCII(toASCII(str)[num_chars+1:]);
+}

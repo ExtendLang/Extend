@@ -1,5 +1,5 @@
 import "src/stdlib/complete-stdlib.xtnd";
 
 main(args) {
-  return print_endline(toLower("Hello"));
+  return print_endline(toLower(right("HELLOWORLD",3)));
 }

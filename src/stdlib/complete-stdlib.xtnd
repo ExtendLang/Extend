@@ -95,5 +95,5 @@ left(str, num_chars) {
 }
 
 right(str, num_chars) {
-  return fromASCII(toASCII(str)[num_chars+1:]);
+  return fromASCII(toASCII(str)[-num_chars:]);
 }

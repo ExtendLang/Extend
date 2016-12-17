@@ -1,0 +1,6 @@
+main(args) {
+  [3,3] foo, bar;
+  foo[0,0] = bar;
+  bar[0,0] = foo;
+  return print_endline(bar);
+}

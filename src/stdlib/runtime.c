@@ -233,13 +233,6 @@ double setNumeric(value_p result, double val) {
 	return (result->numericVal = val);
 }
 
-char* setString(value_p result, char *str, int length) {
-	result->flags = FLAG_STRING;
-	result->str = malloc(sizeof(struct string_t));
-  result->str->length = length;
-	return (result->str->text = str);
-}
-
 double setFlag(value_p result, double flag_num) {
 	return (result->flags = flag_num);
 }

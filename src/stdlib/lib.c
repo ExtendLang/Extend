@@ -44,13 +44,12 @@ value_p extend_to_string(value_p val) {
 				sprintf(converted_str, "%f", possible_num);
 			}
 			value_p result = new_string(converted_str);
+			free(converted_str);
 			return result;
 		}
 		else if(assertSingleString(val)) return val;
 		else if(val->flags == FLAG_EMPTY) {
- 			value_p _new = new_val();
- 			setString(_new, "empty", 5);
- 			return _new;
+ 			return new_string("empty");
  		}
 		else if(val->flags == FLAG_SUBRANGE) {
 			int i,j,len;
@@ -86,9 +85,9 @@ value_p extend_to_string(value_p val) {
 				}
 			}
 			*result = '}';
-			value_p ret_val = new_val();
-			setString(ret_val, res, len);
-			return ret_val;
+			value_p v = new_string(res);
+			free(res);
+			return v;
 		} else {
 			__builtin_unreachable();
 		}
@@ -118,6 +117,11 @@ value_p extend_round(value_p num, value_p number_of_digits) {
 	if (!assertSingleNumber(num) || !assertSingleNumber(number_of_digits)) return new_val();
 	double factor_of_10 = pow(10,number_of_digits->numericVal);
 	return new_number(rint(num->numericVal * factor_of_10) / factor_of_10);
+}
+
+value_p extend_len(value_p str_val) {
+	if (!assertSingleString(str_val)) return new_val();
+	return new_number((double) str_val->str->length);
 }
 
 value_p extend_get_stdin() {
@@ -284,29 +288,33 @@ value_p extend_toASCII(value_p val) {
 }
 
 value_p extend_fromASCII(value_p val) {
-	value_p result = new_val();
 	if(val->flags == FLAG_NUMBER) {
-		char xxx = ((char)lrint(val->numericVal));
-		setString(result, &xxx, 1);
+		char s[2];
+		s[0] = ((char)lrint(val->numericVal));
+		s[1] = '\0';
+		return new_string(s);
 	}
 	else if(val->flags == FLAG_SUBRANGE) {
 		int rows, cols, len;
 		rows = val->subrange->subrange_num_rows;
 		cols = val->subrange->subrange_num_cols;
-		if(rows > 1 && cols > 1) return result;
-		else len = rows == 1 ? cols : rows;
-		char *text = malloc(sizeof(char) * len);
+		if(rows > 1 && cols > 1) return new_val();
+		else len = (rows == 1 ? cols : rows);
+		char *text = malloc(1 + sizeof(char) * len);
 		for(rows = 0; rows < val->subrange->subrange_num_rows; rows++) {
 			for(cols = 0; cols < val->subrange->subrange_num_cols; cols++) {
 				value_p single = getValSR(val->subrange, rows, cols);
 				if(single->flags != FLAG_NUMBER) {
 					free(text);
-					return result;
+					return new_val();
 				}
 				text[rows + cols] = (char)lrint(single->numericVal);
 			}
 		}
-		setString(result, text, len);
+		text[len] = '\0';
+		value_p ret = new_string(text);
+		free(text);
+		return ret;
 	}
-	return result;
+	return new_val();
 }

@@ -864,19 +864,17 @@ let translate (globals, functions, externs) =
     let var_defns_loc = Llvm.build_in_bounds_gep array_of_vardefn_ptrs [|Llvm.const_int base_types.int_t 0; Llvm.const_int base_types.int_t fn_idx|] (fname ^ "_local_defn_ptr") builder in
 
     let scope_obj = build_scope_obj fname symbols fn_def.func_body static_location_ptr var_defns_loc (List.length fn_def.func_params) builder in
+    let get_special_val special_name = function
+        Id(s) -> (match (try StringMap.find s symbols with Not_found -> raise(LogicError("Something went wrong with your semantic analysis - " ^ s ^ " not found"))) with
+            LocalVariable(i) ->
+            let llvm_var = Llvm.build_call getVar [|scope_obj; Llvm.const_int base_types.int_t i|] (special_name ^ "_var") builder in
+            Llvm.build_call getVal [|llvm_var; Llvm.const_int base_types.int_t 0; Llvm.const_int base_types.int_t 0|] (special_name ^ "_val") builder
+          | _ -> raise(TransformedAway("Error in " ^ fname ^ ": The " ^ special_name ^ " value should always have been transformed into a local variable")))
+      | _ -> raise(TransformedAway("Error in " ^ fname ^ ": The " ^ special_name ^ " value should always have been transformed into a local variable")) in
 
-    let ret = snd fn_def.func_ret_val in
-    match ret with
-      Id(name) ->
-      (
-        match (try StringMap.find name symbols with Not_found -> raise(LogicError("Something went wrong with your semantic analysis - " ^ name ^ " not found"))) with
-          LocalVariable(i) ->
-          let llvm_var = Llvm.build_call getVar [|scope_obj; Llvm.const_int base_types.int_t i|] "return_variable" builder in
-          let llvm_retval = Llvm.build_call getVal [|llvm_var; Llvm.const_int base_types.int_t 0; Llvm.const_int base_types.int_t 0|] "return_value" builder in
-          ignore (Llvm.build_ret llvm_retval builder)
-        | _ -> print_endline (string_of_expr ret); raise(TransformedAway("Error in " ^ fname ^ ": The return value should always have been transformed into a local variable"))
-      )
-    | _ -> print_endline (string_of_expr ret); raise(TransformedAway("Error in " ^ fname ^ ": The return value should always have been transformed into a local variable")) in
+    let assert_val = get_special_val "assert" (List.hd fn_def.func_asserts) in
+    let ret_val = get_special_val "return" (snd fn_def.func_ret_val) in
+    let _ = Llvm.build_ret ret_val builder in () in
   (* End of build_function *)
 
   (* Build the global scope object *)

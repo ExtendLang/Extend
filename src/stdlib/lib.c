@@ -294,3 +294,45 @@ value_p extend_isInfinite(value_p val) {
 		return new_number(0.0);
 	}
 }
+
+value_p extend_toASCII(value_p val) {
+	if (!assertSingleString(val)) return new_val();
+	value_p *val_arr = malloc(sizeof(value_p) * val->str->length);
+	int i;
+	for(i = 0; i < val->str->length; i++) {
+		value_p my_val = malloc(sizeof(struct value_t));
+		my_val->flags = FLAG_NUMBER;
+		my_val->numericVal = (double)val->str->text[i];
+		val_arr[i] = my_val;
+	}
+	value_p _new = new_subrange(1,val->str->length, val_arr);
+	return _new;
+}
+
+value_p extend_fromASCII(value_p val) {
+	value_p result = new_val();
+	if(val->flags == FLAG_NUMBER) {
+		char xxx = ((char)lrint(val->numericVal));
+		setString(result, &xxx, 1);
+	}
+	else if(val->flags == FLAG_SUBRANGE) {
+		int rows, cols, len;
+		rows = val->subrange->subrange_num_rows;
+		cols = val->subrange->subrange_num_cols;
+		if(rows > 1 && cols > 1) return result;
+		else len = rows == 1 ? cols : rows;
+		char *text = malloc(sizeof(char) * len);
+		for(rows = 0; rows < val->subrange->subrange_num_rows; rows++) {
+			for(cols = 0; cols < val->subrange->subrange_num_cols; cols++) {
+				value_p single = getValSR(val->subrange, rows, cols);
+				if(single->flags != FLAG_NUMBER) {
+					free(text);
+					return result;
+				}
+				text[rows + cols] = (char)lrint(single->numericVal);
+			}
+		}
+		setString(result, text, len);
+	}
+	return result;
+}

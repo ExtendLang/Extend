@@ -9,7 +9,6 @@ type expr     = LitInt of int |
                 LitRange of (expr list) list |
                 Id of string |
                 Empty |
-                Wild |
                 BinOp of expr * op * expr |
                 UnOp of unop * expr |
                 Ternary of expr * expr * expr |
@@ -62,7 +61,7 @@ type formula  = {
   formula_expr: expr;
 }
 
-type dim_expr = DimInt of int
+type dim_expr = DimOneByOne
               | DimId of string
 
 type variable = {
@@ -123,7 +122,6 @@ let rec string_of_expr = function
   | LitRange(rowlist) ->  "{\"LitRange\": " ^ string_of_list (Rows rowlist) ^ "}"
   | Id(s) ->              "{\"Id\": " ^ quote_string s ^ "}"
   | Empty ->              "\"Empty\""
-  | Wild ->               "\"Wild\""
   | BinOp(e1, o, e2) ->   "{\"BinOp\": {" ^
                             "\"expr1\": " ^ string_of_expr e1 ^ ", " ^
                             "\"operator\": " ^ string_of_op o ^ ", " ^
@@ -217,7 +215,7 @@ and string_of_library (Library(lib_name, lib_fns)) =
   "\"ExternalFunctions\": " ^ string_of_list (Externs lib_fns) ^ "}"
 
 and string_of_dimexpr = function
-    DimInt(i) -> string_of_int i
+    DimOneByOne -> "1"
   | DimId(s) -> quote_string s
 
 and string_of_formula f =

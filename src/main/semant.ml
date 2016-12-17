@@ -69,7 +69,7 @@ let check_semantics (globals, functions, externs) =
     | Selection(e, (sl1, sl2)) -> check_expr fname symbols e ; check_slice fname symbols sl1 ; check_slice fname symbols sl2
     | Precedence(e1, e2) -> check_expr fname symbols e1 ; check_expr fname symbols e2
     | Debug(e) -> check_expr fname symbols e;
-    | LitInt(_) | LitFlt(_) | LitRange(_) | LitString(_) | Empty | Wild -> ()
+    | LitInt(_) | LitFlt(_) | LitRange(_) | LitString(_) | Empty -> ()
   and check_case fname symbols (conds, e) = List.iter (fun c -> check_expr fname symbols c) conds ; check_expr fname symbols e
   and check_slice fname symbols = function
       None -> ()
@@ -85,8 +85,7 @@ let check_semantics (globals, functions, externs) =
     check_index fname symbols f.formula_col_end ;
     check_expr fname symbols f.formula_expr in
   let check_dim fname symbols = function
-      DimInt(1) -> ()
-    | DimInt(i) -> raise(IllegalExpression("This is not going to work right"))
+      DimOneByOne -> ()
     | DimId(s) -> check_expr fname symbols (Id(s)) in
   let check_variable fname symbols v =
     check_dim fname symbols v.var_rows ;

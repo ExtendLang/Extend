@@ -1,3 +1,5 @@
+import "src/stdlib/complete-stdlib.xtnd";
+
 main(args) {
-  return print_endline(fromASCII(toASCII("Hello")));
+  return print_endline(toLower("Hello"));
 }

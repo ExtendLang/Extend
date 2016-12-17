@@ -44,7 +44,7 @@ let expand_file include_stdlib filename =
   expand_imports
     StringSet.empty [] [] []
     (Filename.dirname filename)
-    (if include_stdlib then [("src/stdlib/stdlib.xtnd", false); (filename, true)] else [(filename, true)])
+    (if include_stdlib then [(filename, true); ("src/stdlib/stdlib.xtnd", false)] else [(filename, true)])
 
 let expand_expressions (imports, globals, functions, externs) =
   let lit_zero = LitInt(0) in let abs_zero = Abs(lit_zero) in

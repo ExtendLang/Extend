@@ -1,6 +1,8 @@
+import "src/stdlib/complete-stdlib.xtnd";
+
 main(args) {
   welcome := "NBA True Shooting Percentage\n----------------------------";
-  data := {"James Harden", 2376, 1617, 837;"Kobe Bryant", 1161, 1113, 281;"Andre Drummond", 1314, 1060, 586;"Stephen Curry", 2375, 1598, 400;"Kevin Durant", 2029, 1381, 498;"Russell WestBrook", 1878, 1444, 573;"Chris Paul", 1446, 1114, 328;"Lebron James", 1920, 1416, 491;"Carmelo Anthony", 1573, 1307, 403;"Klay Thompson", 1771, 1386, 221};
+  data := parseString(read(open("tsp_data","r"),0));
 
   // Calculates TSP for each player
   [10,2] players;

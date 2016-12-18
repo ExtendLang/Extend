@@ -21,6 +21,8 @@ extern "stdlib.a" {
   fabs(val);
   floor(val);
   isNaN(val);
+  len(str);
+  round(val, number_of_digits);
   isInfinite(val);
   get_stdin();
   get_stdout();

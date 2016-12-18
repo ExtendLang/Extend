@@ -233,13 +233,6 @@ double setNumeric(value_p result, double val) {
 	return (result->numericVal = val);
 }
 
-char* setString(value_p result, char *str, int length) {
-	result->flags = FLAG_STRING;
-	result->str = malloc(sizeof(struct string_t));
-  result->str->length = length;
-	return (result->str->text = str);
-}
-
 double setFlag(value_p result, double flag_num) {
 	return (result->flags = flag_num);
 }
@@ -755,6 +748,17 @@ value_p getVal(struct var_instance *inst, int r, int c) {
 		case NEVER_EXAMINED:
 			inst->status[cell_number] = IN_PROGRESS;
 			inst->values[cell_number] = calcVal(inst, r, c);
+			if (inst->values[cell_number]->flags == FLAG_SUBRANGE) {
+				int i, j;
+				for (i = 0; i < inst->values[cell_number]->subrange->subrange_num_rows; i++) {
+					for (j = 0; j < inst->values[cell_number]->subrange->subrange_num_cols; j++) {
+						/* Prevent sneaky circular references */
+						getVal(inst->values[cell_number]->subrange->range,
+									 i + inst->values[cell_number]->subrange->base_var_offset_row,
+								   j + inst->values[cell_number]->subrange->base_var_offset_col);
+					}
+				}
+			}
 			inst->status[cell_number] = CALCULATED;
 			break;
 		case IN_PROGRESS:

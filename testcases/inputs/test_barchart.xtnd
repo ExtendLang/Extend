@@ -1,0 +1,6 @@
+main(args){
+	vals := {4;5;6;7};
+	labels := {"four", "five", "six", "seven"};
+	handle := open("barchart.png", "w");
+	return bar_chart(handle, labels, vals);
+}

@@ -1,4 +1,4 @@
-extern "../stdlib.a" {
+extern "stdlib.a" {
   current_hour();
   print(whatever, text);
   printv(whatever, text);
@@ -32,6 +32,8 @@ extern "../stdlib.a" {
   write(file_handle, buffer);
   toASCII(val);
   fromASCII(val);
+  plot(val);
+  bar_chart(file_handle, labels, vals);
 }
 
 global STDIN := get_stdin();

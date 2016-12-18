@@ -1,20 +1,20 @@
 GD_PLOT	= ../../lib/gdchart0.94b
 CC	= clang
 
-all: ../../stdlib.o ../../runtime.o $(GD_PLOT)/plot.a ../../stdlib.a
+all: stdlib.o runtime.o ../../stdlib.a
 
-../../stdlib.a: ../../stdlib.o $(GD_PLOT)/plot.a
-	ar rc ../../stdlib.a ../../stdlib.o $(GD_PLOT)/price_conv.o $(GD_PLOT)/gdc.o $(GD_PLOT)/gdc_pie.o $(GD_PLOT)/gdchart.o 
+../../stdlib.a: runtime.o stdlib.o
+	cd $(GD_PLOT) ; make all
+	ar rc ../../stdlib.a *.o $(GD_PLOT)/*.o $(GD_PLOT)/gd1.3/*.o
 
-../../stdlib.o:
-	$(CC) -o ../../stdlib.o -c lib.c
+stdlib.o:
+	$(CC) -o stdlib.o -c lib.c
 
-../../runtime.o:
-	$(CC) -o ../../runtime.o -c runtime.c
-
-$(GD_PLOT)/plot.a:
-	cd $(GD_PLOT); make all
+runtime.o:
+	$(CC) -o runtime.o -c runtime.c
 
 clean:
 	rm -f ../../*.o
-	cd $(GD_PLOT) ; make -f makefile clean
+	rm -f *.o
+	rm -f ../../stdlib.a
+	make -C $(GD_PLOT) -f makefile clean

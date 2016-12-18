@@ -24,16 +24,12 @@ counteri=0
 countern=0
 result=0
 
-$COMPILER -c -o ./$TMP_DIR/stdlib.o src/stdlib/lib.c
+make -C src/stdlib
 if [ $? -ne 0 ]; then
-	rm stdlib.o;
+	make -C src/stdlib clean
 	exit -1;
 fi
-$COMPILER -c -o ./$TMP_DIR/runtime.o src/stdlib/runtime.c
-if [ $? -ne 0 ]; then
-	rm stdlib.o runtime.o
-	exit -1;
-fi
+cp stdlib.a $TMP_DIR/stdlib.a
 
 for f in $(ls $TESTDIR/$REGRESSION); do
   counter=$((counter+1))
@@ -94,8 +90,8 @@ for f in $(ls $TESTDIR/$INPUTS); do
   fi
 done
 
-rm ./$TMP_DIR/stdlib.o
-rm ./$TMP_DIR/runtime.o
+rm ./$TMP_DIR/stdlib.a
+make -C src/stdlib clean
 
 echo "Passed $counterc of $counter compiler testcases"
 echo "$countern new testcases passed, $result regression tests failed"

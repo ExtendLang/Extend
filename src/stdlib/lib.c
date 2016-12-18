@@ -319,7 +319,7 @@ value_p extend_line_chart(value_p file_handle, value_p labels, value_p values){
 	GDC_LineColor = 0x000000L;
 	GDC_SetColor  = &(sc[0]);
 	GDC_stack_type = GDC_STACK_BESIDE;
-	out_graph(250, 200, f, GDC_3DBAR, data_length, graph_labels, 1, graph_values);
+	out_graph(250, 200, f, GDC_LINE, data_length, graph_labels, 1, graph_values);
 	// width, height, file handle, graph type, number of data points, labels, number of data sets, the data sets
 	free(graph_labels);
 	free(graph_values);

@@ -37,6 +37,7 @@ extern "stdlib.a" {
   plot(val);
   bar_chart(file_handle, labels, vals);
   line_chart(file_handle, labels, x_vals);
+  parseFloat(val);
 }
 
 global STDIN := get_stdin();

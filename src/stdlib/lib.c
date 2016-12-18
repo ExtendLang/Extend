@@ -360,8 +360,13 @@ value_p extend_isInfinite(value_p val) {
 	}
 }
 
-value_p extend_toASCII(value_p val) {
+value_p extend_parseFloat(value_p val) {
 	if (!assertSingleString(val)) return new_val();
+	return new_number(atof(val->str->text));
+}
+
+value_p extend_toASCII(value_p val) {
+	if (!assertSingleString(val) || val->str->length == 0) return new_val();
 	value_p *val_arr = malloc(sizeof(value_p) * val->str->length);
 	int i;
 	for(i = 0; i < val->str->length; i++) {
@@ -402,6 +407,9 @@ value_p extend_fromASCII(value_p val) {
 		value_p ret = new_string(text);
 		free(text);
 		return ret;
+	} else if (val->flags == FLAG_EMPTY) {
+		return new_string("");
+	} else {
+		return new_val();
 	}
-	return new_val();
 }

@@ -300,7 +300,6 @@ value_p extend_bar_chart(value_p file_handle, value_p labels, value_p values){
 }
 
 value_p extend_line_chart(value_p file_handle, value_p labels, value_p values){
-	// Mandates 1 row, X columns
 	if(!assertSingleNumber(file_handle)) return new_val();
 	int fileNum = (int)file_handle->numericVal;
 	if (fileNum > open_num_files || open_files[fileNum] == NULL)  return new_val();
@@ -319,7 +318,7 @@ value_p extend_line_chart(value_p file_handle, value_p labels, value_p values){
 	GDC_LineColor = 0x000000L;
 	GDC_SetColor  = &(sc[0]);
 	GDC_stack_type = GDC_STACK_BESIDE;
-	out_graph(250, 200, f, GDC_LINE, data_length, graph_labels, 1, graph_values);
+	out_graph(250, 200, f, GDC_LINE, data_length, graph_labels, 2, graph_values, graph_values);
 	// width, height, file handle, graph type, number of data points, labels, number of data sets, the data sets
 	free(graph_labels);
 	free(graph_values);

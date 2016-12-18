@@ -272,20 +272,19 @@ value_p extend_plot(value_p file_name){
 }
 
 value_p extend_bar_chart(value_p file_handle, value_p labels, value_p values){
+	// Mandates 1 row, X columns
 	if(!assertSingleNumber(file_handle)) return new_val();
-	// if(!assertSingleNumber(min_y_val)) return new_val();
-	// if(!assertSingleNumber(max_y_val)) return new_val();
 	int fileNum = (int)file_handle->numericVal;
 	if (fileNum > open_num_files || open_files[fileNum] == NULL)  return new_val();
 	FILE *f = open_files[fileNum];
-	int data_length = labels->subrange->subrange_num_rows;
-	if(data_length != values->subrange->subrange_num_rows) return new_val();
+	int data_length = labels->subrange->subrange_num_cols;
+	if(data_length != values->subrange->subrange_num_cols) return new_val();
 
-	double *graph_values = malloc(sizeof(double) * data_length);
+	double *graph_values = malloc(sizeof(double) * (data_length+1));
 	char **graph_labels = malloc(sizeof(char*) * data_length);
 	for(int i = 0; i < data_length; i++){
-		graph_labels[i] = getValSR(labels->subrange, i, 0)->str->text;
-		graph_values[i] = getValSR(values->subrange, i, 0)->numericVal;
+		graph_labels[i] = getValSR(labels->subrange, 0, i)->str->text;
+		graph_values[i] = getValSR(values->subrange, 0, i)->numericVal;
 	}
 	unsigned long sc[2] = {0xFF8080, 0x8080FF};
 	GDC_BGColor   = 0xFFFFFFL;

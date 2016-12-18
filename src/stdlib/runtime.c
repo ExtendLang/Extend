@@ -302,23 +302,22 @@ void null_init(struct ExtendScope *scope_ptr) {
 		scope_ptr->vars[i] = NULL;
 }
 
-int getIntFromOneByOne(struct ExtendScope *scope_ptr, int varnum) {
+char getIntFromOneByOne(struct ExtendScope *scope_ptr, int varnum, int *result) {
 	if (!scope_ptr->defns[varnum].isOneByOne) {
-		fprintf(stderr, "The variable you claimed (%s) was one by one is not defined that way.\n", scope_ptr->defns[varnum].name);
+		fprintf(stderr, "A variable (%s) that is supposedly one by one is not defined that way.\n", scope_ptr->defns[varnum].name);
+		exit(-1);
 	}
 	struct var_instance *inst = get_variable(scope_ptr, varnum);
 	if (inst->rows != 1 || inst->cols != 1) {
-		fprintf(stderr, "The variable you claimed (%s) was one by one is actually %d by %d.\n", inst->name, inst->rows, inst->cols);
-		debug_print_varinst(inst);
+		fprintf(stderr, "A variable (%s) that is defined as one by one is somehow actually %d by %d.\n", inst->name, inst->rows, inst->cols);
 		exit(-1);
 	}
 	value_p val = getVal(inst, 0, 0);
-	if (!assertSingleNumber(val)) {
-		fprintf(stderr, "The variable you claimed (%s) was a number isn't.\n", inst->name);
-		debug_print(val, inst->name);
-		exit(-1);
+	if (!assertSingleNumber(val) || !isfinite(val->numericVal)) {
+		return 0;
 	}
-	return (int) lrint(val->numericVal);
+	*result = (int) lrint(val->numericVal);
+	return 1;
 }
 
 struct var_instance *instantiate_variable(struct ExtendScope *scope_ptr, struct var_defn def) {
@@ -327,8 +326,18 @@ struct var_instance *instantiate_variable(struct ExtendScope *scope_ptr, struct 
 		inst->rows = 1;
 		inst->cols = 1;
 	} else {
-		inst->rows = getIntFromOneByOne(scope_ptr, def.rows_varnum);
-		inst->cols = getIntFromOneByOne(scope_ptr, def.cols_varnum);
+		if (!getIntFromOneByOne(scope_ptr, def.rows_varnum, &inst->rows)) {
+			fprintf(stderr, "EXITING - The expression for the number of rows of variable %s did not evaluate to a finite Number.\n", def.name);
+			exit(-1);
+		}
+		if (!getIntFromOneByOne(scope_ptr, def.cols_varnum, &inst->cols)) {
+			fprintf(stderr, "EXITING - The expression for the number of columns of variable %s did not evaluate to a finite Number.\n", def.name);
+			exit(-1);
+		}
+		if (inst->rows <= 0 || inst->cols <= 0) {
+			fprintf(stderr, "EXITING - The requested dimensions for variable %s were [%d, %d]; they must both be greater than zero.\n", def.name, inst->rows, inst->cols);
+			exit(-1);
+		}
 	}
 	// TODO: do the same thing for each FormulaFP to turn an ExtendFormula into a ResolvedFormula
 	inst->numFormulas = def.numFormulas;
@@ -357,7 +366,10 @@ struct var_instance *instantiate_variable(struct ExtendScope *scope_ptr, struct 
 			if(def.formulas[i].fromFirstRow) {
 				inst->formulas[i].rowStart = 0;
 			} else {
-				inst->formulas[i].rowStart = getIntFromOneByOne(scope_ptr, def.formulas[i].rowStart_varnum);
+				if (!getIntFromOneByOne(scope_ptr, def.formulas[i].rowStart_varnum, &inst->formulas[i].rowStart)) {
+					fprintf(stderr, "EXITING - The requested starting row for formula %d of %s did not evaluate to a finite number.\n", i, inst->name);
+					exit(-1);
+				}
 				if (inst->formulas[i].rowStart < 0) {
 					inst->formulas[i].rowStart += inst->rows;
 				}
@@ -370,7 +382,10 @@ struct var_instance *instantiate_variable(struct ExtendScope *scope_ptr, struct 
 			} else if (def.formulas[i].toLastRow) {
 				inst->formulas[i].rowEnd = inst->rows;
 			} else {
-				inst->formulas[i].rowEnd = getIntFromOneByOne(scope_ptr, def.formulas[i].rowEnd_varnum);
+				if (!getIntFromOneByOne(scope_ptr, def.formulas[i].rowEnd_varnum, &inst->formulas[i].rowEnd)) {
+					fprintf(stderr, "EXITING - The requested ending row for formula %d of %s did not evaluate to a finite number.\n", i, inst->name);
+					exit(-1);
+				}
 				if (inst->formulas[i].rowEnd < 0) {
 					inst->formulas[i].rowEnd += inst->rows;
 				}
@@ -378,7 +393,10 @@ struct var_instance *instantiate_variable(struct ExtendScope *scope_ptr, struct 
 			if(def.formulas[i].fromFirstCol) {
 				inst->formulas[i].colStart = 0;
 			} else {
-				inst->formulas[i].colStart = getIntFromOneByOne(scope_ptr, def.formulas[i].colStart_varnum);
+				if (!getIntFromOneByOne(scope_ptr, def.formulas[i].colStart_varnum, &inst->formulas[i].colStart)) {
+					fprintf(stderr, "EXITING - The requested starting column for formula %d of %s did not evaluate to a finite number.\n", i, inst->name);
+					exit(-1);
+				}
 				if (inst->formulas[i].colStart < 0) {
 					inst->formulas[i].colStart += inst->cols;
 				}
@@ -391,7 +409,10 @@ struct var_instance *instantiate_variable(struct ExtendScope *scope_ptr, struct 
 			} else if (def.formulas[i].toLastCol) {
 				inst->formulas[i].colEnd = inst->cols;
 			} else {
-				inst->formulas[i].colEnd = getIntFromOneByOne(scope_ptr, def.formulas[i].colEnd_varnum);
+				if (!getIntFromOneByOne(scope_ptr, def.formulas[i].colEnd_varnum, &inst->formulas[i].colEnd)) {
+					fprintf(stderr, "EXITING - The requested starting column for formula %d of %s did not evaluate to a finite number.\n", i, inst->name);
+					exit(-1);
+				}
 				if (inst->formulas[i].colEnd < 0) {
 					inst->formulas[i].colEnd += inst->cols;
 				}

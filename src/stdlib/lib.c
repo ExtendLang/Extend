@@ -280,11 +280,11 @@ value_p extend_bar_chart(value_p file_handle, value_p labels, value_p values){
 	int data_length = labels->subrange->subrange_num_cols;
 	if(data_length != values->subrange->subrange_num_cols) return new_val();
 
-	double *graph_values = malloc(sizeof(double) * (data_length+1));
+	float *graph_values = malloc(sizeof(float) * data_length);
 	char **graph_labels = malloc(sizeof(char*) * data_length);
 	for(int i = 0; i < data_length; i++){
 		graph_labels[i] = getValSR(labels->subrange, 0, i)->str->text;
-		graph_values[i] = getValSR(values->subrange, 0, i)->numericVal;
+		graph_values[i] = (float)getValSR(values->subrange, 0, i)->numericVal;
 	}
 	unsigned long sc[2] = {0xFF8080, 0x8080FF};
 	GDC_BGColor   = 0xFFFFFFL;

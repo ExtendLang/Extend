@@ -17,7 +17,7 @@ main(args) {
   0.918412997810456, -0.913710797745198, 5.31009423509797;
   0.49167805300609, 0.655316971099496, 13.2801461760081;
   0.0834077184325143, 0.561511382973531, 19.3103956064858  };
-  return print_endline(toString(data));
+  return print_endline(stringOfPositiveInteger(0));
 //  return print_endline(datarows);
 //  string := toString(data);
 //  return

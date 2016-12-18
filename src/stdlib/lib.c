@@ -278,8 +278,8 @@ value_p extend_parseString(value_p val) {
 	 * of the grammar, but due to time constraints this will have
 	 * to serve as proof-of-concept and inspiration to the reader! */
 	if (!assertSingleString(val)) return new_val();
-	if (val->str->text[0] == '{' && val->str->text[val->str->length-1] == '}') {
-		int sublen = val->str->length - 2; /* -2 ='{','}' */
+	if (val->str->text[0] == '{') {
+		int sublen = val->str->length - 1; /* skip { */
 		char *copy = (char *) malloc (1 + sublen);
 		strcpy(copy, 1 + (char *) (val->str->text));
 		copy[sublen] = '\0';
@@ -302,7 +302,7 @@ value_p extend_parseString(value_p val) {
 			vals[i] = (double*) malloc (sizeof(double) * (num_commas[i] + 1));
 		}
 		i = 0; j = 0;
-		char *token = strtok(copy, ",;");
+		char *token = strtok(copy, ",;}");
 		double d;
 		while (token != NULL) {
 			d = atof(token);
@@ -312,7 +312,10 @@ value_p extend_parseString(value_p val) {
 				j = 0;
 				i++;
 			}
-			token = strtok(NULL,",;");
+			if (i > num_semis) {
+				break;
+			}
+			token = strtok(NULL,",;}");
 		}
 		value_p *val_ps = (value_p *) malloc(rows * cols * sizeof(value_p));
 		memset(val_ps, 0, rows * cols * sizeof(value_p));

@@ -31,9 +31,9 @@ calculate_tsp(pts,fga,fta) {
   return tsp;
 }
 
-highest_tsp(players) {
-  [10,1] tsp_ranking;
+highest_tsp([m,n] players) {
+  [m,1] tsp_ranking;
   tsp_ranking[0,0] = players[0,:];
   tsp_ranking[1:,:] = (players[[0],1] > tsp_ranking[[-1],0][1]) ?  players[[0],:] : tsp_ranking[[-1],0];
-  return tsp_ranking[9,0];
+  return tsp_ranking[m-1,0];
 }

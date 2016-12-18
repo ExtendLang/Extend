@@ -273,6 +273,25 @@ value_p extend_isInfinite(value_p val) {
 	}
 }
 
+value_p extend_parseString(value_p val) {
+	/* Should be done with yacc using the range literal subset
+	 * of the grammar, but this will have to serve as proof-of-concept
+	 * and inspiration to the reader! */
+	if (!assertSingleString(val)) return new_val();
+	printf("%s\n", val->str->text);
+	return new_val();
+//	if (val->str->text[0] == '{' && val->str->text[val->str->length-1] == '}') {
+//		char *copy = (char *) malloc (1 + val->str->length - 2); /* -2 = eliminating { and } */
+//		strcpy(copy, 1 + (char *) (val->str->text));
+//		printf("%s\n", val->str->text);
+//		copy[val->str->length-2] = '\0';
+//		printf("%s\n", copy);
+//		return new_val();
+//	} else {
+//		return new_number(atof(val->str->text));
+//	}
+}
+
 value_p extend_toASCII(value_p val) {
 	if (!assertSingleString(val)) return new_val();
 	value_p *val_arr = malloc(sizeof(value_p) * val->str->length);

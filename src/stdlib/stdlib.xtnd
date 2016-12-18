@@ -34,7 +34,7 @@ extern "stdlib.o" {
   write(file_handle, buffer);
   toASCII(val);
   fromASCII(val);
-  parseString(val);
+  parseFloat(val);
 }
 
 global STDIN := get_stdin();

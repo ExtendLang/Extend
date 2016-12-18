@@ -1,8 +1,6 @@
 LIB=stdlib.o
 RUNTIME=runtime.o
 COMPILER=clang
-#$COMPILER -c src/stdlib/lib.c -o $LIB
-#$COMPILER -c src/stdlib/runtime.c -o $RUNTIME
+make -C src/stdlib PLOT=1
 ./main.byte -cc $COMPILER -c $1 -l
-#rm $LIB
-#rm $RUNTIME
+make -C src/stdlib clean

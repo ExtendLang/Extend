@@ -262,6 +262,7 @@ value_p extend_write(value_p file_handle, value_p buffer){
 	return new_number((double) fileNum);
 }
 
+#ifdef PLOT
 value_p extend_plot(value_p file_name){
 	// extract the numerical values from the first parameter - values
 	if(!assertSingle(file_name)) return new_val();
@@ -333,6 +334,7 @@ value_p extend_line_chart(value_p file_handle, value_p labels, value_p x_values)
 	fclose(f);
 	return new_val();
 }
+#endif
 
 value_p extend_current_hour() {
 	time_t ltime;

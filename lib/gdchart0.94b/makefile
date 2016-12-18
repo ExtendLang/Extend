@@ -3,6 +3,7 @@ GD_INCL  = gd1.3
 GD_LIB   = gd1.3
 
 CC=gcc
+CCFLAGS=-w
 
 all: price_conv.o gdc.o gdc_pie.o gdchart.o $(GD_LIB)/libgd.a
 	
@@ -29,16 +30,16 @@ all: price_conv.o gdc.o gdc_pie.o gdchart.o $(GD_LIB)/libgd.a
 
 # --- compile the lib ---
 price_conv.o: price_conv.c
-	$(CC) -c price_conv.c
+	$(CC) $(CCFLAGS) -c price_conv.c
 
 gdc.o: gdc.c gdc.h
-	$(CC) -I$(GD_INCL) -I$(GDC_INCL) -c gdc.c
+	$(CC) $(CCFLAGS) -I$(GD_INCL) -I$(GDC_INCL) -c gdc.c
 
 gdc_pie.o: $(GDC_INCL)/gdc.h $(GDC_INCL)/gdcpie.h gdc_pie.c
-	$(CC) -I$(GD_INCL) -I$(GDC_INCL) -c gdc_pie.c
+	$(CC) $(CCFLAGS) -I$(GD_INCL) -I$(GDC_INCL) -c gdc_pie.c
 
 gdchart.o: $(GDC_INCL)/gdc.h $(GDC_INCL)/gdchart.h gdchart.c
-	$(CC) -I$(GD_INCL) -I$(GDC_INCL) -c gdchart.c
+	$(CC) $(CCFLAGS) -I$(GD_INCL) -I$(GDC_INCL) -c gdchart.c
 
 $(GD_LIB)/libgd.a:
 	cd $(GD_LIB) ; make all

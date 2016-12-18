@@ -1,0 +1,39 @@
+main(args) {
+  welcome := "NBA True Shooting Percentage\n----------------------------";
+  data := {"James Harden", 2376, 1617, 837;"Kobe Bryant", 1161, 1113, 281;"Andre Drummond", 1314, 1060, 586;"Stephen Curry", 2375, 1598, 400;"Kevin Durant", 2029, 1381, 498;"Russell WestBrook", 1878, 1444, 573;"Chris Paul", 1446, 1114, 328;"Lebron James", 1920, 1416, 491;"Carmelo Anthony", 1573, 1307, 403;"Klay Thompson", 1771, 1386, 221};
+
+  // Calculates TSP for each player
+  [10,2] players;
+  players[:,0:1] = data[[0],[0]];
+  players[:,1:] = calculate_tsp(data[[0],1],data[[0],2],data[[0],3]);
+
+  // Calculates which player has the highest TSP
+  player := highest_tsp(players);
+
+  return
+    print_endline(welcome) ->
+    print_endline(players[0,0] + ": " + to_string(players[0,1])) ->
+    print_endline(players[1,0] + ": " + to_string(players[1,1])) ->
+    print_endline(players[2,0] + ": " + to_string(players[2,1])) ->
+    print_endline(players[3,0] + ": " + to_string(players[3,1])) ->
+    print_endline(players[4,0] + ": " + to_string(players[4,1])) ->
+    print_endline(players[5,0] + ": " + to_string(players[5,1])) ->
+    print_endline(players[6,0] + ": " + to_string(players[6,1])) ->
+    print_endline(players[7,0] + ": " + to_string(players[7,1])) ->
+    print_endline(players[8,0] + ": " + to_string(players[8,1])) ->
+    print_endline(players[9,0] + ": " + to_string(players[9,1])) ->
+    print_endline("----------------------------") ->
+    print_endline("The player with the highest True Shooting Percentage is " + to_string(player[0,0]) + " with a TSP of " + to_string(player[0,1]) + "!");
+}
+
+calculate_tsp(pts,fga,fta) {
+  tsp := pts / (2.0 * (fga + (0.44 * fta)));
+  return tsp;
+}
+
+highest_tsp(players) {
+  [10,1] tsp_ranking;
+  tsp_ranking[0,0] = players[0,:];
+  tsp_ranking[1:,:] = (players[[0],1] > tsp_ranking[[-1],0][1]) ?  players[[0],:] : tsp_ranking[[-1],0];
+  return tsp_ranking[9,0];
+}

@@ -34,7 +34,7 @@ extern "stdlib.a" {
   fromASCII(val);
   plot(val);
   bar_chart(file_handle, labels, vals);
-  line_chart(file_handle, labels, x_vals, y_vals);
+  line_chart(file_handle, labels, x_vals);
 }
 
 global STDIN := get_stdin();

@@ -299,33 +299,28 @@ value_p extend_bar_chart(value_p file_handle, value_p labels, value_p values){
 	return new_val();
 }
 
-value_p extend_line_chart(value_p file_handle, value_p labels, value_p x_values, value_p y_values){
+value_p extend_line_chart(value_p file_handle, value_p labels, value_p x_values){
 	if(!assertSingleNumber(file_handle)) return new_val();
 	int fileNum = (int)file_handle->numericVal;
 	if (fileNum > open_num_files || open_files[fileNum] == NULL)  return new_val();
 	FILE *f = open_files[fileNum];
 	int data_length = labels->subrange->subrange_num_cols;
 	if(data_length != x_values->subrange->subrange_num_cols) return new_val();
-	if(data_length != y_values->subrange->subrange_num_cols) return new_val();
-
 	float *graph_x_values = malloc(sizeof(float) * data_length);
-	float *graph_y_values = malloc(sizeof(float) * data_length);
 	char **graph_labels = malloc(sizeof(char*) * data_length);
 	for(int i = 0; i < data_length; i++){
 		graph_labels[i] = getValSR(labels->subrange, 0, i)->str->text;
 		graph_x_values[i] = (float)getValSR(x_values->subrange, 0, i)->numericVal;
-		graph_y_values[i] = (float)getValSR(y_values->subrange, 0, i)->numericVal;
 	}
 	unsigned long sc[2] = {0xFF8080, 0x8080FF};
 	GDC_BGColor   = 0xFFFFFFL;
 	GDC_LineColor = 0x000000L;
 	GDC_SetColor  = &(sc[0]);
 	GDC_stack_type = GDC_STACK_BESIDE;
-	out_graph(250, 200, f, GDC_LINE, data_length, graph_labels, 2, graph_x_values, graph_x_values);
+	out_graph(250, 200, f, GDC_LINE, data_length, graph_labels, 1, graph_x_values);
 	// width, height, file handle, graph type, number of data points, labels, number of data sets, the data sets
 	free(graph_labels);
 	free(graph_x_values);
-	free(graph_y_values);
 	fclose(f);
 	return new_val();
 }

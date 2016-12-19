@@ -1,4 +1,4 @@
 main([1,n] args){
 	/* Should evaluate to 35 */
-	return print(1,to_string( 7 * 5)+"\n") -> 0;
+	return print_endline(7 * 5) -> 0;
 }

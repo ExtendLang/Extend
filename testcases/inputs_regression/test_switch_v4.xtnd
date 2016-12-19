@@ -3,5 +3,5 @@ main([1,1] args){
 		case 1, 2: 100;
 		default: 300;
 	};
-	return print(1,to_string(x)+"\n") -> 0;
+	return print_endline(x) -> 0;
 }

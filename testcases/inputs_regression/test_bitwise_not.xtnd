@@ -1,4 +1,4 @@
 main([1,1] args){
 	/* Should return -89 */
-	return print(1,to_string( ~88)+"\n") -> 0;
+	return print_endline(~88) -> 0;
 }

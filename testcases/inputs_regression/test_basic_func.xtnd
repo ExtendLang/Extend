@@ -2,5 +2,5 @@ main([1,n] args) {
   foo := 2;
   bar := 3;
   foobar := foo + bar;
-  return print(1,to_string( 0)+"\n") -> 0;
+  return print_endline( 0) -> 0;
 }

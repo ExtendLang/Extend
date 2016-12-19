@@ -3,9 +3,9 @@ bar() {
 	return 2;
 }
 
-global foo := printv(1,"Hello Globals!\n") -> 0;
+global foo := print_endline("Hello Globals!") -> 0;
 
 main(args) {
-	foo := printv(1,"Hello Locals!\n") -> 0;
+	foo := print_endline("Hello Locals!") -> 0;
   return foo;
 }

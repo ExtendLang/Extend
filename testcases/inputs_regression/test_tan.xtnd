@@ -1,3 +1,3 @@
 main([1,n] args) {
-  return printd(1, tan(45.0)) -> 0;
+  return print_endline(tan(45.0)) -> 0;
 }

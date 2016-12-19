@@ -1,4 +1,4 @@
 main([1,n] args) {
   [4,1] foo := "string";
-  return print(1,to_string( foo[1,0])+"\n") -> 0;
+  return print_endline(foo[1,0]) -> 0;
 }

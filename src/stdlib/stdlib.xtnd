@@ -334,9 +334,7 @@ splitChars([1,n] stringchars, splitchar) {
   loc := matchRow(stringchars, splitchar);
   firstword := fromASCII(stringchars[:loc]);
   lastwords := splitChars(stringchars[loc+1:],splitchar);
-  [1+numRows(lastwords),1] combined;
-  combined[0,0] = firstword;
-  combined[1:,0] = lastwords[[-1],0];
+  combined := stack(firstword, lastwords);
   return loc == empty ? fromASCII(stringchars) : combined;
 }
 
@@ -348,8 +346,7 @@ splitToRange(string, row_splitter, col_splitter) {
   split_rows := split(string, row_splitter);
   [numRows(split_rows),1] split_cols := split(#split_rows,col_splitter);
   [numRows(split_rows),1] col_lengths := numRows(#split_cols);
-  longest_col := max(col_lengths);
-  [numRows(split_rows), longest_col] result := #split_cols[column()];
+  [numRows(split_rows), max(col_lengths)] result := #split_cols[column()];
   return result;
 }
 
@@ -403,4 +400,21 @@ parseString(s) {
     default:
       parseFloat(trimmed);
   };
+}
+
+normalize([m,n] arg) {
+	[m,n] squared_lengths := #arg * #arg, normalized := #arg / vector_norm;
+	vector_norm := sqrt(sum(squared_lengths));
+	return normalized;
+}
+
+append([m,n] rg1, [p,q] rg2) {
+  [nmax(m,p), n+q] res;
+  res[:m,:n] = #rg1;
+  res[:p,n:n+q] = rg2[,[-n]];
+  return res;
+}
+
+stack(rg1, rg2) {
+  return transpose(append(transpose(rg1), transpose(rg2)));
 }

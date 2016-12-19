@@ -2,7 +2,6 @@ global rounding_cutoff := 1e-7;
 global digits_after_decimal := 6;
 
 extern "stdlib.a" {
-  current_hour();
   sin(val);
   cos(val);
   tan(val);

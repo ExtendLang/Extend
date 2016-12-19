@@ -1,0 +1,3 @@
+main(args){
+  return plot("img.png") -> print_endline("Yes!") -> 0;
+}

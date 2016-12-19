@@ -3,9 +3,21 @@
 #include<math.h>
 #include<string.h>
 #include<stdbool.h>
+#include "../../lib/gdchart0.94b/gdc.h"
+#include "../../lib/gdchart0.94b/gdchart.h"
 /* #include <sys/time.h> */
 #include <time.h>
 #include "runtime.h"
+
+/* Value type */
+#define FLAG_EMPTY 0
+#define FLAG_NUMBER 1
+#define FLAG_STRING 2
+#define FLAG_SUBRANGE 3
+
+/* Status flag */
+#define CALCULATED 2
+#define IN_PROGRESS 4
 
 #define MAX_FILES 255
 FILE *open_files[1 + MAX_FILES] = {NULL};
@@ -187,9 +199,10 @@ value_p extend_close(value_p file_handle) {
 }
 
 value_p extend_read(value_p file_handle, value_p num_bytes){
+	/* TODO: Make it accept empty */
 	if(!assertSingleNumber(file_handle) || !assertSingleNumber(num_bytes)) return new_val();
-	int max_bytes;
-	int fileNum = (int) file_handle->numericVal;
+	int max_bytes = (int)num_bytes->numericVal;
+	int fileNum = (int)file_handle->numericVal;
 	if (fileNum > open_num_files || open_files[fileNum] == NULL)  return new_val();
 	FILE *f = open_files[fileNum];
 	max_bytes = (int) num_bytes->numericVal;
@@ -248,6 +261,80 @@ value_p extend_write(value_p file_handle, value_p buffer){
 	// RN: Use the return value to close the file
 	return new_number((double) fileNum);
 }
+
+#ifdef PLOT
+value_p extend_plot(value_p file_name){
+	// extract the numerical values from the first parameter - values
+	if(!assertSingle(file_name)) return new_val();
+	float a[6]  = { 0.5, 0.09, 0.6, 0.85, 0.0, 0.90 },
+				b[6]  = { 1.9, 1.3,  0.6, 0.75, 0.1, 2.0 };
+	char *t[6] = { "Chicago", "New York", "L.A.", "Atlanta", "Paris, MD\n(USA) ", "London" };
+	unsigned long sc[2]    = { 0xFF8080, 0x8080FF };
+	GDC_BGColor   = 0xFFFFFFL;
+	GDC_LineColor = 0x000000L;
+	GDC_SetColor  = &(sc[0]);
+	GDC_stack_type = GDC_STACK_BESIDE;
+	// Using the line below, can also spit to stdout and fwrite from Extend
+	// printf( "Content-Type: image/png\n\n" );
+	FILE *outpng = fopen("extend.png", "wb");
+	out_graph(250, 200, outpng, GDC_3DBAR, 6, t, 2, a, b);
+	fclose(outpng);
+	return new_val();
+}
+
+value_p extend_bar_chart(value_p file_handle, value_p labels, value_p values){
+	// Mandates 1 row, X columns
+	if(!assertSingleNumber(file_handle)) return new_val();
+	int fileNum = (int)file_handle->numericVal;
+	if (fileNum > open_num_files || open_files[fileNum] == NULL)  return new_val();
+	FILE *f = open_files[fileNum];
+	int data_length = labels->subrange->subrange_num_cols;
+	if(data_length != values->subrange->subrange_num_cols) return new_val();
+
+	float *graph_values = malloc(sizeof(float) * data_length);
+	char **graph_labels = malloc(sizeof(char*) * data_length);
+	for(int i = 0; i < data_length; i++){
+		graph_labels[i] = getValSR(labels->subrange, 0, i)->str->text;
+		graph_values[i] = (float)getValSR(values->subrange, 0, i)->numericVal;
+	}
+	unsigned long sc[2] = {0xFF8080, 0x8080FF};
+	GDC_BGColor   = 0xFFFFFFL;
+	GDC_LineColor = 0x000000L;
+	GDC_SetColor  = &(sc[0]);
+	GDC_stack_type = GDC_STACK_BESIDE;
+	out_graph(250, 200, f, GDC_3DBAR, data_length, graph_labels, 1, graph_values);
+	// width, height, file handle, graph type, number of data points, labels, number of data sets, the data sets
+	free(graph_labels);
+	free(graph_values);
+	fclose(f);
+	return new_val();
+}
+
+value_p extend_line_chart(value_p file_handle, value_p labels, value_p x_values){
+	if(!assertSingleNumber(file_handle)) return new_val();
+	int fileNum = (int)file_handle->numericVal;
+	if (fileNum > open_num_files || open_files[fileNum] == NULL)  return new_val();
+	FILE *f = open_files[fileNum];
+	int data_length = labels->subrange->subrange_num_cols;
+	if(data_length != x_values->subrange->subrange_num_cols) return new_val();
+	float *graph_x_values = malloc(sizeof(float) * data_length);
+	char **graph_labels = malloc(sizeof(char*) * data_length);
+	for(int i = 0; i < data_length; i++){
+		graph_labels[i] = getValSR(labels->subrange, 0, i)->str->text;
+		graph_x_values[i] = (float)getValSR(x_values->subrange, 0, i)->numericVal;
+	}
+	unsigned long sc[2] = {0xFF8080, 0x8080FF};
+	GDC_BGColor   = 0xFFFFFFL;
+	GDC_LineColor = 0x000000L;
+	GDC_SetColor  = &(sc[0]);
+	GDC_stack_type = GDC_STACK_BESIDE;
+	out_graph(250, 200, f, GDC_LINE, data_length, graph_labels, 1, graph_x_values);
+	free(graph_labels);
+	free(graph_x_values);
+	fclose(f);
+	return new_val();
+}
+#endif
 
 value_p extend_current_hour() {
 	time_t ltime;

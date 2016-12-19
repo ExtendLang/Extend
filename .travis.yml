@@ -16,6 +16,7 @@ addons:
     - opam
     - clang-3.8
     - llvm-3.8
+    - libgd2-xpm-dev
 
 script: bash -ex .travis-ci.sh
 

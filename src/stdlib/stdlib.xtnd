@@ -1,4 +1,4 @@
-extern "stdlib.o" {
+extern "stdlib.a" {
   current_hour();
   print(whatever, text);
   printv(whatever, text);
@@ -34,6 +34,9 @@ extern "stdlib.o" {
   write(file_handle, buffer);
   toASCII(val);
   fromASCII(val);
+  plot(val);
+  bar_chart(file_handle, labels, vals);
+  line_chart(file_handle, labels, x_vals);
   parseFloat(val);
 }
 

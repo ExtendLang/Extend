@@ -1,11 +1,3 @@
-import "src/stdlib/complete-stdlib.xtnd";
-
 main(args) {
-
-  data := parseString(read(open(args[1],"r"),0));
-
-  return
-    print_endline(toString(data)) ->
-    print_endline(toString(linest(data[:,2],data[:,0]))) ->
-    0;
+	return plot("a");
 }

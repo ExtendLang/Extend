@@ -15,4 +15,7 @@ opam install -y $OPAM_PKGS
 
 ocaml setup.ml -configure --enable-tests
 ocaml setup.ml -build
-ocaml setup.ml -test
+
+make -C src/stdlib/
+
+ocaml setup.ml -test -no-hygiene

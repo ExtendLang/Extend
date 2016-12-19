@@ -1,4 +1,8 @@
-(* Extend code generator *)
+(*
+  Extend code generator
+  jss2272
+  ns3158
+ *)
 
 open Ast
 open Semant

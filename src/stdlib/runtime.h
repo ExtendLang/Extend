@@ -1,3 +1,4 @@
+/* jss2272 ns3158 */
 
 /* Value type */
 #define FLAG_EMPTY 0

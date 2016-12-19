@@ -1,0 +1,4 @@
+main(args) {
+  tokenize_me := "1,2,3\n12,15,18,20,42\nishaan,jared,kevin,nigel";
+  return print_endline(splitToRange(tokenize_me, "\n", ","));
+}

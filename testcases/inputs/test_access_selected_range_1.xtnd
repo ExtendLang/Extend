@@ -1,4 +1,0 @@
-main([1,n] args) {
-  [4,4] foo := "string";
-  return print(1,to_string( foo[2: ,2:])+"\n") -> 0;
-}

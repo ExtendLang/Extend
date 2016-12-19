@@ -1,0 +1,4 @@
+main(args){
+  bar := close(42);
+  return bar -> print_endline("Made it this far") -> 0;
+}

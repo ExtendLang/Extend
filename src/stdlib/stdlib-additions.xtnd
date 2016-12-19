@@ -1,0 +1,16 @@
+normalize([m,n] arg) {
+	[m,n] squared_lengths := #arg * #arg, normalized := #arg / vector_norm;
+	vector_norm := sqrt(sum(squared_lengths));
+	return normalized;
+}
+
+append([m,n] rg1, [p,q] rg2) {
+  [nmax(m,p), n+q] res;
+  res[:m,:n] = #rg1;
+  res[:p,n:n+q] = rg2[,[-n]];
+  return res;
+}
+
+stack(rg1, rg2) {
+  return transpose(append(transpose(rg1), transpose(rg2)));
+}

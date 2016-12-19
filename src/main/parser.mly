@@ -12,7 +12,6 @@ open Ast
 %token LOGNOT LOGAND LOGOR
 %token BITNOT BITXOR BITAND BITOR
 %token EMPTY RETURN IMPORT GLOBAL EXTERN
-%token DEBUG
 %token <int> LIT_INT
 %token <float> LIT_FLOAT
 %token <string> LIT_STRING
@@ -118,7 +117,6 @@ expr:
   | switch_expr         { $1 }
   | func_expr           { $1 }
   | range_expr          { $1 }
-  | DEBUG LPAREN expr RPAREN { Debug($3) }
   | expr PRECEDES expr  { Precedence($1, $3) }
   | LPAREN expr RPAREN  { $2 }
   | ID                  { Id($1) }

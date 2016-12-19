@@ -276,9 +276,9 @@ let ternarize_exprs (globals, functions, externs) =
       (Precedence(new_e1, new_e2), new_e1_vars @ new_e2_vars)
     | Switch(cond, cases, dflt) ->
       ternarize_switch lhs_var cases dflt cond
-    | Debug(e) ->
+    (* | Debug(e) ->
       let (new_e, new_e_vars) = ternarize_expr lhs_var e in
-      (Debug(new_e), new_e_vars)
+      (Debug(new_e), new_e_vars) *)
     | e -> (e, [])
   and ternarize_switch lhs_var cases dflt cond =
     let (new_cond_expr, new_cond_vars) = (match cond with
@@ -366,9 +366,9 @@ let reduce_ternaries (globals, functions, externs) =
       let (new_e1, new_e1_vars) = reduce_expr lhs_var e1 in
       let (new_e2, new_e2_vars) = reduce_expr lhs_var e2 in
       (Precedence(new_e1, new_e2), new_e1_vars @ new_e2_vars)
-    | Debug(e) ->
+    (* | Debug(e) ->
       let (new_e, new_e_vars) = reduce_expr lhs_var e in
-      (Debug(new_e), new_e_vars)
+      (Debug(new_e), new_e_vars) *)
     | e -> (e, [])
   and reduce_ternary lhs_var cond e1 e2 =
     let (new_cond, new_cond_vars) = reduce_expr lhs_var cond in

@@ -1,0 +1,4 @@
+main([1,n] args) {
+  [5,5] foo := 1;
+  return print_endline( foo)  -> 0;
+}

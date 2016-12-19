@@ -1,4 +1,0 @@
-global [2,2] foo := 1;
-main([1,n] args) {
-  return print(1,to_string( foo)+"\n") -> 0;
-}

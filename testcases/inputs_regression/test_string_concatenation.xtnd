@@ -1,8 +1,8 @@
 main(args) {
   foo :=
-		printv(1,"Hello " + "World\n") ->
-		printv(1,"Hello " + "World" + "\n") ->
-		printv(1,("Hello " + "World") + ("" + "\n")) ->
+		print_endline("Hello " + "World") ->
+		print_endline("Hello " + "World") ->
+		print_endline("Hello " + ("World" + "")) ->
 		 0;
   return foo;
 }

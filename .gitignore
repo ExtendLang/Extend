@@ -28,3 +28,5 @@ setup.log
 *.toc
 /tmp
 out
+
+lib/gdchart0.94b/gd1.3/webgif

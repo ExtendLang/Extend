@@ -1,4 +1,4 @@
 main([1,n] args){
 	/* Should return 1 */
-	return print(1,to_string( 5 % 4)+"\n") -> 0;
+	return print_endline(5 % 4) -> 0;
 }

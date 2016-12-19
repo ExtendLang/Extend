@@ -3,5 +3,5 @@ internal_sin(x,y,z) {
 }
 
 main([1,n] args) {
-  return printd(1, internal_sin(1,2,45.0)) -> 0;
+  return print_endline(internal_sin(1,2,45.0)) -> 0;
 }

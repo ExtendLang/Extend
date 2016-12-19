@@ -1,4 +1,4 @@
 main([1,1] args){
 	/* Should return empty */
-	return print(1,to_string( ~empty)+"\n") -> 0;
+	return print_endline( ~empty) -> 0;
 }

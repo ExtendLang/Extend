@@ -1,3 +1,3 @@
 main([1,1] args){
-	return print(1,to_string( 12 >> 2)+"\n") -> 0;
+	return print_endline(12 >> 2) -> 0;
 }

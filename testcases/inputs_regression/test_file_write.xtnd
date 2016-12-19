@@ -3,6 +3,6 @@ main(args){
   return
     write(handle, "Hello") ->
     close(handle) ->
-    print(1,"Made it this far\n") ->
+    print_endline("Made it this far") ->
     0;
 }

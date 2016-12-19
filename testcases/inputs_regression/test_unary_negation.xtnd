@@ -1,4 +1,4 @@
 main([1,n] args){
 	/* Should return -33 */
-	return print(1,to_string( -33)+"\n") -> 0;
+	return print_endline( -33) -> 0;
 }

@@ -1,4 +1,0 @@
-main(args){
-  bar := close(42);
-  return bar -> print(1,"Made it this far\n") -> 0;
-}

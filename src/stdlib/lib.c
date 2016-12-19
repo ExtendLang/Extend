@@ -23,90 +23,6 @@
 FILE *open_files[1 + MAX_FILES] = {NULL};
 int open_num_files = 0;
 
-value_p extend_print(value_p whatever, value_p text) {
-	if(!assertSingleString(text)) return new_val();
-	if(!assertText(text)) return new_val();
-	printf("%s", text->str->text);
-	return new_val();
-}
-
-value_p extend_printv(value_p whatever, value_p text) {
-	printf("%s", text->str->text);
-	return new_val();
-}
-
-value_p extend_printd(value_p whatever, value_p text) {
-	printf("%f\n", text->numericVal);
-	value_p result = malloc(sizeof(struct value_t));
-	return result;
-}
-
-value_p extend_to_string(value_p val) {
-		if(assertSingleNumber(val)) {
-			double possible_num = val->numericVal;
-			int rounded_int = (int) lrint(possible_num);
-			char *converted_str;
-			if (fabs(possible_num - rounded_int) < FLOAT_CUTOFF) {
-				int size = snprintf(NULL, 0, "%d", rounded_int);
-				converted_str = malloc(size + 1);
-				sprintf(converted_str, "%d", rounded_int);
-			} else {
-				int size = snprintf(NULL, 0, "%f", possible_num);
-				converted_str = malloc(size + 1);
-				sprintf(converted_str, "%f", possible_num);
-			}
-			value_p result = new_string(converted_str);
-			free(converted_str);
-			return result;
-		}
-		else if(assertSingleString(val)) return val;
-		else if(val->flags == FLAG_EMPTY) {
- 			return new_string("empty");
- 		}
-		else if(val->flags == FLAG_SUBRANGE) {
-			int i,j,len;
-			value_p value;
-			char *result, *res;
-			len = 0;
-			subrange_p sr = val->subrange;
-			value_p *strs = malloc(sizeof(value_p) * sr->subrange_num_cols * sr->subrange_num_rows);
-			for(i = 0; i < sr->subrange_num_rows; i++) {
-				for(j = 0; j < sr->subrange_num_cols; j++) {
-					value = extend_to_string(getValSR(sr, i, j));
-					//debug_print(value, "");
-					strs[i * sr->subrange_num_cols + j] = value;
-					len += value->str->length;
-				}
-			}
-			len += sr->subrange_num_rows * sr->subrange_num_cols + 1 /*closing paren*/;
-			res = result = malloc(len + 1/*terminal character*/);
-			*result = '{';
-			result++;
-			for(i = 0; i < sr->subrange_num_rows; i++) {
-				for(j = 0; j < sr->subrange_num_cols; j++) {
-					memcpy(result,strs[i * sr->subrange_num_cols + j]->str->text, strs[i * sr->subrange_num_cols + j]->str->length);
-					result += strs[i * sr->subrange_num_cols + j]->str->length;
-					if(j != sr->subrange_num_cols - 1) {
-						*result = ',';
-						result++;
-					}
-				}
-				if(i != sr->subrange_num_rows - 1) {
-					*result = ';';
-					result++;
-				}
-			}
-			*result = '}';
-			value_p v = new_string(res);
-			free(res);
-			return v;
-		} else {
-			__builtin_unreachable();
-		}
-		// If the struct does not hold a string or number, return empty?
-		return new_val();
-}
-
 #define EXPOSE_MATH_FUNC(name) value_p extend_##name(value_p a){if(!assertSingleNumber(a)) return new_val();double val = name(a->numericVal);return new_number(val);}
 EXPOSE_MATH_FUNC(sin)
 EXPOSE_MATH_FUNC(cos)
@@ -335,14 +251,6 @@ value_p extend_line_chart(value_p file_handle, value_p labels, value_p x_values)
 	return new_val();
 }
 #endif
-
-value_p extend_current_hour() {
-	time_t ltime;
-	struct tm info;
-	ltime = time(&ltime);
-	localtime_r(&ltime, &info);
-	return new_number((double) info.tm_hour);
-}
 
 value_p extend_isNaN(value_p val) {
 	if (!assertSingleNumber(val)) return new_val();

@@ -1,5 +1,3 @@
-import "../../samples/gcd_func.xtnd";
-
 main([1,n] args){
-  return print(1,to_string( gcd(70, 55))+"\n") -> 0;
+  return print_endline( gcd(70, 55)) -> 0;
 }

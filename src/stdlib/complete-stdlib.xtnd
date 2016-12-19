@@ -244,7 +244,7 @@ padLeft(str, pad_char, total_length) {
 toString(arg) {
   positive_arg := fabs(arg);
   closest_integer := round(positive_arg, 0);
-  is_integral_enough := fabs(arg-closest_integer) < rounding_cutoff;
+  is_integral_enough := fabs(positive_arg-closest_integer) < rounding_cutoff;
   floating_part := round(10 ** digits_after_decimal * (positive_arg - floor(positive_arg)),0);
   positive_part := stringOfPositiveInteger(floor(positive_arg)) + (is_integral_enough ? "" : "." + padLeft(stringOfPositiveInteger(floating_part), "0", digits_after_decimal));
 

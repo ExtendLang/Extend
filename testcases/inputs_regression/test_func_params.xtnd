@@ -1,5 +1,5 @@
 main([1,n] args) {
-  return print(1,to_string( foo("string"))+"\n") -> 0;
+  return print_endline( foo("string")) -> 0;
 }
 foo([1,1] arg) {
   return arg;

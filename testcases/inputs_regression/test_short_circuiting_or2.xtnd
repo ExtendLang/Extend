@@ -1,3 +1,3 @@
 main([1,1] args){
-	return 1 || print(1,"FAIL\n") -> print(1,"PASS\n") -> 0;
+	return 1 || print_endline("FAIL") -> print_endline("PASS") -> 0;
 }

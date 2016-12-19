@@ -1,0 +1,4 @@
+global [2,2] foo := 1;
+main([1,n] args) {
+  return print_endline(foo)  -> 0;
+}

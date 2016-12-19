@@ -12,7 +12,7 @@ AR=ar
 CFLAGS=-O -w
 LIBS=-L./ -lgd -lm
 
-all: libgd.a gddemo giftogd webgif
+all: libgd.a gddemo giftogd
 
 gddemo: gddemo.o libgd.a gd.h gdfonts.h gdfontl.h
 	$(CC) gddemo.o -o gddemo	$(LIBS)
@@ -25,8 +25,8 @@ libgd.a: gd.o gdfontt.o gdfonts.o gdfontmb.o gdfontl.o gdfontg.o \
 	$(AR) rc libgd.a gd.o gdfontt.o gdfonts.o gdfontmb.o \
 		gdfontl.o gdfontg.o
 
-webgif: webgif.o libgd.a gd.h
-	$(CC) webgif.o -o webgif	$(LIBS)
+#webgif: webgif.o libgd.a gd.h
+#	$(CC) webgif.o -o webgif	$(LIBS)
 
 clean:
 	rm -f *.o *.a gddemo giftogd

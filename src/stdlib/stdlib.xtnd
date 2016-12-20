@@ -465,5 +465,5 @@ mergesort([m,n] vals, sort_col) {
   [m-bp,n] second := vals[[bp],];
   return sort_col >= n ? empty : (
     m == 1 ? vals :
-      merge(ms(first, sort_col), ms(second, sort_col), sort_col));
+      merge(mergesort(first, sort_col), mergesort(second, sort_col), sort_col));
 }

@@ -323,3 +323,7 @@ value_p extend_fromASCII(value_p val) {
 		return new_val();
 	}
 }
+
+value_p extend_random() {
+        return new_number(rand());
+}

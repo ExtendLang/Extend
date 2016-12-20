@@ -1,1 +1,91 @@
 \section{Standard Library Reference}
+
+\subsection{File I/O}
+\begin{lstlisting}
+open(filename, mode) - returns a file handle for use with the other file I/O functions
+close(file_handle) - close a file handle
+read(file_handle, num_bytes) - reads num_bytes from a file; 0 reads entire file
+readline(file_handle) - read until the first newline
+write(file_handle, buffer) - write the contents of buffer (a String) to the handle
+STDIN, STDOUT, STDERR - global variables initialized to the file handles associated with stdin, stderr, and stdout
+print_endline(val) - convert val to a string and write to STDOUT
+\end{lstlisting}
+
+\subsection{Math Functions - Imported straight from C}
+\begin{lstlisting}
+sin(x), cos(x), tan(x), acos(x), asin(x), atan(x), sinh(x), cosh(x), tanh(x),
+exp(x), log(x), log10(x), sqrt(x), ceil(x), fabs(x), floor(x), isNaN(x)
+random() - Just for fun - very non-random.
+\end{lstlisting}
+
+\subsection{Math Functions - Not imported from C}
+\begin{lstlisting}
+isInfinite(x) - returns -1 for -infinity, 0 for finite, or 1 for +infinity
+round(val, number_of_digits);
+gcd(m, n) - returns the GCD of two numbers
+lcm(m, n) - returns the LCM of two numbers
+sign(arg) - returns -1, 0, or 1
+sum(rng) - adds all the numbers in rng
+nmax(n1, n2) - returns the max of two numbers
+max(rng) - returns the largest number in a range
+nmin(n1, n2) - returns the min of two numbers
+min(rng) - returns the smallest number in a range
+avg([m,n] rng) - return the average of the numbers in a range
+stdev([m,n] rng) - return the standard deviation of the numbers in a range
+sumsq(rng) - returns the sum of the squares of the numbers in rng
+sumproduct([m,n] rng1, [m,n] rng2) - returns the inner product of rng1 and rng2
+sumxmy2([m,n] rng1, [m,n] rng2) - returns the sum of squared differences between the elements of rng1 and rng2
+mmult([m,n] rng1, [n,p] rng2) - multiplies two matrices
+linest([p,q] known_ys, [p,q] known_xs) - performs a linear regression with known_ys as the dependent variables and known_xs as the independent variables
+normalize([m,n] arg) - return the unit norm vector in the same direction as arg
+\end{lstlisting}
+
+\subsection{String Functions}
+\begin{lstlisting}
+len(str) - returns the length of a String
+toASCII(val) - returns a 1 x n range of the ASCII values of a String
+fromASCII(val) - converts a 1 x n range of ASCII values into a String
+parseFloat(str) - wrapper around C atof()
+toUpper(text) - converts a string to uppercase
+toLower(text) - converts a string to lowercase
+left(str, num_chars) - returns the leftmost num_chars of str
+right(str, num_chars) - returns the rightmost num_chars of str
+substring(str, start, length) - returns a substring of str
+repeat(str, num) - repeat a string, num times.
+toString(arg) - convert any value into a String representation
+ltrim(s) - remove whitespace at the beginning of s
+rtrim(s) - remove whitespace at the end of s
+trim(s) - remove whitespace on both ends of s
+reverse(s) - reverses a string
+padLeft(str, pad_char, total_length) - for a string shorter than total_length, pad on the left with pad_char
+charAt(str, i) - return the ASCII code of the ith character of str
+parseString(s) - best efforts to convert a string into the correct value
+\end{lstlisting}
+
+\subsection{Plotting}
+\begin{lstlisting}
+bar_chart(file_handle, labels, vals);
+line_chart(file_handle, labels, x_vals);
+\end{lstlisting}
+
+\subsection{Range Functions}
+\begin{lstlisting}
+transpose([m,n] rng) - transpose a matrix; works with any dimensions
+flatten([m,n] rng) - turn a rectangular range into a long row vector
+isNumber(x) - equal to typeof(x) == "Number"
+isEmpty(x) - equal to typeof(x) == "Number"
+colRange(start, end) - return a column vector with the integers from start to (end-1)
+rowRange(start, end) - return a row vector with the integers from start to (end-1)
+match(list, val) - finds the first occurence of val in list; list can be either a row or a column vector and does not need to be sorted
+bsearch(list, val) - finds the first occurrence of val in list; list must be a sorted column vector
+join([m,n] cells, joiner) - concatenate the string representation of either a column or a row vector, using joiner as the delimiter
+joinRange([m,n] cells, rowJoiner, colJoiner) - concatenate a range, joining rows with rowJoiner and columns with colJoiner
+numRows(arg) - return the number of rows in arg
+numCols(arg) - return the number of columns in arg
+split(string, splitter) - returns a row vector of strings using splitter (which must be a one-character String) as a delimiter
+splitToRange(string, row_splitter, col_splitter) - returns a range of strings using row_splitter as the row delimiter and col_splitter as the column delimiter
+    case charAt(trimmed,0) == toASCII("{") && charAt(trimmed,-1) == toASCII("}"):
+append([m,n] rg1, [p,q] rg2) - concatenate two ranges, horizontally
+stack(rg1, rg2) - concatenate two ranges, vertically
+mergesort([m,n] rng, sort_col) - return a sorted copy of rng, using sort_col for comparisons
+\end{lstlisting}

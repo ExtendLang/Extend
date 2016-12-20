@@ -1,35 +1,38 @@
 selection_examples() {
-  foo[0,2] /* This evaluates to the cell value in the first row and third column. */
-  foo[0,:] /* Evaluates to the range of cells in the first row of foo. */
-  foo[:,2] /* Evaluates to the range of cells in the third column of foo. */
-  foo[:,[1]] /* The internal brackets denote RELATIVE notation.
-  In this case, 1 column right of the column of the left-hand-side cell. */
+  foo :=
+    {"Alpha", "Bravo", "Charlie", "Delta", "Echo";
+     "Foxtrot", "Golf", "Hotel", "India", "Juliett";
+     "Kilo", "Lima", "Mike", "November", "Oscar";
+     "Papa", "Quebec", "Romeo", "Sierra", "Tango"};
 
-  foo[3,] /* Equivalent to foo[3,[0]] if foo has more than one column
-  or foo[3,0] if foo has one column */
+  [3,3] bar;
+  bar[0,0] = foo[0,2]; // "Charlie"
+  bar[0,1] = foo[0,:]; // {"Alpha", "Bravo", "Charlie", "Delta", "Echo"}
+  bar[0,2] = foo[:,2]; // {"Charlie"; "Hotel"; "Mike"; "Romeo"}
+  bar[1,1] = foo[[1],[2]]; // "November" - the [1] indicates relative
+                         // In this case, works out to foo[2,3]
 
-  foo[5:, 7:] /* All cells starting from the 6th row and 8th column to the bottom right */
+  bar[1,2] = foo[3,];    // "Romeo" since foo has multiple columns
+  bar[2,2] = foo[2:[2],[-1]]; // {"Lima"; "Quebec"}
 
-  foo[[1]:[2], 0:[7]]
-  /* Selects the rows between the 1st and 2nd row after LHS row, and
-     all the columns up to the 7th column to the right of the LHS column */
+  /* In this example, each cell of spam would be equal to the cell
+   * in ham in the equivalent location plus 1. */
+  ham := {2,4,6; 10,11,12; 20,30,40};
+  [3,3] spam := #ham + 1; // {3,5,7; 11,12,13; 21,31,41}
 
-  /* In this example, each cell of bar would be equal to the cell
-   * in foo in the equivalent location plus 1. */
-  [5,5] foo;
-  [5,5] bar := #foo + 1; // #foo = foo[[0],[0]]
-
-  /* In this example, bar would be a 3x5 range where in each row,
-   * the value in bar is equal to the value in foo in the same column.
-   * In other words, each row of bar would be a copy of foo. */
-  [1,5] foo; // foo has 1 row, 5 columns
-  [3,5] bar := #foo; // #foo = foo[0,[0]]
+  /* In this example, more_cookies would be a 3x4 range where in each row,
+   * the value is equal to the value in cookies in the same column.
+   * In other words, each row of more_cookies would be a copy of cookies. */
+  cookies := {"Chocolate","Oatmeal","Vanilla","Peanut Butter"};
+  [3,4] more_cookies := #cookies;
 
   /* In this example, the values of baz would be
    * 11, 12, 13 in the first row;
    * 21, 22, 23 in the second row;
    * 31, 32, 33 in the third row. */
-  foo := {1,2,3}; // 1 row, 3 columns
-  bar := {10;20;30}; // 3 rows, 1 column
-  [3,3] baz := #foo + #bar; // Equivalent to foo[0,[0]] + bar[[0],0]
+  ones := {1,2,3}; // 1 row, 3 columns
+  tens := {10;20;30}; // 3 rows, 1 column
+  [3,3] nums := #ones + #tens; // Equivalent to ones[0,[0]] + tens[[0],0]
+
+  return 0;
 }

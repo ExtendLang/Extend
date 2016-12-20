@@ -1,4 +1,4 @@
-/* jss2272 ns3158 */
+/* jss2272 ns3158 isk2108 */
 
 global rounding_cutoff := 1e-7;
 global digits_after_decimal := 6;
@@ -38,6 +38,7 @@ extern "stdlib.a" {
   bar_chart(file_handle, labels, vals);
   line_chart(file_handle, labels, x_vals);
   parseFloat(val);
+  random(); // Just for fun - very non-random.
 }
 
 global STDIN := get_stdin();
@@ -245,10 +246,24 @@ substring(str, start, length) {
 }
 
 concatRow([1,n] cells, joiner) {
-  [1,n] accum;
-  accum[0,0] = #cells;
-  accum[0,1:] = accum[[-1]] + joiner + #cells;
+  [1,n] accum, strings := toString(#cells);
+  accum[0,0] = #strings;
+  accum[0,1:] = accum[[-1]] + joiner + #strings;
   return accum[-1];
+}
+
+concatCol([m,1] cells, joiner) {
+  return transpose(concatRow(transpose(cells), joiner));
+}
+
+join([m,n] cells, joiner) {
+  return m == 1 ? concatRow(cells, joiner) : (n == 1 ? concatCol(cells, joiner) : empty);
+}
+
+joinRange([m,n] cells, rowJoiner, colJoiner) {
+  [m,n] strings := toString(#cells);
+  [m,1] joinedRows := concatRow(strings[,:], colJoiner);
+  return concatCol(joinedRows, rowJoiner);
 }
 
 toRangeLiteral([m,n] rng) {
@@ -417,4 +432,41 @@ append([m,n] rg1, [p,q] rg2) {
 
 stack(rg1, rg2) {
   return transpose(append(transpose(rg1), transpose(rg2)));
+}
+
+avg([m,n] rng) {
+  return sum(rng) / (m*n);
+}
+
+stdev([m,n] rng) {
+  mean := avg(rng);
+  [m,n] devs := #rng - mean;
+  return sqrt(sumsq(devs)/(m*n-1));
+}
+
+mergesort([m,n]data, sort_col) {
+  breakpoint := floor(m/2);
+  split1 := data[:breakpoint,:];
+  split2 := data[breakpoint:,:];
+  sizesplit1 := size(split1)[0];
+  sizesplit2 := size(split2)[0];
+  sortedsplit1 := sizesplit1 < 2 ? split1[row(),:] : mergesort(sort_col,split1);
+  sortedsplit2 := sizesplit2 < 2 ? split2[row(),:] : mergesort(sort_col,split2);
+  [m, 3] merged;
+  merged[0,0] = #isbigger ? sortedsplit1[0,:] : sortedsplit2[0,:];
+  merged[0,1] = #isbigger ? 1 : 0;
+  merged[0,2] = #isbigger ? 0 : 1;
+  [m, 1]isbigger;
+  isbigger[0,0] = sortedsplit1[0,sort_col] <= sortedsplit2[0,sort_col];
+  isbigger[1:,0] = sortedsplit1[merged[[-1], 1],sort_col] == empty ? 0 :
+    (sortedsplit2[merged[[-1],2],sort_col] == empty ? 1 :
+    (sortedsplit1[merged[[-1],1],sort_col] <= sortedsplit2[merged[[-1],2],sort_col]));
+  merged[1:,0] =
+    #isbigger
+    ? sortedsplit1[merged[[-1],1],:]
+    : sortedsplit2[merged[[-1],2],:];
+  merged[1:,1] = #isbigger ? merged[[-1],1] + 1 : merged[[-1],1];
+  merged[1:,2] = #isbigger ? merged[[-1],2] : merged[[-1],2] + 1;
+  [m, n]transfer := merged[row(),0][column()];
+  return transfer;
 }

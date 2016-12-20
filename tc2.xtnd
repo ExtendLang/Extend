@@ -1,3 +1,0 @@
-main(args) {
-  return print_endline(1) -> print_endline(-1);
-}

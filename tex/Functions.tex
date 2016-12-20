@@ -1,6 +1,6 @@
 \section{Functions}
 \label{sec:Functions}
-The bulk of an Extend program consists of functions. Although Extend has some features, such as immutability and lazy evaluation, that are inspired by functional languages, its functions are not \textit{first class objects}. By default, the standard library is automatically compiled and linked with a program, but there are no functions built into the language itself.
+The bulk of an Extend program consists of functions. Although Extend has some features, such as immutable and lazily evaluated cell values, that are inspired by functional languages, its functions are not \textit{first class objects}. By default, the standard library is automatically compiled and linked with a program, but there are no functions built into the language itself.
 \subsection{Format}
 \label{sec:funcdecl}
 As in most programming languages, the header of the function declares the parameters it accepts. The body of the function consists of an optional set of variable declarations and formula assignments, which can occur in any order, and a return statement, which must be the last statement in the function body. All variable declarations and formula assignments, in addition to the return statement, must be terminated by a semicolon.
@@ -8,18 +8,18 @@ This very simple function returns whatever value is passed into it:
 \lstinputlisting{./samples/functions_simple.xtnd}
 \subsection{Variable Declarations}
 \label{sec:vardecl}
-A variable declaration associates an identifier with a range of cells of the specified dimensions, which are listed in square brackets before the identifier. For convenience, if the square brackets and dimensions are omitted, the identifier will be associated with a single cell. In addition, multiple identifiers, separated by commas, can be listed after the dimensions; all of these identifiers will be separate ranges, but with equal dimension sizes. The dimensions can be specified as any valid expression that evaluates to a Number, which will be rounded to the nearest signed 32-bit integer. If either dimension is zero or negative, or if the expression does not evaluate to a Number, a runtime error causing the program to halt will occur.
+A variable declaration associates an identifier with a set of cells of the specified dimensions, which are listed in square brackets before the identifier. For convenience, if the square brackets and dimensions are omitted, the identifier will be associated with a single cell. In addition, multiple identifiers, separated by commas, can be listed after the dimensions; all of these identifiers will be separate variables, but with equal dimension sizes. The dimensions can be specified as any valid expression that evaluates to a Number, which will be rounded to the nearest signed 32-bit integer. If either dimension is zero or negative, or if the expression does not evaluate to a Number, a runtime error causing the program to halt will occur.
 \begin{lstlisting}
-[2, 5] foo; // Declares foo as a range with 2 rows and 5 columns
-[m, n] bar; // Declares bar as a range with m rows and n columns
-[3, 3] ham, eggs, spam; // Declares ham, eggs and spam as distinct 3x3 ranges
-baz; // Declares baz as a single cell
+[2, 5] foo; // Declares foo as a variable with 2 rows and 5 columns
+[m, n] bar; // Declares bar as a variable with m rows and n columns
+[3, 3] ham, eggs, spam; // Declares ham, eggs and spam as distinct 3x3 variables
+baz; // Declares baz as a variable with single cell
 \end{lstlisting}
 \subsection{Formula Assignment}
 \label{sec:formula}
-A formula assignment assigns an expression to a subset of the cells of a variable. Unlike most imperative languages, this expression is not immediately evaluated, but is instead only evaluated if and when it is needed to calculate the return value of the function. A formula assignment consists of an identifier, an optional pair of slices enclosed in square brackets specifying the subset of the cells that the assignment applies to, an \texttt{=}, and an expression, followed by a semicolon. As with the expressions specifying the dimensions of a range, these slices specifying the cell subset can contain arbitrary expressions, as long as the expression taken as a whole evaluates to a Number, which will be rounded to the nearest signed 32-bit integer. Negative numbers are legal in these slices, and correspond to (dimension length + value).
+A formula assignment assigns an expression to a subset of the cells of a variable. Unlike most imperative languages, this expression is not immediately evaluated, but is instead only evaluated if and when it is needed to calculate the return value of the function. A formula assignment consists of an identifier, an optional pair of slices enclosed in square brackets specifying the subset of the cells that the assignment applies to, an \texttt{=}, and an expression, followed by a semicolon. As with the expressions specifying the dimensions of a variable, these slices specifying the cell subset can contain arbitrary expressions, as long as the expression taken as a whole evaluates to a Number, which will be rounded to the nearest signed 32-bit integer. Negative numbers are legal in these slices, and correspond to (dimension length + value).
 \begin{lstlisting}
-[5, 2] foo, bar, baz; // Declares foo, bar, and baz as distinct 5x2 ranges
+[5, 2] foo, bar, baz; // Declares foo, bar, and baz as distinct 5x2 variables
 foo[0,0] = 42; // Assigns the expression 42 to the first cell of the first row of foo
 foo[0,1] = foo[0,0] * 2; // Assigns (foo[0,0] * 2) to the 2nd cell of the 1st row of foo
 bar = 3.14159; // Assigns pi to every cell of every row of bar
@@ -34,7 +34,7 @@ The last line of the source snippet above demonstrates the idiomatic Extend way 
 \label{sec:CombinedDeclAsgn}
 For convenience, a variable declaration and a formula assignment to all cells of that variable can be combined on a single line by inserting a \texttt{:=} and an expression after the identifier. Multiple variables and assignments, separated by commas, can be declared on a single line as well. All global variables must be defined using the combined declaration and formula assignment syntax.
 \begin{lstlisting}
-/* Creates two 2x2 ranges; every cell of foo evaluates to 1 and every cell of
+/* Creates two 2x2 variables; every cell of foo evaluates to 1 and every cell of
    bar evaluates to 2. */
 [2,2] foo := 1, bar := 2;
 \end{lstlisting}
@@ -48,8 +48,8 @@ Extend gives the developer the power to easily apply operations in a functional 
 \lstinputlisting{./samples/functions_range_single.xtnd}
 This function normalizes a column vector to have unit norm:
 \lstinputlisting{./samples/functions_range_mix.xtnd}
-\subsection{Lazy Evaluation and Circular References}
-All cell values and variable dimensions are evaluated lazily if and when they are needed to calculate the return expression. Using lazy evaluation ensures that the cell values are calculated in a valid topological sort order and allows for detection of circular references; internally this is accomplished by constructing a function for each formula which is called the first time the cell's value is needed, and marking the cell as "in-progress" once it starts being evaluated and as "complete" once the value has been calculated. The only guarantees the language places on the order of cell evaluation are: (1) It will be a valid topological ordering; (2) In conditional expressions and in short-circuiting operator expressions, only the relevant conditional branches will be evaluated; and (3) In an expression using the precedence operator, the preceeding expression will be evaluated before the succeeding expression. A range selection consisting of multiple cells will not cause the constituent cells to be evaluated; however, selection of a single cell will cause that cell's value to be evaluated.
+\subsection{Lazy Cell Evaluation and Circular References}
+All cell values and variable dimensions are evaluated lazily if and when they are needed to calculate the return expression. Using lazy evaluation ensures that the cell values are calculated in a valid topological sort order and allows for detection of circular references; internally this is accomplished by constructing a function for each formula which is called the first time the cell's value is needed, and marking the cell as "in-progress" once it starts being evaluated and as "complete" once the value has been calculated. A cell's value is needed when a range expression consists of that single cell, or when the cell belongs to a range that is assigned as the value for another cell. In other words, an intermediate range expression that consists of multiple cells will not cause the constituent cells to be evaluated; however, a range expression that has one row and one column will cause that one cell's value to be evaluated. In conditional expressions and in short-circuiting operator expressions, only the predicate and the relevant conditional branch will be evaluated. In an expression using the precedence operator, the preceding expression will be evaluated before the succeeding expression.
 If a program is written in such a way as to cause a circular dependency of one cell on another, and the return expression is dependent on that cell's value, a runtime error will occur. For example, in the following function:
 \lstinputlisting{./samples/maybe_circular.xtnd}
 A runtime error will occur if maybeCircular(1) is called; but if maybeCircular(0) is called, the function will simply return 0.

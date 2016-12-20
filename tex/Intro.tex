@@ -1,5 +1,5 @@
 \section{Introduction to Extend}
-	Extend is a domain-specific programming language used to designate ranges of cells as reusable functions. It is a dynamically-typed, statically-scoped, declarative language that uses lazy evaluation to carry out computations. Once computed, all values are immutable. In order to offer the best performance, Extend compiles down to LLVM.
+	Extend is a dynamically-typed, statically-scoped, declarative language that brings the semantics of an interactive spreadsheet application to a compiled language. Extend features immutable values and allows the developer to write code without explicitly specifying the order of computations. It goes beyond typical spreadsheet applications by allowing the developer to encapsulate related sets of computations in reusable functions. In order to offer the best performance, Extend compiles down to LLVM.
 
 	Extend's syntax is meant to provide clear punctuation and easily understandable cell range access specifications, while borrowing elements from languages with C-style syntax for ease of development. Despite these syntactic similarities, the semantics of an Extend program have more in common with a spreadsheet such as Microsoft Excel than imperative languages such as C, Java or Python.
 
@@ -27,4 +27,6 @@ import "string.xtnd";
 		When a compiled Extend program is executed, the \texttt{main} function is evaluated. All computations necessary to calculate the return value of the function are performed, after which the program terminates. The \texttt{main} function must be a function of a single argument, conventionally denoted \texttt{args}, which is guaranteed to be a 1-by-n range containing the command line arguments.
 		\subsection{Scoping and Namespace}
 		For functions and for global variables, there is a single namespace that is shared between all files composing an Extend program, and they are visible throughout the entire program. Functions declared in external libraries share this namespace as well. For a local variable, the scope is the entire body of the function in which it is defined. Functions may declare local variables sharing a name with a global variable; inside that function, the name will refer to the local variable.
-\lstinputlisting{./samples/scope_examples.xtnd}
+		\lstinputlisting{./samples/scope_examples.xtnd}
+		\subsection{Identifiers}
+		A function or variable name must begin with a lowercase or uppercase letter and can be followed by any number of letters, digits, or underscores.

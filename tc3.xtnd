@@ -1,6 +1,0 @@
-import "src/stdlib/stdlib-additions.xtnd";
-
-main(args) {
-  v1 := {3,3,3,3}, v2 := {4,4}, v3 := append(v1, v2);
-  return print_endline(normalize(v1)) -> print_endline(normalize(v3)) -> 0;
-}

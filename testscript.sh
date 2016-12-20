@@ -1,3 +1,6 @@
+#!/bin/bash
+# ns3158
+
 if [ "$#" -eq 1 ]; then
   PRINT=$1
 else

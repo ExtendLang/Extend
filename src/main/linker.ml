@@ -1,3 +1,4 @@
+(* ns3158 *)
 module StringSet = Set.Make(String)
 let link xtndOut ast compiler outputFile =
   let tmpFilenameLL = Filename.temp_file "" ".ll"

@@ -1,3 +1,6 @@
+#!/bin/bash
+# ns3158
+
 LIB=stdlib.o
 RUNTIME=runtime.o
 COMPILER=clang

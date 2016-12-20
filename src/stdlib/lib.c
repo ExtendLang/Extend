@@ -1,3 +1,5 @@
+/* jss2272 ns3158 isk2108 */
+
 #include<stdio.h>
 #include<stdlib.h>
 #include<math.h>

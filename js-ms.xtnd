@@ -1,0 +1,29 @@
+merge([m,k] first, [n,k] second, col) {
+  [m+n,1] ix1, ix2, use_first;
+  ix1[0,0] = 0;
+  ix2[0,0] = 0;
+  use_first = switch {
+    case #ix1 >= m: 0;
+    case #ix2 >= n: 1;
+    default: first[#ix1,col] < second[#ix2,col];
+  };
+  ix1[1:,0] = ix1[[-1]] + use_first[[-1]];
+  ix2[1:,0] = ix2[[-1]] + 1 - use_first[[-1]];
+  [m+n, k] sorted := #use_first ? first[#ix1,] : second[#ix2,];
+  return sorted;
+}
+
+ms([m,n] vals, sort_col) {
+  bp := floor(m/2);
+  [bp,n] first := #vals;
+  [m-bp,n] second := vals[[bp],];
+  return sort_col >= n ? empty : (
+    m == 1 ? vals :
+      merge(ms(first, sort_col), ms(second, sort_col), sort_col));
+}
+
+main(args) {
+  [parseFloat(args[1]),1] data := random();
+  return print_endline(ms(data,0)[0]);
+//  return print_endline(ms({22,"x","apples";7,"q","plums";8,"a","lemons";10,"green","truffles"}, 2));
+}

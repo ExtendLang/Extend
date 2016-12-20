@@ -1,4 +1,4 @@
-mergesort(col,[m,n]data) {
+mergesort([m,n]data, sort_col) {
   breakpoint := floor(m/2);
   split1 := data[:breakpoint,:];
   split2 := data[breakpoint:,:];
@@ -24,8 +24,9 @@ mergesort(col,[m,n]data) {
 }
 
 main(args) {
-  [100,2] mydata;
-  mydata[:,0] = random();
-  mydata[:,1] = row();
+//  [100,3] mydata;
+//  mydata[:,0] = random();
+//  mydata[:,1] = row();
+  mydata := {22,"x","apples";7,"q","plums";8,"a","lemons";10,"green","truffles"};
   return print_endline(mergesort(0,mydata));
 }

@@ -18,25 +18,11 @@ SourceRepository master
   Branch: master
   Browser: https://github.com/Neitsch/plt
 
-Library test_transf
-  BuildDepends: str
-  Path: src/main
-  Modules: Transform
-
 Executable main
   BuildDepends: str, llvm, llvm.analysis
   CompiledObject: byte
   Path: src/main
   MainIs: main.ml
-
-Executable compare
-  BuildDepends: oUnit, test_transf
-  MainIs: compare.ml
-  Path: tests
-
-Test testsamples
-  Type: Custom (0.0.1)
-  Command: $compare
 
 Test testcompile
   Type: Custom (0.0.1)

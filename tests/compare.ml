@@ -11,7 +11,7 @@ let dir = "./samples" in
     Array.iter (
     fun s -> let in_file = (dir ^ "/" ^ s) in
       try
-        OUnit2.assert_equal ((Ast.string_of_program (Transform.create_ast in_file)) ^ "\n") (load_file (dir ^ "_comp/" ^ s ^ ".out"))
+        OUnit2.assert_equal ((Ast.string_of_program (Transform.create_ast in_file))) (load_file (dir ^ "_comp/" ^ s ^ ".out"))
       with
-        e -> (print_endline ("Failure in " ^ s) ; (*raise e*))
+        e -> (print_endline ("Failure in " ^ s) ; raise e)
     ) children;;

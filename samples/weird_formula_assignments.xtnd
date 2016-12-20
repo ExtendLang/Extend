@@ -12,6 +12,6 @@ main([1,n] args) {
   foo[breakpoint():,0] = "after";
 
   return
-    printf(1, toString(foo) + "\n") ->
+    print_endline(toString(foo) + "\n") ->
     0;
 }

@@ -444,29 +444,26 @@ stdev([m,n] rng) {
   return sqrt(sumsq(devs)/(m*n-1));
 }
 
-mergesort([m,n]data, sort_col) {
-  breakpoint := floor(m/2);
-  split1 := data[:breakpoint,:];
-  split2 := data[breakpoint:,:];
-  sizesplit1 := size(split1)[0];
-  sizesplit2 := size(split2)[0];
-  sortedsplit1 := sizesplit1 < 2 ? split1[row(),:] : mergesort(sort_col,split1);
-  sortedsplit2 := sizesplit2 < 2 ? split2[row(),:] : mergesort(sort_col,split2);
-  [m, 3] merged;
-  merged[0,0] = #isbigger ? sortedsplit1[0,:] : sortedsplit2[0,:];
-  merged[0,1] = #isbigger ? 1 : 0;
-  merged[0,2] = #isbigger ? 0 : 1;
-  [m, 1]isbigger;
-  isbigger[0,0] = sortedsplit1[0,sort_col] <= sortedsplit2[0,sort_col];
-  isbigger[1:,0] = sortedsplit1[merged[[-1], 1],sort_col] == empty ? 0 :
-    (sortedsplit2[merged[[-1],2],sort_col] == empty ? 1 :
-    (sortedsplit1[merged[[-1],1],sort_col] <= sortedsplit2[merged[[-1],2],sort_col]));
-  merged[1:,0] =
-    #isbigger
-    ? sortedsplit1[merged[[-1],1],:]
-    : sortedsplit2[merged[[-1],2],:];
-  merged[1:,1] = #isbigger ? merged[[-1],1] + 1 : merged[[-1],1];
-  merged[1:,2] = #isbigger ? merged[[-1],2] : merged[[-1],2] + 1;
-  [m, n]transfer := merged[row(),0][column()];
-  return transfer;
+merge([m,k] first, [n,k] second, col) {
+  [m+n,1] ix1, ix2, use_first;
+  ix1[0,0] = 0;
+  ix2[0,0] = 0;
+  use_first = switch {
+    case #ix1 >= m: 0;
+    case #ix2 >= n: 1;
+    default: first[#ix1,col] < second[#ix2,col];
+  };
+  ix1[1:,0] = ix1[[-1]] + use_first[[-1]];
+  ix2[1:,0] = ix2[[-1]] + 1 - use_first[[-1]];
+  [m+n, k] sorted := #use_first ? first[#ix1,] : second[#ix2,];
+  return sorted;
+}
+
+mergesort([m,n] vals, sort_col) {
+  bp := floor(m/2);
+  [bp,n] first := #vals;
+  [m-bp,n] second := vals[[bp],];
+  return sort_col >= n ? empty : (
+    m == 1 ? vals :
+      merge(ms(first, sort_col), ms(second, sort_col), sort_col));
 }

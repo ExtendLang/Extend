@@ -24,9 +24,8 @@ mergesort(col,[m,n]data) {
 }
 
 main(args) {
-  [10000,2] mydata;
+  [100,2] mydata;
   mydata[:,0] = random();
   mydata[:,1] = row();
-  mydata[:,2] = "Id: " + toString(row());
-  return mergesort(0,mydata);
+  return print_endline(mergesort(0,mydata));
 }

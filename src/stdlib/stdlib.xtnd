@@ -245,10 +245,24 @@ substring(str, start, length) {
 }
 
 concatRow([1,n] cells, joiner) {
-  [1,n] accum;
-  accum[0,0] = #cells;
-  accum[0,1:] = accum[[-1]] + joiner + #cells;
+  [1,n] accum, strings := toString(#cells);
+  accum[0,0] = #strings;
+  accum[0,1:] = accum[[-1]] + joiner + #strings;
   return accum[-1];
+}
+
+concatCol([m,1] cells, joiner) {
+  return transpose(concatRow(transpose(cells), joiner));
+}
+
+join([m,n] cells, joiner) {
+  return m == 1 ? concatRow(cells, joiner) : (n == 1 ? concatCol(cells, joiner) : empty);
+}
+
+joinRange([m,n] cells, rowJoiner, colJoiner) {
+  [m,n] strings := toString(#cells);
+  [m,1] joinedRows := concatRow(strings[,:], colJoiner);
+  return concatCol(joinedRows, rowJoiner);
 }
 
 toRangeLiteral([m,n] rng) {
@@ -417,4 +431,14 @@ append([m,n] rg1, [p,q] rg2) {
 
 stack(rg1, rg2) {
   return transpose(append(transpose(rg1), transpose(rg2)));
+}
+
+avg([m,n] rng) {
+  return sum(rng) / (m*n);
+}
+
+stdev([m,n] rng) {
+  mean := avg(rng);
+  [m,n] devs := #rng - mean;
+  return sqrt(sumsq(devs)/(m*n-1));
 }

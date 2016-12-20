@@ -1,0 +1,5 @@
+main(args) {
+	rg := {2,3;4,5};
+	return
+		print_endline(joinRange(rg, ";", ",")) -> 0;
+}

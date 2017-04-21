@@ -34,6 +34,8 @@ if [ $? -ne 0 ]; then
 fi
 cp stdlib.a $TMP_DIR/stdlib.a
 
+echo "Hang on tight, running testcases..."
+
 for f in $(ls $TESTDIR/$REGRESSION); do
   counter=$((counter+1))
   EXTEND_TARGET=$TMP_DIR/$f$LLVM_F
@@ -51,7 +53,7 @@ for f in $(ls $TESTDIR/$REGRESSION); do
   diff $TEXT_OUTPUT $EXPECTED_OUTPUT > $RESULT_OUTPUT 2>&1
   if [ $? -eq 0 ]; then
     counterc=$((counterc+1))
-    echo "Compiler: PASSED ($f)"
+#    echo "Compiler: PASSED ($f)"
   else
     echo "Compiler: FAILED REGRESSION TEST ($f)"
     result=$((result+1))
